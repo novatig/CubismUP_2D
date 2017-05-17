@@ -28,7 +28,7 @@ void initializeNUMA(Layer& layer)
 			for(int ix=0; ix<layer.sizeX; ix++)
 			{
 				layer.data[ic*layer.sizeX*layer.sizeY + iy*layer.sizeX + ix] = 0;
-				
+
 			}
 		}
 }
@@ -39,11 +39,11 @@ public:
 	static inline Real eval(Real x)
 	{
 		const Real t = fabs(x);
-		
+
 		if (t>2) return 0;
-		
+
 		if (t>1) return pow(2-t,3)/6;
-		
+
 		return (1 + 3*(1-t)*(1 + (1-t)*(1 - (1-t))))/6;
 	}
 };
@@ -55,11 +55,11 @@ public:
     static inline double eval(double x)
     {
         const double t = fabs(x);
-        
+
         if (t>2) return 0;
-        
+
         if (t>1) return pow(2-t,3)/6;
-        
+
         return (1 + 3*(1-t)*(1 + (1-t)*(1 - (1-t))))/6;
     }
 };
@@ -68,13 +68,13 @@ void TestPressure::_ic()
 {
 	vector<BlockInfo> vInfo = grid->getBlocksInfo();
 	const double dh = vInfo[0].h_gridpoint;
-	
+
 #pragma omp parallel for
 	for(int i=0; i<(int)vInfo.size(); i++)
 	{
 		BlockInfo info = vInfo[i];
 		FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-		
+
 			for(int iy=0; iy<FluidBlock::sizeY; iy++)
 				for(int ix=0; ix<FluidBlock::sizeX; ix++)
 				{
@@ -82,26 +82,26 @@ void TestPressure::_ic()
 					info.pos(p, ix, iy);
 					p[0] = p[0]*2.-1.;
 					p[1] = p[1]*2.-1.;
-					
+
 					if (ic==0)
 					{
 						double x = p[0]*M_PI;
 						double y = p[1]*M_PI;
-						
+
 						b(ix, iy).u   = 1./(4.*M_PI*M_PI)*cos(x); // expected solution
-						b(ix, iy).divU = -cos(x); // rhs
+						b(ix, iy).tmp = -cos(x); // rhs
 					}
 					else if (ic==1)
 					{
 						const Real IrI  = sqrt(p[0]*p[0] + p[1]*p[1]);
 						const double strength = 100./(1+IrI*IrI)*BS4::eval(IrI/0.5*2.5);
-						
+
 						b(ix, iy).rho = 1./(4.*M_PI*M_PI)*cos(p[0]*M_PI);
 						b(ix, iy).u   = -p[1]*strength;
 						b(ix, iy).v   =  p[0]*strength;
 						b(ix, iy).chi = 0;
-						
-						b(ix, iy).divU = -cos(p[0]*M_PI);
+
+						b(ix, iy).tmp = -cos(p[0]*M_PI);
 					}
 					else if (ic==2)
 					{
@@ -110,8 +110,8 @@ void TestPressure::_ic()
 						//	0-neumann on x=1
                         /*
                         info.pos(p, ix, iy);
-                        b(ix,iy).divU = 4*CubicBspline::eval(8*(p[1]-0.5));
-                        b(ix,iy).rho = b(ix,iy).divU;
+                        b(ix,iy).tmp = 4*CubicBspline::eval(8*(p[1]-0.5));
+                        b(ix,iy).rho = b(ix,iy).tmp;
                         //*/
 						const int size = 1/dh;
                         const int bx = info.index[0]*FluidBlock::sizeX;
@@ -123,8 +123,8 @@ void TestPressure::_ic()
                         //b(ix,iy).divU = 81*M_PI_2*M_PI_2 * cos(y);
                         //b(ix,iy).divU = -64*M_PI_2*M_PI_2 * cos(x);
                         //b(ix,iy).divU = -9*M_PI_2*M_PI_2 * cos(y) + -64*M_PI_2*M_PI_2 * sin(x);
-                        b(ix,iy).divU = -(64+9)*M_PI_2*M_PI_2 * cos(y) * sin(x);
-                        b(ix,iy).rho = b(ix,iy).divU;
+                        b(ix,iy).tmp = -(64+9)*M_PI_2*M_PI_2 * cos(y) * sin(x);
+                        b(ix,iy).rho = b(ix,iy).tmp;
                         //b(ix,iy).u = -cos(y);
                         //b(ix,iy).u = cos(x);
                         //b(ix,iy).u = cos(y)+sin(x);
@@ -136,8 +136,8 @@ void TestPressure::_ic()
 						//	0-neumann on all boundaries
 						/*
 						 info.pos(p, ix, iy);
-						 b(ix,iy).divU = 4*CubicBspline::eval(8*(p[1]-0.5));
-						 b(ix,iy).rho = b(ix,iy).divU;
+						 b(ix,iy).tmp = 4*CubicBspline::eval(8*(p[1]-0.5));
+						 b(ix,iy).rho = b(ix,iy).tmp;
 						 //*/
 						const int size = 1/dh;
 						const int bx = info.index[0]*FluidBlock::sizeX;
@@ -149,8 +149,8 @@ void TestPressure::_ic()
 						//b(ix,iy).divU = 81*M_PI_2*M_PI_2 * cos(y);
 						//b(ix,iy).divU = -64*M_PI_2*M_PI_2 * cos(x);
 						//b(ix,iy).divU = -9*M_PI_2*M_PI_2 * cos(y) + -64*M_PI_2*M_PI_2 * sin(x);
-						b(ix,iy).divU = -(64+64)*M_PI_2*M_PI_2 * cos(y) * cos(x);
-						b(ix,iy).rho = b(ix,iy).divU;
+						b(ix,iy).tmp = -(64+64)*M_PI_2*M_PI_2 * cos(y) * cos(x);
+						b(ix,iy).rho = b(ix,iy).tmp;
 						//b(ix,iy).u = -cos(y);
 						//b(ix,iy).u = cos(x);
 						//b(ix,iy).u = cos(y)+sin(x);
@@ -158,10 +158,10 @@ void TestPressure::_ic()
 					}
 				}
 	}
-	
+
 	stringstream ss;
 	ss << path2file << "-ic" << ic << "-bpd" << bpd << "-IC.vti";
-	
+
 	dumper.Write(*grid, ss.str());
 }
 
@@ -171,12 +171,12 @@ TestPressure::TestPressure(const int argc, const char ** argv, const int solver,
 	MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 	MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
 #endif // _MULTIGRID_
-	
+
 	grid = new FluidGrid(bpd,bpd,1);
-	
+
 	// output settings
 	path2file = parser("-file").asString("../data/testPressure");
-	
+
 	// setup initial condition
 #ifdef _MULTIGRID_
 	if (rank==0)
@@ -193,10 +193,10 @@ void TestPressure::run()
 {
 	vector<BlockInfo> vInfo = grid->getBlocksInfo();
 	const int size = bpd * FluidBlock::sizeX;
-	
+
 	if (ic==1 && rank==0)
 		processOMP<Lab, OperatorDivergence>(dt, vInfo, *grid);
-	
+
 	if (solver==0)
 	{
         if (ic!=2 && ic!=3)
@@ -243,23 +243,23 @@ void TestPressure::run()
 		mg();
 	}
 #endif // _MULTIGRID_
-	
+
 	if (ic==1 && rank==0)
 		processOMP<Lab, OperatorGradP>(dt, vInfo, *grid);
-    
-    
+
+
     if (ic==2 || ic==3)
     {
         BlockInfo * ary = &vInfo.front();
         const int N = vInfo.size();
-        
+
 #pragma omp parallel
         {
             OperatorLaplace kernel(dt);
-            
+
             Lab mylab;
             mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, false);
-            
+
 #pragma omp for schedule(static)
             for (int i=0; i<N; i++)
             {
@@ -268,14 +268,14 @@ void TestPressure::run()
             }
         }
     }
-	
+
 #ifdef _MULTIGRID_
 	if (rank==0)
 #endif
 	{
 		stringstream ss;
 		ss << path2file << "-solver" << solver << "-ic" << ic << "-bpd" << bpd << ".vti";
-	
+
 		dumper.Write(*grid, ss.str());
 	}
 }
@@ -288,62 +288,62 @@ void TestPressure::check()
 	{
 		vector<BlockInfo> vInfo = grid->getBlocksInfo();
 		const int size = bpd * FluidBlock::sizeX;
-		
+
         Layer divergence(size,size,1);
         if (ic!=0 && ic!=2)
             processOMP<Lab, OperatorDivergenceLayer>(divergence,vInfo,*grid);
-        
+
 		//cout << "\tErrors (Linf, L1, L2):\t";
 		double Linf = 0.;
 		double L1 = 0.;
 		double L2 = 0.;
-		
+
 		stringstream ss;
 		ss << path2file << "_diagnostics.dat";
 		ofstream myfile(ss.str(), fstream::app);
-		
+
 		const double dh = vInfo[0].h_gridpoint;
-		
+
 #pragma omp parallel for reduction(max:Linf) reduction(+:L1) reduction(+:L2)
 		for(int i=0; i<(int)vInfo.size(); i++)
 		{
 			BlockInfo info = vInfo[i];
 			FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-			
+
 			for(int iy=0; iy<FluidBlock::sizeY; iy++)
 				for(int ix=0; ix<FluidBlock::sizeX; ix++)
 				{
                     double error=0;
 					if (ic==0)
-						error = b(ix,iy).divU - b(ix,iy).rho;
+						error = b(ix,iy).tmp - b(ix,iy).rho;
                     else if (ic==2 || ic==3)
                     {
-                        error = b(ix,iy).divU - b(ix,iy).u;
+                        error = b(ix,iy).tmp - b(ix,iy).u;
                         //error = b(ix,iy).v - b(ix,iy).rho;
                         /*
                         // exclude y-boundaries
                         if (info.index[1]==0 && iy<2)
                             error = 0;
-                        
+
                         if (info.index[1]==grid->getBlocksPerDimension(1)-1 && iy>FluidBlock::sizeY-3)
                             error = 0;
-                        
+
                         //if (error>0.01)
                         //    cout << ix << " " << iy << " " << error << endl;
-                        
+
                         //if (abs(error) > .2)
                         //    cout << info.index[0]*FluidBlock::sizeX+ix << " " << info.index[1]*FluidBlock::sizeY+iy << " " << b(ix,iy).v << " " << b(ix,iy).rho << endl;
                          //*/
                     }
                     else
 						error = divergence(ix,iy);
-					
+
 					Linf = max(Linf,abs(error));
 					L1 += abs(error);
 					L2 += error*error;
 				}
 		}
-		
+
 		L1 *= dh*dh;
 		L2 = sqrt(L2)*dh;
 		cout << "\t" << Linf << "\t" << L1 << "\t" << L2 << endl;

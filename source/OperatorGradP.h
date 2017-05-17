@@ -18,7 +18,7 @@ class OperatorGradP : public GenericLabOperator
 {
 private:
 	double dt;
-	
+
 public:
 	OperatorGradP(double dt) : dt(dt)
 	{
@@ -29,26 +29,26 @@ public:
 		stencil_end[1] = 2;
 		stencil_end[2] = 1;
 	}
-	
+
 	~OperatorGradP() {}
-	
+
 	template <typename Lab, typename BlockType>
 	void operator()(Lab & lab, const BlockInfo& info, BlockType& o) const
 	{
 		const double prefactor = -.5 * dt / (info.h_gridpoint);
-		
+
 		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
 			for(int ix=0; ix<FluidBlock::sizeX; ++ix)
 			{
-				const Real divUW = lab(ix-1,iy  ).divU;
-				const Real divUE = lab(ix+1,iy  ).divU;
-				const Real divUS = lab(ix  ,iy-1).divU;
-				const Real divUN = lab(ix  ,iy+1).divU;
-				
+				const Real divUW = lab(ix-1,iy  ).tmp;
+				const Real divUE = lab(ix+1,iy  ).tmp;
+				const Real divUS = lab(ix  ,iy-1).tmp;
+				const Real divUN = lab(ix  ,iy+1).tmp;
+
 				// divU contains the pressure correction after the Poisson solver
 				o(ix,iy).u += prefactor * (divUE - divUW) / lab(ix,iy).rho;
 				o(ix,iy).v += prefactor * (divUN - divUS) / lab(ix,iy).rho;
-				
+
 				assert(lab(ix,iy).rho > 0);
 				assert(!std::isnan(o(ix,iy).u));
 				assert(!std::isnan(o(ix,iy).v));
@@ -62,7 +62,7 @@ private:
 	double rho0;
 	double dt;
 	int step;
-	
+
 public:
 	OperatorGradPSplit(double dt, double rho0, int step) : rho0(rho0), dt(dt), step(step)
 	{
@@ -73,15 +73,15 @@ public:
 		stencil_end[1] = 2;
 		stencil_end[2] = 1;
 	}
-	
+
 	~OperatorGradPSplit() {}
-	
+
 	template <typename Lab, typename BlockType>
 	void operator()(Lab & lab, const BlockInfo& info, BlockType& o) const
 	{
 		const double dh = info.h_gridpoint;
 		const double prefactor = -.5 * dt / dh;
-		
+
 		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
 		for(int ix=0; ix<FluidBlock::sizeX; ++ix)
 		{
@@ -97,15 +97,12 @@ public:
 			const Real pE = 2*phiE.p - phiE.pOld;
 
 			// divU contains the pressure correction after the Poisson solver
-			o(ix,iy).u += prefactor/rho0 * (phiE.divU - phiW.divU);
-			o(ix,iy).v += prefactor/rho0 * (phiN.divU - phiS.divU);
+			o(ix,iy).u += prefactor/rho0 * (phiE.tmp - phiW.tmp);
+			o(ix,iy).v += prefactor/rho0 * (phiN.tmp - phiS.tmp);
 
 			// add the split explicit term
 			o(ix,iy).u += prefactor * (pE - pW) * (1./phi.rho - 1/rho0);
 			o(ix,iy).v += prefactor * (pN - pS) * (1./phi.rho - 1/rho0);
-
-			//o(ix,iy).tmp = prefactor/rho0 * (phiN.divU - phiS.divU)
-			//+ prefactor * (pN - pS) * (1./phi.rho - 1/rho0);
 		}
 	}
 };
@@ -116,7 +113,7 @@ private:
 	double rho0;
 	double dt;
 	int step;
-	
+
 public:
 	OperatorGradPSplitHighOrder(double dt, double rho0, int step) : rho0(rho0), dt(dt), step(step)
 	{
@@ -127,15 +124,15 @@ public:
 		stencil_end[1] = 3;
 		stencil_end[2] = 1;
 	}
-	
+
 	~OperatorGradPSplitHighOrder() {}
-	
+
 	template <typename Lab, typename BlockType>
 	void operator()(Lab & lab, const BlockInfo& info, BlockType& o) const
 	{
 		const double dh = info.h_gridpoint;
 		const double prefactor = -dt / (12.*dh);
-		
+
 		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
 		for(int ix=0; ix<FluidBlock::sizeX; ++ix)
 		{
@@ -176,8 +173,8 @@ public:
 			}
 
 			// divU contains the pressure correction after the Poisson solver
-			o(ix,iy).u += prefactor/rho0 * (-phiE2.divU + 8*phiE.divU - 8*phiW.divU + phiW2.divU);
-			o(ix,iy).v += prefactor/rho0 * (-phiN2.divU + 8*phiN.divU - 8*phiS.divU + phiS2.divU);
+			o(ix,iy).u += prefactor/rho0 * (-phiE2.tmp + 8*phiE.tmp - 8*phiW.tmp + phiW2.tmp);
+			o(ix,iy).v += prefactor/rho0 * (-phiN2.tmp + 8*phiN.tmp - 8*phiS.tmp + phiS2.tmp);
 
 			// add the split explicit term
 			o(ix,iy).u += prefactor * (-pE2 + 8*pE - 8*pW + pW2) * (1./phi.rho - 1/rho0);
@@ -192,7 +189,7 @@ class OperatorPressureDrag : public GenericLabOperator
 private:
 	double dt;
 	Real pressureDrag[2];
-	
+
 public:
 	OperatorPressureDrag(double dt) : dt(dt), pressureDrag{0,0}
 	{
@@ -203,16 +200,16 @@ public:
 		stencil_end[1] = 2;
 		stencil_end[2] = 1;
 	}
-	
+
 	~OperatorPressureDrag() {}
-	
+
 	template <typename Lab, typename BlockType>
 	void operator()(Lab & lab, const BlockInfo& info, BlockType& o)
 	{
 		const double prefactor = -.5 / (info.h_gridpoint);
 		pressureDrag[0] = 0;
 		pressureDrag[1] = 0;
-		
+
 		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
 		for(int ix=0; ix<FluidBlock::sizeX; ++ix)
 		{
@@ -220,13 +217,13 @@ public:
 			const Real pUE = lab(ix+1,iy  ).p;
 			const Real pUS = lab(ix  ,iy-1).p;
 			const Real pUN = lab(ix  ,iy+1).p;
-			
+
 			// divU contains the pressure correction after the Poisson solver
 			pressureDrag[0] += prefactor * (pUE - pUW);
 			pressureDrag[1] += prefactor * (pUN - pUS);
 		}
 	}
-	
+
 	inline Real getDrag(int component)
 	{
 		return pressureDrag[component];
