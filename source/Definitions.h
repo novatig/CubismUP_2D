@@ -84,7 +84,7 @@ struct StreamerGridPoint
 		output.pOld = input[5];
 		output.tmpU = input[6];
 		output.tmpV = input[7];
-		output.tmp  = input[8];]
+		output.tmp  = input[8];
 	}
 };
 

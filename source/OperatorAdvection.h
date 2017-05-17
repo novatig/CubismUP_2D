@@ -16,7 +16,7 @@
 #include "InterpolationKernels.h"
 #include "GenericOperator.h"
 
-//#ifdef _PARTICLES_
+#ifdef _PARTICLES_
 template <typename RemeshingKernel>
 class OperatorAdvection : public GenericLabOperator
 {
@@ -778,6 +778,7 @@ public:
         P2M(lab, info, o);
     }
 };
+#endif
 
 class OperatorAdvectionFD : public GenericLabOperator
 {
