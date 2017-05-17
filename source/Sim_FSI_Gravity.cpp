@@ -23,7 +23,7 @@
 void Sim_FSI_Gravity::_diagnostics()
 {
 	vector<BlockInfo> vInfo = grid->getBlocksInfo();
-	
+
 	double drag = 0;
 	double volS = 0;
 	double volF = 0;
@@ -36,13 +36,13 @@ void Sim_FSI_Gravity::_diagnostics()
 	double mass = 0;
 	double volume = 0;
 	const double dh = vInfo[0].h_gridpoint;
-	
+
 #pragma omp parallel for schedule(static) reduction(+:drag) reduction(+:volS) reduction(+:volF) reduction(max:pMax) reduction (min:pMin) reduction(+:centerMassX) reduction(+:centerMassY) reduction(+:centroidX) reduction(+:centroidY) reduction(+:mass) reduction(+:volume)
 	for(int i=0; i<vInfo.size(); i++)
 	{
 		BlockInfo info = vInfo[i];
 		FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-		
+
 		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
 			for(int ix=0; ix<FluidBlock::sizeX; ++ix)
 		{
@@ -56,17 +56,17 @@ void Sim_FSI_Gravity::_diagnostics()
 			centroidY += p[1] * chi;
 			mass += rhochi;
 			volume += chi;
-			
+
 				pMin = min(pMin,(double)b(ix,iy).p);
 				pMax = max(pMax,(double)b(ix,iy).p);
-				
+
 				if (b(ix,iy).chi>0)
 				{
 					drag += (b(ix,iy).v-uBody[1]) * b(ix,iy).chi; // this depends on the direction of movement - here vertical!
 					volS += b(ix,iy).chi;
 					volF += (1-b(ix,iy).chi);
 				}
-				
+
 				if (std::isnan(b(ix,iy).u) ||
 					std::isnan(b(ix,iy).v) ||
 					std::isnan(b(ix,iy).rho) ||
@@ -78,41 +78,46 @@ void Sim_FSI_Gravity::_diagnostics()
 				}
 			}
 	}
-	
+
 	drag *= dh*dh*lambda;
 	volS *= dh*dh;
 	volF *= dh*dh;
-	
+
 	centerMassX /= mass;
 	centerMassY /= mass;
 	centroidX /= volume;
 	centroidY /= volume;
 	const double rhoSAvg = mass/volume;
-	
+
 	double cD = 2*drag/(uBody[1]*uBody[1]*shape->getCharLength());
 	cD = abs(uBody[1])>0 ? cD : 1e10;
 	const Real Re_uBody = shape->getCharLength()*sqrt(uBody[0]*uBody[0]+uBody[1]*uBody[1])/nu;
-	Real centroid[2], com[2];
+	Real centroid[2], com[2], labpos[2];
+	shape->getLabPosition(labpos);
 	shape->getCentroid(centroid);
 	shape->getCenterOfMass(com);
-    
+
     Real dragPD = (dragP[1]+dragV)*dh*dh;
     Real cD_PD = 2*dragPD/(uBody[1]*uBody[1]*shape->getCharLength());
-	
+
 	stringstream ss;
 	ss << path2file << "_diagnostics.dat";
 	ofstream myfile(ss.str(), fstream::app);
 	if (verbose)
-		cout << step << " " << time << " " << dt << " " << bpdx << " " << lambda << " " << cD << " " << Re_uBody << " " << centroid[0] << " " << centroid[1] << " " << uBody[0] << " " << uBody[1] << " " << shape->getOrientation() << " " << omegaBody << " " << com[0] << " " << com[1] << " " << centerMassX << " " << centerMassY << " " << centroidX << " " << centroidY << " " << rhoSAvg << " " << cD_PD << endl;
-	myfile << step << " " << time << " " << dt << " " << bpdx << " " << lambda << " " << cD << " " << Re_uBody << " " << centroid[0] << " " << centroid[1] << " " << uBody[0] << " " << uBody[1] << " " << shape->getOrientation() << " " << omegaBody << " " << com[0] << " " << com[1] << " " << centerMassX << " " << centerMassY << " " << centroidX << " " << centroidY << " " << rhoSAvg << " " << cD_PD << endl;
+		cout << step << " " << time << " " << dt << " " << cD << " " << Re_uBody << " "
+		<< centroid[0] << " " << centroid[1] << " " << labpos[0] << " " << labpos[1] << " "
+		<< uBody[0] << " " << uBody[1] << " " << shape->getOrientation() << " " << omegaBody
+		<< " " << com[0] << " " << com[1] << " " << centerMassX << " " << centerMassY << " "
+		<< centroidX << " " << centroidY << " " << rhoSAvg << " " << cD_PD << endl;
+	myfile << step << " " << time << " " << dt << " " << cD << " " << Re_uBody << " "
+		<< centroid[0] << " " << centroid[1] << " " << labpos[0] << " " << labpos[1] << " "
+		<< uBody[0] << " " << uBody[1] << " " << shape->getOrientation() << " " << omegaBody
+		<< " " << com[0] << " " << com[1] << " " << centerMassX << " " << centerMassY << " "
+		<< centroidX << " " << centroidY << " " << rhoSAvg << " " << cD_PD << endl;
 }
 
 void Sim_FSI_Gravity::_dumpSettings(ostream& outStream)
 {
-#ifdef _MULTIGRID_
-	if (rank==0)
-#endif // _MULTIGRID_
-	{
 		outStream << "--------------------------------------------------------------------\n";
 		outStream << "Physical Settings\n";
 		outStream << "\tradius\t" << shape->getCharLength()*.5 << endl;
@@ -121,14 +126,11 @@ void Sim_FSI_Gravity::_dumpSettings(ostream& outStream)
 		Real center[2];
 		shape->getCentroid(center);
 		outStream << "\tyPos\t" << center[1] << endl;
-		
+
 		outStream << "\nSimulation Settings\n";
 		outStream << "\tnsteps\t" << nsteps << endl;
 		outStream << "\tTend\t" << endTime << endl;
 		outStream << "\tlambda\t" << lambda << endl;
-#ifdef _MULTIGRID_
-		outStream << "\tsplit\t" << (bSplit ? "true" : "false") << endl;
-#endif // _MULTIGRID_
 		outStream << "\tpath2file\t" << path2file << endl;
 		outStream << "\tbpdx\t" << bpdx << endl;
 		outStream << "\tbpdy\t" << bpdy << endl;
@@ -137,32 +139,21 @@ void Sim_FSI_Gravity::_dumpSettings(ostream& outStream)
 #else // _PERIODIC_
 		outStream << "\tBC\tmixed\n";
 #endif // _PERIODIC_
-#ifdef _MULTIGRID_
-		outStream << "\tPoisson\tMultigrid\n";
-#endif // _MULTIGRID_
-#ifdef _SPLIT_
 		outStream << "\tPoisson\tFFTW Split\n";
-#endif // _SPLIT_
 		outStream << "--------------------------------------------------------------------\n";
-	}
 }
 
 void Sim_FSI_Gravity::_ic()
 {
-#ifdef _MULTIGRID_
-	if (rank==0)
-#endif // _MULTIGRID_
-	{
 		// setup initial conditions
 		CoordinatorIC coordIC(shape,0,grid);
 		profiler.push_start(coordIC.getName());
 		coordIC(0);
-		
+
 		stringstream ss;
 		ss << path2file << "-IC.vti";
 		dumper.Write(*grid, ss.str());
 		profiler.pop_stop();
-	}
 }
 
 double Sim_FSI_Gravity::_nonDimensionalTime()
@@ -178,21 +169,21 @@ void Sim_FSI_Gravity::_outputSettings(ostream &outStream)
 	outStream << "omegaBody " << omegaBody << endl;
 	outStream << "re " << re << endl;
 	outStream << "nu " << nu << endl;
-	
+
 	Simulation_FSI::_outputSettings(outStream);
 }
 
 void Sim_FSI_Gravity::_inputSettings(istream& inStream)
 {
 	string variableName;
-	
+
 	inStream >> variableName;
 	if (variableName != "Gravity_FSI")
 	{
 		cout << "Error in deserialization - Simulation_Gravity_FSI\n";
 		abort();
 	}
-	
+
 	// read data
 	inStream >> variableName;
 	assert(variableName=="uBody");
@@ -209,7 +200,7 @@ void Sim_FSI_Gravity::_inputSettings(istream& inStream)
 	inStream >> variableName;
 	assert(variableName=="nu");
 	inStream >> nu;
-	
+
 	Simulation_FSI::_inputSettings(inStream);
 }
 
@@ -217,7 +208,7 @@ Sim_FSI_Gravity::Sim_FSI_Gravity(const int argc, const char ** argv) :
 Simulation_FSI(argc, argv), uBody{0,0}, omegaBody(0), gravity{0,-9.81},
 dtCFL(0), dtFourier(0), dtBody(0), re(0), nu(0), minRho(0), bSplit(false)
 {
-	
+
 	if (rank==0)
 	{
 		cout << "====================================================================================================================\n";
@@ -233,35 +224,36 @@ Sim_FSI_Gravity::~Sim_FSI_Gravity()
 void Sim_FSI_Gravity::init()
 {
 	Simulation_FSI::init();
-	
+
 	if (!bRestart)
 	{
 		// simulation settings
 		//bSplit = parser("-split").asBool(false);
 		nu = parser("-nu").asDouble(1e-2);
 		minRho = min((Real)1.,shape->getMinRhoS());
-		
+
 		gravity[1] = -parser("-g").asDouble(9.81);
-		
+
 		const Real aspectRatio = (Real)bpdx/(Real)bpdy;
 		Real center[2] = {
 				parser("-xpos").asDouble(.5*aspectRatio),
 				parser("-ypos").asDouble(.85)
 		};
 		shape->setCentroid(center);
-		
+
 		stringstream ss;
 		ss << path2file << "_settings.dat";
 		ofstream myfile(ss.str(), fstream::app);
 		_dumpSettings(cout);
 		_dumpSettings(myfile);
-		
+
 		cout << "Using split method with constant coefficients Poisson solver\n";
-		
+
 		_ic();
 	}
-	
+
 	pipeline.clear();
+	pipeline.push_back(new CoordinatorComputeShape(&uBody[0], &uBody[1], &omegaBody, shape, grid));
 #ifndef _MULTIPHASE_
 	pipeline.push_back(new CoordinatorAdvection<Lab>(&uBody[0], &uBody[1], grid));
 #else
@@ -269,11 +261,13 @@ void Sim_FSI_Gravity::init()
 #endif
 	pipeline.push_back(new CoordinatorDiffusion<Lab>(nu, &uBody[0], &uBody[1], &dragV, grid));
 	pipeline.push_back(new CoordinatorGravity(gravity, grid));
+	pipeline.push_back(new CoordinatorPenalization(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid));
 	pipeline.push_back(new CoordinatorPressure<Lab>(minRho, gravity, &uBody[0], &uBody[1], &dragP[0], &dragP[1], &step, bSplit, grid, rank, nprocs));
 	pipeline.push_back(new CoordinatorBodyVelocities(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid));
-	pipeline.push_back(new CoordinatorPenalization(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid));
-	pipeline.push_back(new CoordinatorComputeShape(&uBody[0], &uBody[1], &omegaBody, shape, grid));
-	
+	#ifdef _MOVING_FRAME_
+	pipeline.push_back(new CoordinatorFadeOut(&uBody[0], &uBody[1], grid));
+	#endif
+
 	if (rank==0)
 	{
 		cout << "Coordinator/Operator ordering:\n";
@@ -286,12 +280,12 @@ void Sim_FSI_Gravity::simulate()
 {
 	const int sizeX = bpdx * FluidBlock::sizeX;
 	const int sizeY = bpdy * FluidBlock::sizeY;
-	
+
 	double uOld = 0, vOld = 0;
 	double nextDumpTime = time;
 	double maxU = 0;
 	double maxA = 0;
-	
+
 	while (true)
 	{
 		vector<BlockInfo> vInfo = grid->getBlocksInfo();
@@ -321,7 +315,7 @@ void Sim_FSI_Gravity::simulate()
 			<<time<<" "<<dt<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody<<endl;
 		profiler.pop_stop();
 
-		
+
 		if (dt!=0)
 		{
 			for (int c=0; c<pipeline.size(); c++)
@@ -331,7 +325,7 @@ void Sim_FSI_Gravity::simulate()
 					(*pipeline[c])(dt);
 				profiler.pop_stop();
 			}
-		
+
 			time += dt;
 			step++;
 		}
@@ -352,7 +346,7 @@ void Sim_FSI_Gravity::simulate()
 			ofstream myfile(ss.str(), fstream::app);
 			myfile << step << " " << time << " " << accMy << " " << accT << " " << accN << endl;
 		}
-		
+
 		// compute diagnostics
 		if (step % 10 == 0)
 		{
@@ -360,7 +354,7 @@ void Sim_FSI_Gravity::simulate()
 			_diagnostics();
 			profiler.pop_stop();
 		}
-		
+
 		//dump some time steps every now and then
 		profiler.push_start("Dump");
 		_dump(nextDumpTime);

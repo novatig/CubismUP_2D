@@ -18,29 +18,29 @@ class CoordinatorIC : public GenericCoordinator
 protected:
 	Shape * shape;
 	const double uinf;
-	
+
 public:
 	CoordinatorIC(Shape * shape, const double uinf, FluidGrid * grid) : GenericCoordinator(grid), shape(shape), uinf(uinf)
 	{
 	}
-	
+
 	void operator()(const double dt)
 	{
 		BlockInfo * ary = &vInfo.front();
 		const int N = vInfo.size();
-		
+
 #pragma omp parallel
 		{
 			OperatorIC kernel(shape, uinf);
-			
+
 #pragma omp for schedule(static)
 			for (int i=0; i<N; i++)
 				kernel(ary[i], *(FluidBlock*)ary[i].ptrBlock);
 		}
-		
+
 		check("IC - end");
 	}
-	
+
 	string getName()
 	{
 		return "IC";
@@ -51,32 +51,125 @@ class CoordinatorIC_RT : public GenericCoordinator
 {
 protected:
 	const double rhoS;
-	
+
 public:
 	CoordinatorIC_RT(const double rhoS, FluidGrid * grid) : GenericCoordinator(grid), rhoS(rhoS)
 	{
 	}
-	
+
 	void operator()(const double dt)
 	{
 		BlockInfo * ary = &vInfo.front();
 		const int N = vInfo.size();
-		
+
 #pragma omp parallel
 		{
 			OperatorIC_RT kernel(rhoS);
-			
+
 #pragma omp for schedule(static)
 			for (int i=0; i<N; i++)
 				kernel(ary[i], *(FluidBlock*)ary[i].ptrBlock);
 		}
-		
+
 		check("IC - end");
 	}
-	
+
 	string getName()
 	{
 		return "IC_RT";
+	}
+};
+
+class OperatorFadeOut : public GenericOperator
+{
+private:
+	const int info[2];
+	const Real extent[2];
+	const int buffer;
+
+   inline bool _is_touching(const BlockInfo& info, const Real h) const
+	{
+		Real max_pos[3],min_pos[3];
+		const int ax = info[0];
+		const int dir = info[1];
+		if(dir>0) //moving up
+		{
+			info.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1, FluidBlock::sizeZ-1);
+			return max_pos[ax] > extent[ax]-(2+buffer)*h
+		}
+		else //moving down
+		{
+			info.pos(min_pos, 0, 0, 0);
+			return min_pos[ax] < 0 +(2+buffer)*h
+		}
+	}
+
+public:
+	OperatorFadeOut(const Real info[2], const int buffer, const Real extent[2])
+	: info{info[0],info[1]}, extent{extent[0],extent[1]}, buffer(buffer) {}
+
+	void operator()(const BlockInfo& info, FluidBlock& b) const
+	{
+		const Real h = info.h_gridpoint;
+		const Real iWidth = 1/(buffer*h);
+		const int ax = info[0];
+		const int dir = info[1];
+
+		if(_is_touching(info,h))
+		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+		for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
+			Real p[2];
+			info.pos(p, ix, iy);
+			const Real dist = dir>0 ? p[ax]-extent[ax]+(2+buffer)*h
+															: 0.0  -p[0]      +(2+buffer)*h;
+			const Real fade = max(Real(0), cos(.5*M_PI*max(0.,dist)*iWidth) );
+			b(ix,iy).u = b(ix,iy).u*fade;
+			b(ix,iy).v = b(ix,iy).v*fade;
+		}
+	}
+};
+
+class CoordinatorFadeOut : public GenericCoordinator
+{
+protected:
+	const int buffer;
+	const Real *uBody, *vBody;
+
+public:
+    CoordinatorFadeOut(Real * uBody, Real * vBody, FluidGridMPI * grid, const int _buffer=8)
+	: GenericCoordinator(grid), buffer(_buffer), uBody(uBody), vBody(vBody)
+	{ }
+
+	void operator()(const Real dt)
+	{
+		check((string)"FadeOut - start");
+
+		const int N = vInfo.size();
+		const Real ext[2] = {
+				vInfo[0].h_gridpoint * grid->getBlocksPerDimension(0) * FluidBlock::sizeX,
+				vInfo[0].h_gridpoint * grid->getBlocksPerDimension(1) * FluidBlock::sizeY
+		};
+		const int movey = fabs(*vBody) > fabs(*uBody);
+		const int dirs[2] = {*uBody>0 ? 1 : -1, *vBody>0 ? 1 : -1};
+		const int info[2] = {movey, dirs[movey]};
+
+		#pragma omp parallel
+		{
+			OperatorFadeOut kernel(info, buffer, ext);
+			#pragma omp for schedule(static)
+			for (int i=0; i<N; i++) {
+				BlockInfo info = vInfo[i];
+				FluidBlock& b = *(FluidBlock*)info.ptrBlock;
+				kernel(info, b);
+			}
+		}
+
+		check((string)"FadeOut - end");
+	}
+
+	string getName()
+	{
+		return "FadeOut";
 	}
 };
 
