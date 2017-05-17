@@ -295,7 +295,7 @@ public:
 			// output parameters
 			dumpFreq = parser("-fdump").asDouble(0);	// dumpFreq==0 means that this dumping frequency (in #steps) is not active
 			dumpTime = parser("-tdump").asDouble(0);	// dumpTime==0 means that this dumping frequency (in time)   is not active
-			path2file = parser("-file").asString("../data/Simulation_Fluid");
+			path2file = parser("-file").asString("./");
 			path4serialization = parser("-serialization").asString(path2file);
 			
 			CFL = parser("-CFL").asDouble(.1);

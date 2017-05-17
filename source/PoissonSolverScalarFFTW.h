@@ -252,7 +252,6 @@ public:
 	{
 		const int bs[2] = {BlockType::sizeX, BlockType::sizeY};
 		const size_t gsize[2] = {grid.getBlocksPerDimension(0)*bs[0], grid.getBlocksPerDimension(1)*bs[1]};
-		
 		profiler.push_start("CUB2FFTW");
 		_cub2fftw(grid, data, gsize[0], gsize[1], gsize[1]/2+1);
 		profiler.pop_stop();
@@ -267,7 +266,7 @@ public:
 		
 		const Real norm_factor = 1./(gsize[0]*gsize[1]);
 		const Real h = grid.getBlocksInfo().front().h_gridpoint;
-		assert(1./gsize[0]==h);
+		//assert((1./gsize[0]-h) < 2.2e-16);
 		
 		profiler.push_start("SOLVE");
 		if(spectral)
