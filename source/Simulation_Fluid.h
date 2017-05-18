@@ -65,12 +65,12 @@ protected:
 
 	virtual void _dump(double & nextDumpTime)
 	{
-#ifndef NDEBUG
+		#ifndef NDEBUG
 		{
 			vector<BlockInfo> vInfo = grid->getBlocksInfo();
 			const int N = vInfo.size();
 
-#pragma omp parallel for schedule(static)
+			#pragma omp parallel for schedule(static)
 			for(int i=0; i<N; i++)
 			{
 				BlockInfo info = vInfo[i];
@@ -103,13 +103,17 @@ protected:
 					}
 			}
 		}
-#endif
+		#endif
 
 		const int sizeX = bpdx * FluidBlock::sizeX;
 		const int sizeY = bpdy * FluidBlock::sizeY;
 		vector<BlockInfo> vInfo = grid->getBlocksInfo();
-                printf("Dumping? %f %f %f\n", dumpTime, nextDumpTime, _nonDimensionalTime());
-		if((dumpFreq>0 && step % dumpFreq == 0) || (dumpTime>0. && nextDumpTime>_nonDimensionalTime()))
+
+		const bool timeDump = dumpTime>0. && nextDumpTime>_nonDimensionalTime();
+		const bool stepDump = dumpFreq>0  && step % dumpFreq == 0;
+    printf("Dumping? %f %f %f %d\n",
+			dumpTime, nextDumpTime, _nonDimensionalTime(), timeDump);
+		if(stepDump || timeDump)
 		{
 			nextDumpTime += dumpTime;
 
