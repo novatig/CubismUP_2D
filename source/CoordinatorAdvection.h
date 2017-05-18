@@ -10,8 +10,134 @@
 #define CubismUP_2D_CoordinatorAdvection_h
 
 #include "GenericCoordinator.h"
-#include "OperatorAdvection.h"
 #include <cmath>
+
+class OperatorAdvectionFD : public GenericLabOperator
+{
+ private:
+	double dt;
+  const Real *uBody, *vBody;
+
+ public:
+	OperatorAdvectionFD(double dt, Real * uBody, Real * vBody, const int stage)
+	: dt(dt), uBody(uBody), vBody(vBody)
+	{
+		stencil_start[0] = -1;
+		stencil_start[1] = -1;
+		stencil_start[2] = 0;
+
+		stencil_end[0] = 2;
+		stencil_end[1] = 2;
+		stencil_end[2] = 1;
+	}
+	~OperatorAdvectionFD() {}
+
+	template <typename Lab, typename BlockType>
+	void operator()(Lab & lab, const BlockInfo& info, BlockType& o) const
+	{
+		const double dh = info.h_gridpoint;
+		const double fac =  -dt/(2.*info.h_gridpoint);
+
+		for (int iy=0; iy<FluidBlock::sizeY; ++iy)
+			for (int ix=0; ix<FluidBlock::sizeX; ++ix)
+			{
+				#ifndef _MOVING_FRAME_
+								const Real v = lab(ix,iy).v;
+								const Real u = lab(ix,iy).u;
+				#else
+								const Real v = lab(ix,iy).v - *vBody;
+								const Real u = lab(ix,iy).u - *uBody;
+				#endif
+
+				const Real dudx = lab(ix+1,iy).u - lab(ix-1,iy).u;
+				const Real dudy = lab(ix,iy+1).u - lab(ix,iy-1).u;
+				const Real dvdx = lab(ix+1,iy).v - lab(ix-1,iy).v;
+				const Real dvdy = lab(ix,iy+1).v - lab(ix,iy-1).v;
+
+				o(ix,iy).tmpU = lab(ix,iy).u   + fac*(u * dudx + v * dudy);
+				o(ix,iy).tmpV = lab(ix,iy).v   + fac*(u * dvdx + v * dvdy);
+
+				#ifdef _MULTIPHASE_
+				const Real drdx = lab(ix+1,iy).rho - lab(ix-1,iy).rho;
+				const Real drdy = lab(ix,iy+1).rho - lab(ix,iy-1).rho;
+
+				o(ix,iy).tmp  = lab(ix,iy).rho + fac*(u * drdx + v * drdy);
+				#endif
+			}
+	}
+};
+
+class OperatorAdvectionUpwind3rdOrder : public GenericLabOperator
+{
+ private:
+	  double dt;
+    Real *uBody, *vBody;
+
+ public:
+    OperatorAdvectionUpwind3rdOrder(double dt, Real * uBody, Real * vBody)
+	: dt(dt), uBody(uBody), vBody(vBody)
+    {
+        stencil_start[0] = -2;
+        stencil_start[1] = -2;
+        stencil_start[2] = 0;
+
+        stencil_end[0] = 3;
+        stencil_end[1] = 3;
+        stencil_end[2] = 1;
+    }
+
+	~OperatorAdvectionUpwind3rdOrder() {}
+
+	template <typename Lab, typename BlockType>
+	void operator()(Lab & lab, const BlockInfo& info, BlockType& o) const
+	{
+		const Real factor = -dt/(6.*info.h_gridpoint);
+
+		for (int iy=0; iy<FluidBlock::sizeY; ++iy)
+			for (int ix=0; ix<FluidBlock::sizeX; ++ix)
+			{
+				const Real dudx[2] = {  2*lab(ix+1,iy  ).u + 3*lab(ix  ,iy  ).u - 6*lab(ix-1,iy  ).u +   lab(ix-2,iy  ).u,
+									   -  lab(ix+2,iy  ).u + 6*lab(ix+1,iy  ).u - 3*lab(ix  ,iy  ).u - 2*lab(ix-1,iy  ).u};
+
+				const Real dudy[2] = {  2*lab(ix  ,iy+1).u + 3*lab(ix  ,iy  ).u - 6*lab(ix  ,iy-1).u +   lab(ix  ,iy-2).u,
+									   -  lab(ix  ,iy+2).u + 6*lab(ix  ,iy+1).u - 3*lab(ix  ,iy  ).u - 2*lab(ix  ,iy-1).u};
+
+				const Real dvdx[2] = {  2*lab(ix+1,iy  ).v + 3*lab(ix  ,iy  ).v - 6*lab(ix-1,iy  ).v +   lab(ix-2,iy  ).v,
+									   -  lab(ix+2,iy  ).v + 6*lab(ix+1,iy  ).v - 3*lab(ix  ,iy  ).v - 2*lab(ix-1,iy  ).v};
+
+				const Real dvdy[2] = {  2*lab(ix  ,iy+1).v + 3*lab(ix  ,iy  ).v - 6*lab(ix  ,iy-1).v +   lab(ix  ,iy-2).v,
+									   -  lab(ix  ,iy+2).v + 6*lab(ix  ,iy+1).v - 3*lab(ix  ,iy  ).v - 2*lab(ix  ,iy-1).v};
+
+        #ifndef _MOVING_FRAME_
+				const Real v = o(ix,iy).v;
+				const Real u = o(ix,iy).u;
+        #else
+				const Real v = o(ix,iy).v - *vBody;
+				const Real u = o(ix,iy).u - *uBody;
+        #endif
+
+				o(ix,iy).tmpU = o(ix,iy).u + factor*(
+						max(u,(Real)0) * dudx[0] + min(u,(Real)0) * dudx[1] +
+						max(v,(Real)0) * dudy[0] + min(v,(Real)0) * dudy[1]);
+
+				o(ix,iy).tmpV = o(ix,iy).v + factor*(
+						max(u,(Real)0) * dvdx[0] + min(u,(Real)0) * dvdx[1] +
+						max(v,(Real)0) * dvdy[0] + min(v,(Real)0) * dvdy[1]);
+
+        #ifdef _MULTIPHASE_
+				const Real drdx[2] = {  2*lab(ix+1,iy  ).rho + 3*lab(ix  ,iy  ).rho - 6*lab(ix-1,iy  ).rho +   lab(ix-2,iy  ).rho,
+									   -  lab(ix+2,iy  ).rho + 6*lab(ix+1,iy  ).rho - 3*lab(ix  ,iy  ).rho - 2*lab(ix-1,iy  ).rho};
+
+				const Real drdy[2] = {  2*lab(ix  ,iy+1).rho + 3*lab(ix  ,iy  ).rho - 6*lab(ix  ,iy-1).rho +   lab(ix  ,iy-2).rho,
+									   -  lab(ix  ,iy+2).rho + 6*lab(ix  ,iy+1).rho - 3*lab(ix  ,iy  ).rho - 2*lab(ix  ,iy-1).rho};
+
+
+				o(ix,iy).tmp  = o(ix,iy).rho + factor*(max(u,(Real)0) * drdx[0] + min(u,(Real)0) * drdx[1] +
+										   max(v,(Real)0) * drdy[0] + min(v,(Real)0) * drdy[1]);
+        #endif // _MULTIPHASE_
+		}
+	}
+};
 
 template <typename Lab>
 class CoordinatorAdvection : public GenericCoordinator
@@ -21,373 +147,95 @@ protected:
 #ifdef _MULTIPHASE_
 	Real rhoS;
 #endif
-	
-	inline void reset()
+
+public:
+#ifndef _MULTIPHASE_
+    CoordinatorAdvection(Real * uBody, Real * vBody, FluidGrid * grid) :
+    GenericCoordinator(grid), uBody(uBody), vBody(vBody)
+#else
+    CoordinatorAdvection(Real * uBody, Real * vBody, FluidGrid * grid, Real rhoS) :
+    GenericCoordinator(grid), uBody(uBody), vBody(vBody), rhoS(rhoS)
+#endif
+    {
+    }
+
+	void operator()(const double dt)
 	{
+		check("advection - start");
 		const int N = vInfo.size();
-		
-#pragma omp parallel for schedule(static)
+
+    #pragma omp parallel for schedule(static)
 		for(int i=0; i<N; i++)
 		{
 			BlockInfo info = vInfo[i];
 			FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-			
+
 			for(int iy=0; iy<FluidBlock::sizeY; ++iy)
 				for(int ix=0; ix<FluidBlock::sizeX; ++ix)
 				{
 					b(ix,iy).tmpU = 0;
 					b(ix,iy).tmpV = 0;
-#ifdef _MULTIPHASE_
+          #ifdef _MULTIPHASE_
 					b(ix,iy).tmp = 0;
-#endif // _MULTIPHASE_
+          #endif // _MULTIPHASE_
 				}
 		}
-	};
-	
-	inline void update()
-	{
-		const int N = vInfo.size();
-#ifdef _MULTIPHASE_
-		const Real minrho = min((Real)1.,rhoS);
-		const Real maxrho = max((Real)1.,rhoS);
-#endif
 
-#pragma omp parallel for schedule(static)
-			for(int i=0; i<N; i++)
-			{
-				BlockInfo info = vInfo[i];
-				FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-				
-				for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-					for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-					{
-						b(ix,iy).u = b(ix,iy).tmpU;
-						b(ix,iy).v = b(ix,iy).tmpV;
-#ifdef _MULTIPHASE_
-						//b(ix,iy).chi = b(ix,iy).tmp;
-						//b(ix,iy).rho = b(ix,iy).chi * rhoS + (1-b(ix,iy).chi);
-						
-						//b(ix,iy).rho = b(ix,iy).tmp;
-						// threshold density
-						b(ix,iy).rho = min(max(b(ix,iy).tmp,minrho),maxrho);
-#endif // _MULTIPHASE_
-					}
-			}
-	}
-	
-	inline void advect(const double dt)
-	{
-		BlockInfo * ary = &vInfo.front();
-		const int N = vInfo.size();
-		
-#pragma omp parallel
+		////////////////////////////////////////////////////////////////////////////
+
+
+    #pragma omp parallel
 		{
-			OperatorAdvectionUpwind3rdOrder kernel(dt,uBody,vBody,0);
-			//OperatorAdvectionFD kernel(dt);
-			
-            Lab mylab;
-#ifdef _MOVING_FRAME_
-            mylab.pDirichlet.u = *uBody;
-            mylab.pDirichlet.v = *vBody;
-#endif
+			//OperatorAdvectionUpwind3rdOrder kernel(dt,uBody,vBody,0);
+			OperatorAdvectionFD kernel(dt);
+
+      Lab mylab;
+      #ifdef _MOVING_FRAME_
+      mylab.pDirichlet.u = *uBody;
+      mylab.pDirichlet.v = *vBody;
+      #endif
 			mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, false);
 
-#pragma omp for schedule(static)
+      #pragma omp for schedule(static)
 			for (int i=0; i<N; i++)
 			{
-				mylab.load(ary[i], 0);
-				
-				kernel(mylab, ary[i], *(FluidBlock*)ary[i].ptrBlock);
+        BlockInfo info = vInfo[i];
+				mylab.load(vInfo[i], 0);
+				kernel(mylab, ary[i], *(FluidBlock*)vInfo[i].ptrBlock);
 			}
 		}
-	}
-	
-public:
-#ifndef _MULTIPHASE_
-    CoordinatorAdvection(Real * uBody, Real * vBody, FluidGrid * grid) : GenericCoordinator(grid), uBody(uBody), vBody(vBody)
-#else
-    CoordinatorAdvection(Real * uBody, Real * vBody, FluidGrid * grid, Real rhoS) : GenericCoordinator(grid), uBody(uBody), vBody(vBody), rhoS(rhoS)
-#endif
-    {
-    }
-    
-#ifndef _MULTIPHASE_
-    CoordinatorAdvection(FluidGrid * grid) : GenericCoordinator(grid), uBody(NULL), vBody(NULL)
-#else
-    CoordinatorAdvection(FluidGrid * grid, Real rhoS) : GenericCoordinator(grid), uBody(NULL), vBody(NULL), rhoS(rhoS)
-#endif
-    {
-    }
-	
-	void operator()(const double dt)
-	{
-		check("advection - start");
 
-		reset();
-		advect(dt);
-		update();
-		
+    ///////////////////////////////////////////////////////////////////////////
+
+    #ifdef _MULTIPHASE_
+    		const Real minrho = min((Real)1.,rhoS);
+    		const Real maxrho = max((Real)1.,rhoS);
+    #endif
+
+    #pragma omp parallel for schedule(static)
+		for(int i=0; i<N; i++)
+		{
+			BlockInfo info = vInfo[i];
+			FluidBlock& b = *(FluidBlock*)info.ptrBlock;
+
+			for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+				for(int ix=0; ix<FluidBlock::sizeX; ++ix)
+				{
+					b(ix,iy).u = b(ix,iy).tmpU;
+					b(ix,iy).v = b(ix,iy).tmpV;
+          #ifdef _MULTIPHASE_ // threshold density
+					b(ix,iy).rho = min(max(b(ix,iy).tmp,minrho),maxrho);
+          #endif // _MULTIPHASE_
+				}
+		}
+
 		check("advection - end");
 	}
-	
+
 	string getName()
 	{
 		return "Advection";
 	}
-};
-
-template <typename Lab>
-class CoordinatorTransport : public GenericCoordinator
-{
-protected:
-    inline void reset()
-    {
-        const int N = vInfo.size();
-        
-#pragma omp parallel for schedule(static)
-        for(int i=0; i<N; i++)
-        {
-            BlockInfo info = vInfo[i];
-            FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-            
-            for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-                for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-                    b(ix,iy).tmp = 0;
-        }
-    };
-    
-    inline void update()
-    {
-        const int N = vInfo.size();
-        
-#pragma omp parallel for schedule(static)
-        for(int i=0; i<N; i++)
-        {
-            BlockInfo info = vInfo[i];
-            FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-            
-            for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-                for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-                    b(ix,iy).rho = b(ix,iy).tmp;
-        }
-    }
-    
-public:
-    CoordinatorTransport(FluidGrid * grid) : GenericCoordinator(grid)
-    {
-    }
-    
-    void operator()(const double dt)
-    {
-        BlockInfo * ary = &vInfo.front();
-        const int N = vInfo.size();
-        
-        reset();
-        
-#pragma omp parallel
-        {
-#ifndef _PARTICLES_
-            OperatorTransportUpwind3rdOrder kernel(dt,0);
-            
-            Lab mylab;
-            mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, false);
-#else
-            //OperatorTransport<Hat> kernel(dt);
-            OperatorTransport<Mp4> kernel(dt);
-            //OperatorTransport<Ms6> kernel(dt);
-            
-            Lab mylab;
-            mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, true);
-#endif
-            
-#pragma omp for schedule(static)
-            for (int i=0; i<N; i++)
-            {
-                mylab.load(ary[i], 0);
-                
-                kernel(mylab, ary[i], *(FluidBlock*)ary[i].ptrBlock);
-            }
-        }
-        
-#ifndef _PARTICLES_
-#ifdef _RK2_
-#pragma omp parallel
-        {
-            OperatorTransportUpwind3rdOrder kernel(dt,1);
-            
-            Lab mylab;
-            mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, true);
-            
-#pragma omp for schedule(static)
-            for (int i=0; i<N; i++)
-            {
-                mylab.load(ary[i], 0);
-                
-                kernel(mylab, ary[i], *(FluidBlock*)ary[i].ptrBlock);
-            }
-        }
-#endif // _RK2_
-#endif // _PARTICLES_
-        
-        update();
-    }
-    
-    string getName()
-    {
-        return "Transport";
-    }
-};
-
-template <typename Lab>
-class CoordinatorTransportTimeTest : public GenericCoordinator
-{
-protected:
-    double time;
-    
-    double _analyticalRHS(double px, double py, double t)
-    {
-        return 8 * M_PI * cos((px+t) * 8. * M_PI);
-    }
-    
-    inline void reset()
-    {
-        const int N = vInfo.size();
-        
-#pragma omp parallel for schedule(static)
-        for(int i=0; i<N; i++)
-        {
-            BlockInfo info = vInfo[i];
-            FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-            
-            for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-                for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-                    b(ix,iy).tmp = 0;
-        }
-    };
-    
-    inline void update()
-    {
-        const int N = vInfo.size();
-        
-#pragma omp parallel for schedule(static)
-        for(int i=0; i<N; i++)
-        {
-            BlockInfo info = vInfo[i];
-            FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-            
-            for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-                for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-                    b(ix,iy).rho = b(ix,iy).tmp;
-        }
-    }
-    
-    inline void advect(const double dt, const int stage)
-    {
-        BlockInfo * ary = &vInfo.front();
-        const int N = vInfo.size();
-        
-        /*
-#pragma omp parallel for schedule(static)
-        for(int i=0; i<N; i++)
-        {
-            BlockInfo info = vInfo[i];
-            FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-#ifndef _RK2_
-            const double prefactor = dt;
-#else
-            const double prefactor = dt * ((stage==0)?.5:1);
-#endif
-            
-            for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-                for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-                {
-                    double p[3];
-                    info.pos(p, ix, iy);
-                    
-                    if (stage==0)
-                        b(ix,iy).tmp = b(ix,iy).rho + prefactor * _analyticalRHS(p[0], p[1], time);
-                    else if (stage==1)
-                        b(ix,iy).tmp = b(ix,iy).rho + prefactor * _analyticalRHS(p[0], p[1], time+dt*.5);
-                }
-        }
-        
-         */
-        if (stage==0)
-#pragma omp parallel
-        {
-#ifndef _PARTICLES_
-            OperatorTransportUpwind3rdOrder kernel(dt,0);
-            //OperatorTransportTimeTestUpwind3rdOrder kernel(dt,time,0);
-            
-            Lab mylab;
-            mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, false);
-#else
-            //OperatorTransportTimeTest<Mp4> kernel(dt,time);
-            //OperatorTransportTimeTest<Ms6> kernel(dt,time);
-            OperatorTransport<Ms6> kernel(dt);
-            
-            Lab mylab;
-            mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, true);
-#endif
-            
-#pragma omp for schedule(static)
-            for (int i=0; i<N; i++)
-            {
-                mylab.load(ary[i], 0);
-                
-                kernel(mylab, ary[i], *(FluidBlock*)ary[i].ptrBlock);
-            }
-        }
-#ifndef _PARTICLES_
-#ifdef _RK2_
-        else if (stage==1)
-#pragma omp parallel
-        {
-            OperatorTransportUpwind3rdOrder kernel(dt,1);
-            //OperatorTransportTimeTestUpwind3rdOrder kernel(dt,time,1);
-            
-            Lab mylab;
-            mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, false);
-            
-#pragma omp for schedule(static)
-            for (int i=0; i<N; i++)
-            {
-                mylab.load(ary[i], 0);
-                
-                kernel(mylab, ary[i], *(FluidBlock*)ary[i].ptrBlock);
-            }
-        }
-#endif
-#endif
-        //*/
-    }
-    
-public:
-    CoordinatorTransportTimeTest(FluidGrid * grid) : GenericCoordinator(grid)
-    {
-    }
-    
-    void operator()(const double dt)
-    {
-        check("advection - start");
-        
-        reset();
-        advect(dt,0);
-#ifndef _PARTICLES_
-#ifdef _RK2_
-        advect(dt,1);
-#endif
-#endif
-        update();
-        time+=dt;
-        
-        check("advection - end");
-    }
-    
-    string getName()
-    {
-        return "Transport";
-    }
 };
 
 #endif

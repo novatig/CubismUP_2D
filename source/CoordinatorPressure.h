@@ -10,43 +10,147 @@
 #define CubismUP_2D_CoordinatorPressure_h
 
 #include "GenericCoordinator.h"
-#include "OperatorDivergence.h"
-#include "OperatorGradP.h"
 #include "PoissonSolverScalarFFTW.h"
 
 //#define _HYDROSTATIC_
+class OperatorDivergenceSplit : public GenericLabOperator
+{
+ private:
+	double dt;
+	const double rho0;
+	int step;
+
+	inline Real mean(const Real a, const Real b) {return .5 * (a + b);}
+	//inline Real mean(const Real a, const Real b) {return 2.*a*b/(a+b);}
+
+ public:
+	OperatorDivergenceSplit(double dt, double rho0, int step) : rho0(rho0), dt(dt), step(step)
+	{
+		stencil_start[0] = -1;
+		stencil_start[1] = -1;
+		stencil_start[2] = 0;
+		stencil_end[0] = 2;
+		stencil_end[1] = 2;
+		stencil_end[2] = 1;
+	}
+
+	~OperatorDivergenceSplit() {}
+
+	template <typename Lab, typename BlockType>
+	void operator()(Lab & lab, const BlockInfo& info, BlockType& o) const
+	{
+		const Real invH2 = 1./(info.h_gridpoint*info.h_gridpoint);
+		const Real factor = rho0 * 0.5/(info.h_gridpoint * dt);
+
+		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+		for(int ix=0; ix<FluidBlock::sizeX; ++ix)
+		{
+			FluidElement& phi  = lab(ix  ,iy  );
+			FluidElement& phiN = lab(ix  ,iy+1);
+			FluidElement& phiS = lab(ix  ,iy-1);
+			FluidElement& phiE = lab(ix+1,iy  );
+			FluidElement& phiW = lab(ix-1,iy  );
+
+			const Real pN = 2*phiN.p - phiN.pOld;
+			const Real pS = 2*phiS.p - phiS.pOld;
+			const Real pW = 2*phiW.p - phiW.pOld;
+			const Real pE = 2*phiE.p - phiE.pOld;
+			const Real p  = 2*phi.p  - phi.pOld;
+
+			const Real fN = (1-rho0/mean(phiN.rho,phi.rho))*(pN - p ); // x1/h later
+			const Real fS = (1-rho0/mean(phiS.rho,phi.rho))*(p  - pS);
+			const Real fE = (1-rho0/mean(phiE.rho,phi.rho))*(pE - p );
+			const Real fW = (1-rho0/mean(phiW.rho,phi.rho))*(p  - pW);
+
+			const Real divUfac = factor * (phiE.u-phiW.u + phiN.v-phiS.v);
+			const Real hatPfac =  invH2 * (fE - fW + fN - fS);
+
+			o(ix, iy).tmp  = divUfac + hatPfac;
+		}
+	}
+};
+
+class OperatorGradPSplit : public GenericLabOperator
+{
+ private:
+	double rho0;
+	double dt;
+	int step;
+
+ public:
+	OperatorGradPSplit(double dt, double rho0, int step) : rho0(rho0), dt(dt), step(step)
+	{
+		stencil_start[0] = -1;
+		stencil_start[1] = -1;
+		stencil_start[2] = 0;
+		stencil_end[0] = 2;
+		stencil_end[1] = 2;
+		stencil_end[2] = 1;
+	}
+
+	~OperatorGradPSplit() {}
+
+	template <typename Lab, typename BlockType>
+	void operator()(Lab & lab, const BlockInfo& info, BlockType& o) const
+	{
+		const double dh = info.h_gridpoint;
+		const double prefactor = -.5 * dt / dh;
+
+		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+		for(int ix=0; ix<FluidBlock::sizeX; ++ix)
+		{
+			const FluidElement& phi  = lab(ix  ,iy  );
+			const FluidElement& phiN = lab(ix  ,iy+1);
+			const FluidElement& phiS = lab(ix  ,iy-1);
+			const FluidElement& phiE = lab(ix+1,iy  );
+			const FluidElement& phiW = lab(ix-1,iy  );
+
+			const Real pN = 2*phiN.p - phiN.pOld;
+			const Real pS = 2*phiS.p - phiS.pOld;
+			const Real pW = 2*phiW.p - phiW.pOld;
+			const Real pE = 2*phiE.p - phiE.pOld;
+
+			// divU contains the pressure correction after the Poisson solver
+			o(ix,iy).u += prefactor/rho0 * (phiE.tmp - phiW.tmp);
+			o(ix,iy).v += prefactor/rho0 * (phiN.tmp - phiS.tmp);
+
+			// add the split explicit term
+			o(ix,iy).u += prefactor * (pE - pW) * (1./phi.rho - 1/rho0);
+			o(ix,iy).v += prefactor * (pN - pS) * (1./phi.rho - 1/rho0);
+		}
+	}
+};
 
 template <typename Lab>
 class CoordinatorPressure : public GenericCoordinator
 {
-protected:
-	const int rank, nprocs;
+ protected:
 	const double minRho;
 	Real gravity[2];
 	int * step;
-    const bool bSplit;
-    Real *uBody, *vBody;
-    Real *pressureDragX, *pressureDragY;
+  const bool bSplit;
+  Real *uBody, *vBody;
+  Real *pressureDragX, *pressureDragY;
 
-#ifndef _MIXED_
-#ifndef _BOX_
-#ifndef _OPENBOX_
-	PoissonSolverScalarFFTW<FluidGrid, StreamerDiv> pressureSolver;
-#else
-	PoissonSolverScalarFFTW_DCT<FluidGrid, StreamerDiv> pressureSolver;
-#endif // _OPENBOX_
-#else
-	PoissonSolverScalarFFTW_DCT<FluidGrid, StreamerDiv> pressureSolver;
-#endif // _BOX_
-#else
-	PoissonSolverScalarFFTW_DCT<FluidGrid, StreamerDiv> pressureSolver;
-#endif // _MIXED_
+	#ifndef _MIXED_
+	#ifndef _BOX_
+	#ifndef _OPENBOX_
+		PoissonSolverScalarFFTW<FluidGrid, StreamerDiv> pressureSolver;
+	#else
+		PoissonSolverScalarFFTW_DCT<FluidGrid, StreamerDiv> pressureSolver;
+	#endif // _OPENBOX_
+	#else
+		PoissonSolverScalarFFTW_DCT<FluidGrid, StreamerDiv> pressureSolver;
+	#endif // _BOX_
+	#else
+		PoissonSolverScalarFFTW_DCT<FluidGrid, StreamerDiv> pressureSolver;
+	#endif // _MIXED_
 
 	inline void addHydrostaticPressure(const double dt)
 	{
 		const int N = vInfo.size();
 
-#pragma omp parallel for schedule(static)
+		#pragma omp parallel for schedule(static)
 		for(int i=0; i<N; i++)
 		{
 			BlockInfo info = vInfo[i];
@@ -69,7 +173,7 @@ protected:
 	{
 		const int N = vInfo.size();
 
-#pragma omp parallel for schedule(static)
+		#pragma omp parallel for schedule(static)
 		for(int i=0; i<N; i++)
 		{
 			BlockInfo info = vInfo[i];
@@ -87,87 +191,57 @@ protected:
 	template <typename Operator>
 	void computeSplit(const double dt)
 	{
-		BlockInfo * ary = &vInfo.front();
 		const int N = vInfo.size();
 
-#pragma omp parallel
+		#pragma omp parallel
 		{
 			Operator kernel(dt, minRho, *step);
 
 			Lab mylab;
-#ifdef _MOVING_FRAME_
-            mylab.pDirichlet.u = *uBody;
-            mylab.pDirichlet.v = *vBody;
-#endif
+			#ifdef _MOVING_FRAME_
+      mylab.pDirichlet.u = *uBody;
+      mylab.pDirichlet.v = *vBody;
+			#endif
 			mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, false);
 
-#pragma omp for schedule(static)
+			#pragma omp for schedule(static)
 			for (int i=0; i<N; i++)
 			{
-				mylab.load(ary[i], 0);
-				kernel(mylab, ary[i], *(FluidBlock*)ary[i].ptrBlock);
-			}
-		}
-	}
-
-	template <typename Operator>
-	void compute(const double dt)
-	{
-		BlockInfo * ary = &vInfo.front();
-		const int N = vInfo.size();
-
-#pragma omp parallel
-		{
-			Operator kernel(dt);
-
-            Lab mylab;
-#ifdef _MOVING_FRAME_
-            mylab.pDirichlet.u = *uBody;
-            mylab.pDirichlet.v = *vBody;
-#endif
-			mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, true);
-
-#pragma omp for schedule(static)
-			for (int i=0; i<N; i++)
-			{
-				mylab.load(ary[i], 0);
-
-				kernel(mylab, ary[i], *(FluidBlock*)ary[i].ptrBlock);
+				BlockInfo info = vInfo[i];
+				mylab.load(info, 0);
+				kernel(mylab, info, *(FluidBlock*)info.ptrBlock);
 			}
 		}
 	}
 
 	inline void drag()
 	{
-		BlockInfo * ary = &vInfo.front();
 		const int N = vInfo.size();
 		*pressureDragX = 0;
 		*pressureDragY = 0;
+		Real tmpDragX = 0, tmpDragY = 0;
 
-		Real tmpDragX = 0;
-		Real tmpDragY = 0;
-
-#pragma omp parallel
+		#pragma omp parallel
 		{
 			OperatorPressureDrag kernel(0);
 
 			Lab mylab;
-#ifdef _MOVING_FRAME_
+			#ifdef _MOVING_FRAME_
 			mylab.pDirichlet.u = *uBody;
 			mylab.pDirichlet.v = *vBody;
-#endif
+			#endif
 			mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, false);
 
-#pragma omp for schedule(static) reduction(+:tmpDragX) reduction(+:tmpDragY)
+			#pragma omp for schedule(static) reduction(+:tmpDragX) reduction(+:tmpDragY)
 			for (int i=0; i<N; i++)
 			{
-				mylab.load(ary[i], 0);
-				kernel(mylab, ary[i], *(FluidBlock*)ary[i].ptrBlock);
+				BlockInfo info = vInfo[i];
+				mylab.load(info, 0);
+				kernel(mylab, info, *(FluidBlock*)info.ptrBlock);
 				tmpDragX += kernel.getDrag(0);
 				tmpDragY += kernel.getDrag(1);
 			}
 		}
-
 		*pressureDragX = tmpDragX;
 		*pressureDragY = tmpDragY;
 	}
@@ -182,14 +256,6 @@ public:
 	{
 	}
 
-    CoordinatorPressure(const double minRho, const Real gravity[2], int * step,
-    		const bool bSplit, FluidGrid * grid, const int rank, const int nprocs)
-    : GenericCoordinator(grid), rank(rank), nprocs(nprocs), minRho(minRho), step(step),
-	  bSplit(bSplit), uBody(NULL), vBody(NULL), pressureDragX(NULL), pressureDragY(NULL),
-	  gravity{gravity[0],gravity[1]}, pressureSolver(NTHREADS,*grid)
-    {
-    }
-
 	void operator()(const double dt)
 	{
 		// need an interface that is the same for all solvers - this way the defines can be removed more cleanly
@@ -197,10 +263,10 @@ public:
 		check("pressure - start");
 
 		// pressure
-#ifdef _HYDROSTATIC_
+		#ifdef _HYDROSTATIC_
 		abort();
 		addHydrostaticPressure(dt);
-#endif // _HYDROSTATIC_
+		#endif // _HYDROSTATIC_
 		computeSplit<OperatorDivergenceSplit>(dt);
 		pressureSolver.solve(*grid,true);
 		computeSplit<OperatorGradPSplit>(dt);
@@ -214,129 +280,6 @@ public:
 	string getName()
 	{
 		return "Pressure";
-    }
-};
-
-template <typename Lab>
-class CoordinatorPressureSimple : public GenericCoordinator
-{
-protected:
-	Real *pressureDragX, *pressureDragY;
-
-#ifndef _MIXED_
-#ifndef _BOX_
-#ifndef _OPENBOX_
-    PoissonSolverScalarFFTW<FluidGrid, StreamerDiv> pressureSolver;
-#else
-	PoissonSolverScalarFFTW_DCT<FluidGrid, StreamerDiv> pressureSolver;
-#endif // _OPENBOX_
-#else
-	PoissonSolverScalarFFTW_DCT<FluidGrid, StreamerDiv> pressureSolver;
-#endif // _BOX_
-#else
-    PoissonSolverScalarFFTW_DCT<FluidGrid, StreamerDiv> pressureSolver;
-#endif // _MIXED_
-
-	inline void updatePressure()
-	{
-		const int N = vInfo.size();
-
-#pragma omp parallel for schedule(static)
-		for(int i=0; i<N; i++)
-		{
-			BlockInfo info = vInfo[i];
-			FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-
-			for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-				for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-				{
-					b(ix,iy).pOld = b(ix,iy).p;
-					b(ix,iy).p    = b(ix,iy).tmp;
-				}
-		}
-	}
-
-	template <typename Operator>
-	void compute(const double dt)
-	{
-		BlockInfo * ary = &vInfo.front();
-		const int N = vInfo.size();
-
-#pragma omp parallel
-		{
-			Operator kernel(dt);
-
-			Lab mylab;
-			mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, true);
-
-#pragma omp for schedule(static)
-			for (int i=0; i<N; i++)
-			{
-				mylab.load(ary[i], 0);
-
-				kernel(mylab, ary[i], *(FluidBlock*)ary[i].ptrBlock);
-			}
-		}
-	}
-
-	inline void drag()
-	{
-		BlockInfo * ary = &vInfo.front();
-		const int N = vInfo.size();
-		*pressureDragX = 0;
-		*pressureDragY = 0;
-
-		Real tmpDragX = 0;
-		Real tmpDragY = 0;
-
-#pragma omp parallel
-		{
-			OperatorPressureDrag kernel(0);
-
-			Lab mylab;
-#ifdef _MOVING_FRAME_
-//			mylab.pDirichlet.u = 0;
-//			mylab.pDirichlet.v = *vBody;
-#endif
-			mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, false);
-
-#pragma omp for schedule(static) reduction(+:tmpDragX) reduction(+:tmpDragY)
-			for (int i=0; i<N; i++)
-			{
-				mylab.load(ary[i], 0);
-				kernel(mylab, ary[i], *(FluidBlock*)ary[i].ptrBlock);
-				tmpDragX += kernel.getDrag(0);
-				tmpDragY += kernel.getDrag(1);
-			}
-		}
-
-		*pressureDragX = tmpDragX;
-		*pressureDragY = tmpDragY;
-	}
-
-public:
-	CoordinatorPressureSimple(Real * pressureDragX, Real * pressureDragY, FluidGrid * grid) : GenericCoordinator(grid), pressureDragX(pressureDragX), pressureDragY(pressureDragY), pressureSolver(NTHREADS,*grid)
-	{
-	}
-
-	CoordinatorPressureSimple(FluidGrid * grid) : GenericCoordinator(grid), pressureDragX(NULL), pressureDragY(NULL), pressureSolver(NTHREADS,*grid)
-	{
-	}
-
-	void operator()(const double dt)
-	{
-		compute<OperatorDivergence>(dt);
-		pressureSolver.solve(*grid,false);
-		compute<OperatorGradP>(dt);
-
-		updatePressure();
-
-		drag();
-	}
-
-	string getName()
-	{
-		return "Pressure";
-	}
+  }
 };
 #endif

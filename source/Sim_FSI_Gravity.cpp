@@ -24,20 +24,11 @@ void Sim_FSI_Gravity::_diagnostics()
 {
 	vector<BlockInfo> vInfo = grid->getBlocksInfo();
 
-	double drag = 0;
-	double volS = 0;
-	double volF = 0;
-	double pMin = 10;
-	double pMax = 0;
-	double centerMassX = 0;
-	double centerMassY = 0;
-	double centroidX = 0;
-	double centroidY = 0;
-	double mass = 0;
-	double volume = 0;
+	double centroidX=0, centroidY=0, centerMassX=0, centerMassY=0;
+	double drag=0, pMin=10, pMax=0, mass=0, volume=0, volS=0, volF=0;
 	const double dh = vInfo[0].h_gridpoint;
 
-#pragma omp parallel for schedule(static) reduction(+:drag,volS,volF,centerMassX,centerMassY,centroidX,centroidY,mass,volume) reduction(max:pMax) reduction (min:pMin)
+	#pragma omp parallel for schedule(static) reduction(+:drag,volS,volF,centerMassX,centerMassY,centroidX,centroidY,mass,volume) reduction(max:pMax) reduction (min:pMin)
 	for(int i=0; i<vInfo.size(); i++)
 	{
 		BlockInfo info = vInfo[i];
@@ -134,11 +125,11 @@ void Sim_FSI_Gravity::_dumpSettings(ostream& outStream)
 		outStream << "\tpath2file\t" << path2file << endl;
 		outStream << "\tbpdx\t" << bpdx << endl;
 		outStream << "\tbpdy\t" << bpdy << endl;
-#ifdef _PERIODIC_
+		#ifdef _PERIODIC_
 		outStream << "\tBC\t\tperiodic\n";
-#else // _PERIODIC_
+		#else // _PERIODIC_
 		outStream << "\tBC\tmixed\n";
-#endif // _PERIODIC_
+		#endif // _PERIODIC_
 		outStream << "\tPoisson\tFFTW Split\n";
 		outStream << "--------------------------------------------------------------------\n";
 }

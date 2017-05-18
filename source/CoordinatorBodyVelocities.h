@@ -15,18 +15,18 @@ protected:
 	Real *uBody, *vBody, *omegaBody;
 	Real *lambda;
 	Shape * shape;
-	
+
 public:
 	CoordinatorBodyVelocities(Real * uBody, Real * vBody, Real * omegaBody, Shape * shape, Real * lambda, FluidGrid * grid) :
 		GenericCoordinator(grid), uBody(uBody), vBody(vBody), omegaBody(omegaBody), lambda(lambda), shape(shape)
 	{
 	}
-	
+
 	void operator()(const double dt)
 	{
 		Real centerOfMass[2];
 		shape->getCenterOfMass(centerOfMass);
-		
+
 		// gravity acts on the center of gravity (for constant g: center of mass)
 		// buoyancy acts on the center of buoyancy (for fully immersed body: center of geometry/centroid)
 		double mass = 0;
@@ -35,16 +35,16 @@ public:
 		double momOfInertia = 0;
 		double angularMomentum = 0;
 		const int N = vInfo.size();
-		
-		
+
+
 #pragma omp parallel for schedule(static) reduction(+:u,v,momOfInertia,angularMomentum,mass)
 		for(int i=0; i<N; i++)
 		{
 			BlockInfo info = vInfo[i];
 			FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-			
+
 			double h = info.h_gridpoint;
-			
+
 			for(int iy=0; iy<FluidBlock::sizeY; ++iy)
 				for(int ix=0; ix<FluidBlock::sizeX; ++ix)
 				{
@@ -75,7 +75,7 @@ public:
 		shape->M = mass * vInfo[0].h_gridpoint * vInfo[0].h_gridpoint;
 		shape->J = momOfInertia * vInfo[0].h_gridpoint * vInfo[0].h_gridpoint;
 	}
-	
+
 	string getName()
 	{
 		return "BodyVelocities";

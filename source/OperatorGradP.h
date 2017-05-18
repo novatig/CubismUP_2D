@@ -56,57 +56,6 @@ public:
 	}
 };
 
-class OperatorGradPSplit : public GenericLabOperator
-{
-private:
-	double rho0;
-	double dt;
-	int step;
-
-public:
-	OperatorGradPSplit(double dt, double rho0, int step) : rho0(rho0), dt(dt), step(step)
-	{
-		stencil_start[0] = -1;
-		stencil_start[1] = -1;
-		stencil_start[2] = 0;
-		stencil_end[0] = 2;
-		stencil_end[1] = 2;
-		stencil_end[2] = 1;
-	}
-
-	~OperatorGradPSplit() {}
-
-	template <typename Lab, typename BlockType>
-	void operator()(Lab & lab, const BlockInfo& info, BlockType& o) const
-	{
-		const double dh = info.h_gridpoint;
-		const double prefactor = -.5 * dt / dh;
-
-		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-		for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-		{
-			const FluidElement& phi  = lab(ix  ,iy  );
-			const FluidElement& phiN = lab(ix  ,iy+1);
-			const FluidElement& phiS = lab(ix  ,iy-1);
-			const FluidElement& phiE = lab(ix+1,iy  );
-			const FluidElement& phiW = lab(ix-1,iy  );
-
-			const Real pN = 2*phiN.p - phiN.pOld;
-			const Real pS = 2*phiS.p - phiS.pOld;
-			const Real pW = 2*phiW.p - phiW.pOld;
-			const Real pE = 2*phiE.p - phiE.pOld;
-
-			// divU contains the pressure correction after the Poisson solver
-			o(ix,iy).u += prefactor/rho0 * (phiE.tmp - phiW.tmp);
-			o(ix,iy).v += prefactor/rho0 * (phiN.tmp - phiS.tmp);
-
-			// add the split explicit term
-			o(ix,iy).u += prefactor * (pE - pW) * (1./phi.rho - 1/rho0);
-			o(ix,iy).v += prefactor * (pN - pS) * (1./phi.rho - 1/rho0);
-		}
-	}
-};
-
 class OperatorGradPSplitHighOrder : public GenericLabOperator
 {
 private:
