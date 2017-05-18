@@ -133,50 +133,6 @@ public:
 };
 
 
-class OperatorPressureDrag : public GenericLabOperator
-{
-private:
-	double dt;
-	Real pressureDrag[2];
 
-public:
-	OperatorPressureDrag(double dt) : dt(dt), pressureDrag{0,0}
-	{
-		stencil_start[0] = -1;
-		stencil_start[1] = -1;
-		stencil_start[2] = 0;
-		stencil_end[0] = 2;
-		stencil_end[1] = 2;
-		stencil_end[2] = 1;
-	}
-
-	~OperatorPressureDrag() {}
-
-	template <typename Lab, typename BlockType>
-	void operator()(Lab & lab, const BlockInfo& info, BlockType& o)
-	{
-		const double prefactor = -.5 / (info.h_gridpoint);
-		pressureDrag[0] = 0;
-		pressureDrag[1] = 0;
-
-		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-		for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-		{
-			const Real pUW = lab(ix-1,iy  ).p;
-			const Real pUE = lab(ix+1,iy  ).p;
-			const Real pUS = lab(ix  ,iy-1).p;
-			const Real pUN = lab(ix  ,iy+1).p;
-
-			// divU contains the pressure correction after the Poisson solver
-			pressureDrag[0] += prefactor * (pUE - pUW);
-			pressureDrag[1] += prefactor * (pUN - pUS);
-		}
-	}
-
-	inline Real getDrag(int component)
-	{
-		return pressureDrag[component];
-	}
-};
 
 #endif

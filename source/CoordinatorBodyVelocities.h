@@ -37,7 +37,7 @@ public:
 		const int N = vInfo.size();
 
 
-#pragma omp parallel for schedule(static) reduction(+:u,v,momOfInertia,angularMomentum,mass)
+		#pragma omp parallel for schedule(static) reduction(+:u,v,momOfInertia,angularMomentum,mass)
 		for(int i=0; i<N; i++)
 		{
 			BlockInfo info = vInfo[i];
@@ -61,14 +61,14 @@ public:
 				}
 		}
 
-#ifdef _MOVING_FRAME_
+		#ifdef _MOVING_FRAME_
 		//then uinf = ubody
-		*uBody += u / mass;
-		*vBody += v / mass;
-#else
 		*uBody = u / mass;
 		*vBody = v / mass;
-#endif
+		#else
+		*uBody = u / mass;
+		*vBody = v / mass;
+		#endif
 
 		*omegaBody = angularMomentum / momOfInertia;
 

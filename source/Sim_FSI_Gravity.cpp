@@ -137,7 +137,7 @@ void Sim_FSI_Gravity::_dumpSettings(ostream& outStream)
 void Sim_FSI_Gravity::_ic()
 {
 		// setup initial conditions
-		CoordinatorIC coordIC(shape,0,grid);
+		CoordinatorIC coordIC(shape, uinfx, uinfy, grid);
 		profiler.push_start(coordIC.getName());
 		coordIC(0);
 
@@ -223,6 +223,8 @@ void Sim_FSI_Gravity::init()
 		minRho = min((Real)1.,shape->getMinRhoS());
 
 		gravity[1] = -parser("-g").asDouble(9.81);
+		uinfx = -parser("-uinfx").asDouble(0);
+		uinfy = -parser("-uinfy").asDouble(0);
 
 		const Real aspectRatio = (Real)bpdx/(Real)bpdy;
 		Real center[2] = {
@@ -255,7 +257,7 @@ void Sim_FSI_Gravity::init()
 	pipeline.push_back(new CoordinatorPressure<Lab>(minRho, gravity, &uBody[0], &uBody[1], &dragP[0], &dragP[1], &step, bSplit, grid, 0, nprocs));
 	pipeline.push_back(new CoordinatorBodyVelocities(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid));
 	#ifdef _MOVING_FRAME_
-	pipeline.push_back(new CoordinatorFadeOut(&uBody[0], &uBody[1], grid));
+	pipeline.push_back(new CoordinatorFadeOut(&uBody[0], &uBody[1], uinfx, uinfy, grid));
 	#endif
 
 	{

@@ -19,7 +19,7 @@ class OperatorAdvectionFD : public GenericLabOperator
   const Real *uBody, *vBody;
 
  public:
-	OperatorAdvectionFD(double dt, Real * uBody, Real * vBody, const int stage)
+	OperatorAdvectionFD(double dt, Real * uBody, Real * vBody)
 	: dt(dt), uBody(uBody), vBody(vBody)
 	{
 		stencil_start[0] = -1;
@@ -186,8 +186,8 @@ public:
 
     #pragma omp parallel
 		{
-			//OperatorAdvectionUpwind3rdOrder kernel(dt,uBody,vBody,0);
-			OperatorAdvectionFD kernel(dt);
+			//OperatorAdvectionUpwind3rdOrder kernel(dt,uBody,vBody);
+			OperatorAdvectionFD kernel(dt,uBody,vBody);
 
       Lab mylab;
       #ifdef _MOVING_FRAME_
@@ -200,8 +200,8 @@ public:
 			for (int i=0; i<N; i++)
 			{
         BlockInfo info = vInfo[i];
-				mylab.load(vInfo[i], 0);
-				kernel(mylab, ary[i], *(FluidBlock*)vInfo[i].ptrBlock);
+				mylab.load(info, 0);
+				kernel(mylab, info, *(FluidBlock*)info.ptrBlock);
 			}
 		}
 

@@ -69,26 +69,26 @@ class Sim_FSI_Gravity : public Simulation_FSI
 protected:
 	Real uBody[2], omegaBody;
 	double dtCFL, dtLCFL, dtFourier, dtBody;
-	double re, nu;
+	double re, nu, uinfx, uinfy;
 	double minRho;
 	bool bSplit;
-	
+
 	Real gravity[2];
-	
+
 	void _diagnostics();
 	void _ic();
 	double _nonDimensionalTime();
-	
+
 	void _outputSettings(ostream& outStream);
 	void _inputSettings(istream& inStream);
-	
+
 	// should this stuff be moved? - serialize method will do that
 	void _dumpSettings(ostream& outStream);
-	
+
 public:
 	Sim_FSI_Gravity(const int argc, const char ** argv);
 	~Sim_FSI_Gravity();
-	
+
 	void init();
 	void simulate();
 };

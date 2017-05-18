@@ -52,7 +52,7 @@ class OperatorIC : public GenericOperator
 
 class CoordinatorIC : public GenericCoordinator
 {
-protected:
+ protected:
 	Shape * shape;
 	const double uinfx, uinfy;
 
@@ -64,16 +64,15 @@ protected:
 
 	void operator()(const double dt)
 	{
-		BlockInfo * ary = &vInfo.front();
 		const int N = vInfo.size();
 
 		#pragma omp parallel
 		{
-			OperatorIC kernel(shape, uinf);
+			OperatorIC kernel(shape, uinfx, uinfy);
 
 			#pragma omp for schedule(static)
 			for (int i=0; i<N; i++)
-				kernel(ary[i], *(FluidBlock*)ary[i].ptrBlock);
+				kernel(ary[i], *(FluidBlock*)vInfo[i].ptrBlock);
 		}
 
 		check("IC - end");
@@ -88,9 +87,8 @@ protected:
 class OperatorFadeOut : public GenericOperator
 {
  private:
-	const int info[2];
-	const Real extent[2];
-	const int buffer;
+	const Real extent[2], uinfx, uinfy;
+	const int info[2], buffer;
 
    inline bool _is_touching(const BlockInfo& i, const Real h) const
 	{
@@ -109,9 +107,9 @@ class OperatorFadeOut : public GenericOperator
 		}
 	}
 
-public:
-	OperatorFadeOut(const int info[2], const int buffer, const Real extent[2])
-	: info{info[0],info[1]}, extent{extent[0],extent[1]}, buffer(buffer) {}
+ public:
+	OperatorFadeOut(const int info[2], const int buffer, const Real extent[2], const Real uinfx, const Real uinfy)
+	: extent{extent[0],extent[1]}, uinfx(uinfx), uinfy(uinfy), info{info[0],info[1]}, buffer(buffer) {}
 
 	void operator()(const BlockInfo& i, FluidBlock& b) const
 	{
@@ -126,10 +124,10 @@ public:
 			Real p[2];
 			i.pos(p, ix, iy);
 			const Real dist = dir>0 ? p[ax]-extent[ax]+(2+buffer)*h
-				                : 0.0  -p[0]      +(2+buffer)*h;
+				                			: 0.0  -p[0]      +(2+buffer)*h;
 			const Real fade = max(Real(0), cos(.5*M_PI*max(0.,dist)*iWidth) );
-			b(ix,iy).u = b(ix,iy).u*fade;
-			b(ix,iy).v = b(ix,iy).v*fade;
+			b(ix,iy).u = b(ix,iy).u*fade + (1-fade)*uinfx;
+			b(ix,iy).v = b(ix,iy).v*fade + (1-fade)*uinfy;
 		}
 	}
 };
@@ -138,11 +136,13 @@ class CoordinatorFadeOut : public GenericCoordinator
 {
  protected:
 	const int buffer;
-	const Real *uBody, *vBody;
+	const Real uinfx, uinfy;
+	const Real * const uBody;
+	const Real * const vBody;
 
-public:
-    CoordinatorFadeOut(Real * uBody, Real * vBody, FluidGrid * grid, const int _buffer=8)
-	: GenericCoordinator(grid), buffer(_buffer), uBody(uBody), vBody(vBody)
+ public:
+    CoordinatorFadeOut(Real* const uBody, Real* const vBody, const Real uinfx, const Real uinfy, FluidGrid * grid, const int _buffer=8)
+	: GenericCoordinator(grid), buffer(_buffer), uBody(uBody), vBody(vBody), uinfx(uinfx), uinfy(uinfy)
 	{ }
 
 	void operator()(const Real dt)
@@ -160,7 +160,7 @@ public:
 
 		#pragma omp parallel
 		{
-			OperatorFadeOut kernel(info, buffer, ext);
+			OperatorFadeOut kernel(info, buffer, ext, uinfx, uinfy);
 			#pragma omp for schedule(static)
 			for (int i=0; i<N; i++) {
 				FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;

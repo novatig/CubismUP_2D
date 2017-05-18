@@ -20,8 +20,8 @@ class OperatorDivergenceSplit : public GenericLabOperator
 	const double rho0;
 	int step;
 
-	inline Real mean(const Real a, const Real b) {return .5 * (a + b);}
-	//inline Real mean(const Real a, const Real b) {return 2.*a*b/(a+b);}
+	inline Real mean(const Real a, const Real b) const {return .5 * (a + b);}
+	//inline Real mean(const Real a, const Real b) const {return 2.*a*b/(a+b);}
 
  public:
 	OperatorDivergenceSplit(double dt, double rho0, int step) : rho0(rho0), dt(dt), step(step)
@@ -121,15 +121,55 @@ class OperatorGradPSplit : public GenericLabOperator
 	}
 };
 
+class OperatorPressureDrag : public GenericLabOperator
+{
+ private:
+	double dt;
+	Real pressureDrag[2];
+
+ public:
+	OperatorPressureDrag(double dt) : dt(dt), pressureDrag{0,0}
+	{
+		stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
+		stencil_end[0] = 2; stencil_end[1] = 2; stencil_end[2] = 1;
+	}
+
+	~OperatorPressureDrag() {}
+
+	template <typename Lab, typename BlockType>
+	void operator()(Lab & lab, const BlockInfo& info, BlockType& o)
+	{
+		const double prefactor = -.5 / (info.h_gridpoint);
+		pressureDrag[0] = 0;
+		pressureDrag[1] = 0;
+
+		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+		for(int ix=0; ix<FluidBlock::sizeX; ++ix)
+		{
+			const Real pUW = lab(ix-1,iy  ).p;
+			const Real pUE = lab(ix+1,iy  ).p;
+			const Real pUS = lab(ix  ,iy-1).p;
+			const Real pUN = lab(ix  ,iy+1).p;
+			pressureDrag[0] += prefactor * (pUE - pUW);
+			pressureDrag[1] += prefactor * (pUN - pUS);
+		}
+	}
+
+	inline Real getDrag(int component)
+	{
+		return pressureDrag[component];
+	}
+};
+
 template <typename Lab>
 class CoordinatorPressure : public GenericCoordinator
 {
  protected:
 	const double minRho;
-	Real gravity[2];
-	int * step;
+	const Real gravity[2];
+	int * const step;
   const bool bSplit;
-  Real *uBody, *vBody;
+  Real const *uBody, const *vBody;
   Real *pressureDragX, *pressureDragY;
 
 	#ifndef _MIXED_
@@ -250,9 +290,9 @@ public:
 	CoordinatorPressure(const double minRho, const Real gravity[2], Real * uBody,
 			Real * vBody, Real * pressureDragX, Real * pressureDragY, int * step,
 			const bool bSplit, FluidGrid * grid, const int rank, const int nprocs)
-: GenericCoordinator(grid), rank(rank), nprocs(nprocs), minRho(minRho), step(step),
-  bSplit(bSplit), uBody(uBody), vBody(vBody), pressureDragX(pressureDragX),
-  pressureDragY(pressureDragY), gravity{gravity[0],gravity[1]}, pressureSolver(NTHREADS,*grid)
+: GenericCoordinator(grid), minRho(minRho), step(step),  uBody(uBody), vBody(vBody),
+	pressureDragX(pressureDragX), pressureDragY(pressureDragY), gravity{gravity[0],gravity[1]},
+	pressureSolver(NTHREADS,*grid)
 	{
 	}
 

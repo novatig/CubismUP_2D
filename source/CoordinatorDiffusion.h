@@ -53,7 +53,6 @@ class OperatorDiffusion : public GenericLabOperator
 {
  private:
 	const double mu, dt;
-	const int stage;
 
  public:
 	OperatorDiffusion(double dt, double mu) : mu(mu), dt(dt)
@@ -144,7 +143,7 @@ class CoordinatorDiffusion : public GenericCoordinator
 
     #pragma omp parallel
 		{
-			OperatorDiffusion kernel(dt, coeff, stage);
+			OperatorDiffusion kernel(dt, coeff);
 
       Lab mylab;
       #ifdef _MOVING_FRAME_
