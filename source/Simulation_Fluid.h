@@ -126,6 +126,16 @@ protected:
 		}
 	}
 
+	virtual void _dump(stringstream&fname)
+	{
+		const int sizeX = bpdx * FluidBlock::sizeX;
+		const int sizeY = bpdy * FluidBlock::sizeY;
+		vector<BlockInfo> vInfo = grid->getBlocksInfo();
+		processOMP<Lab, OperatorVorticityTmp>(0, vInfo,*grid);
+		dumper.Write(*grid, ss.str());
+		_serialize();
+	}
+
 	virtual void _outputSettings(ostream& outStream)
 	{
 		outStream << "Simulation_Fluid\n";

@@ -314,6 +314,15 @@ void Sim_FSI_Gravity::simulate()
 				profiler.push_start(pipeline[c]->getName());
 				(*pipeline[c])(dt);
 				profiler.pop_stop();
+
+
+				stringstream ss;
+        ss << path2file << "avemaria_" << pipeline[c]->getName() << "_";
+        ss << std::setfill('0') << std::setw(7) << step;
+        ss  << ".vti";
+				cout << ss.str() << endl;
+				_dump(ss);
+
 			}
 
 			time += dt;
