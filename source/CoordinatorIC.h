@@ -87,41 +87,41 @@ private:
 	const Real extent[2];
 	const int buffer;
 
-   inline bool _is_touching(const BlockInfo& info, const Real h) const
+   inline bool _is_touching(const BlockInfo& i, const Real h) const
 	{
 		Real max_pos[3],min_pos[3];
 		const int ax = info[0];
 		const int dir = info[1];
 		if(dir>0) //moving up
 		{
-			info.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1, FluidBlock::sizeZ-1);
-			return max_pos[ax] > extent[ax]-(2+buffer)*h
+			i.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1, FluidBlock::sizeZ-1);
+			return max_pos[ax] > extent[ax]-(2+buffer)*h;
 		}
 		else //moving down
 		{
-			info.pos(min_pos, 0, 0, 0);
-			return min_pos[ax] < 0 +(2+buffer)*h
+			i.pos(min_pos, 0, 0, 0);
+			return min_pos[ax] < 0 +(2+buffer)*h;
 		}
 	}
 
 public:
-	OperatorFadeOut(const Real info[2], const int buffer, const Real extent[2])
+	OperatorFadeOut(const int info[2], const int buffer, const Real extent[2])
 	: info{info[0],info[1]}, extent{extent[0],extent[1]}, buffer(buffer) {}
 
-	void operator()(const BlockInfo& info, FluidBlock& b) const
+	void operator()(const BlockInfo& i, FluidBlock& b) const
 	{
-		const Real h = info.h_gridpoint;
+		const Real h = i.h_gridpoint;
 		const Real iWidth = 1/(buffer*h);
 		const int ax = info[0];
 		const int dir = info[1];
 
-		if(_is_touching(info,h))
+		if(_is_touching(i,h))
 		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
 		for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
 			Real p[2];
-			info.pos(p, ix, iy);
+			i.pos(p, ix, iy);
 			const Real dist = dir>0 ? p[ax]-extent[ax]+(2+buffer)*h
-															: 0.0  -p[0]      +(2+buffer)*h;
+				                : 0.0  -p[0]      +(2+buffer)*h;
 			const Real fade = max(Real(0), cos(.5*M_PI*max(0.,dist)*iWidth) );
 			b(ix,iy).u = b(ix,iy).u*fade;
 			b(ix,iy).v = b(ix,iy).v*fade;
@@ -136,7 +136,7 @@ protected:
 	const Real *uBody, *vBody;
 
 public:
-    CoordinatorFadeOut(Real * uBody, Real * vBody, FluidGridMPI * grid, const int _buffer=8)
+    CoordinatorFadeOut(Real * uBody, Real * vBody, FluidGrid * grid, const int _buffer=8)
 	: GenericCoordinator(grid), buffer(_buffer), uBody(uBody), vBody(vBody)
 	{ }
 
@@ -158,9 +158,8 @@ public:
 			OperatorFadeOut kernel(info, buffer, ext);
 			#pragma omp for schedule(static)
 			for (int i=0; i<N; i++) {
-				BlockInfo info = vInfo[i];
-				FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-				kernel(info, b);
+				FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+				kernel(vInfo[i], b);
 			}
 		}
 
