@@ -72,7 +72,7 @@ class CoordinatorIC : public GenericCoordinator
 
 			#pragma omp for schedule(static)
 			for (int i=0; i<N; i++)
-				kernel(ary[i], *(FluidBlock*)vInfo[i].ptrBlock);
+				kernel(vInfo[i], *(FluidBlock*)vInfo[i].ptrBlock);
 		}
 
 		check("IC - end");

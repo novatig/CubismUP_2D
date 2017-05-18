@@ -169,7 +169,8 @@ class CoordinatorPressure : public GenericCoordinator
 	const Real gravity[2];
 	int * const step;
   const bool bSplit;
-  Real const *uBody, const *vBody;
+  const Real *const uBody;
+	const Real *const vBody;
   Real *pressureDragX, *pressureDragY;
 
 	#ifndef _MIXED_
