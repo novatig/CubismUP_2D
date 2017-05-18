@@ -14,50 +14,7 @@
 
 #include "GenericOperator.h"
 
-class OperatorDiffusion : public GenericLabOperator
-{
-private:
-	const double mu;
-	double dt;
-	const int stage;
 
-public:
-	OperatorDiffusion(double dt, double mu, const int stage) : mu(mu), dt(dt), stage(stage)
-	{
-		stencil_start[0] = -1;
-		stencil_start[1] = -1;
-		stencil_start[2] = 0;
-		stencil_end[0] = 2;
-		stencil_end[1] = 2;
-		stencil_end[2] = 1;
-	}
-
-	~OperatorDiffusion() {}
-
-	template <typename Lab, typename BlockType>
-	void operator()(Lab & lab, const BlockInfo& info, BlockType& o) const
-	{
-		const double prefactor = mu * dt / (info.h_gridpoint*info.h_gridpoint);
-
-		// stage 1 of RK2
-		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-		for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-		{
-			FluidElement& phi  = lab(ix,iy);
-			FluidElement& phiN = lab(ix,iy+1);
-			FluidElement& phiS = lab(ix,iy-1);
-			FluidElement& phiE = lab(ix+1,iy);
-			FluidElement& phiW = lab(ix-1,iy);
-			const Real fac =prefactor/phi.rho;
-			o(ix,iy).tmpU = phi.u + fac * (phiN.u + phiS.u + phiE.u + phiW.u - phi.u*4.);
-			o(ix,iy).tmpV = phi.v + fac * (phiN.v + phiS.v + phiE.v + phiW.v - phi.v*4.);
-
-#ifdef _MULTIPHASE_
-			o(ix,iy).tmp = phi.rho + fac *(phiN.rho + phiS.rho + phiE.rho + phiW.rho - phi.rho*4.);
-#endif
-		}
-   }
-};
 
 class OperatorDiffusionHighOrder : public GenericLabOperator
 {
@@ -214,48 +171,6 @@ public:
     }
 };
 
-class OperatorViscousDrag : public GenericLabOperator
-{
-private:
-	double dt;
-	Real viscousDrag;
 
-public:
-	OperatorViscousDrag(double dt) : dt(dt), viscousDrag(0)
-	{
-		stencil_start[0] = -1;
-		stencil_start[1] = -1;
-		stencil_start[2] = 0;
-		stencil_end[0] = 2;
-		stencil_end[1] = 2;
-		stencil_end[2] = 1;
-	}
-
-	~OperatorViscousDrag() {}
-
-	template <typename Lab, typename BlockType>
-	void operator()(Lab & lab, const BlockInfo& info, BlockType& o)
-	{
-		const double prefactor = 1. / (info.h_gridpoint*info.h_gridpoint);
-		viscousDrag = 0;
-
-		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-		for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-		{
-			FluidElement& phi = lab(ix,iy);
-			FluidElement& phiN = lab(ix,iy+1);
-			FluidElement& phiS = lab(ix,iy-1);
-			FluidElement& phiE = lab(ix+1,iy);
-			FluidElement& phiW = lab(ix-1,iy);
-
-			viscousDrag += prefactor * (phiN.tmp + phiS.tmp + phiE.tmp + phiW.tmp - 4.*phi.tmp);
-		}
-	}
-
-	inline Real getDrag()
-	{
-		return viscousDrag;
-	}
-};
 
 #endif

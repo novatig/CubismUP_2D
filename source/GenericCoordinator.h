@@ -13,6 +13,7 @@
 #define CubismUP_2D_GenericCoordinator_h
 
 #include "Definitions.h"
+#include "GenericOperator.h"
 
 class GenericCoordinator
 {

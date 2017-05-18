@@ -13,14 +13,52 @@
 #include "OperatorIC.h"
 #include "Shape.h"
 
+class OperatorIC : public GenericOperator
+{
+ private:
+	Shape * shape;
+	const double uinfx, uinfy;
+
+ public:
+	OperatorIC(Shape * shape, const double uinfx, const double uinfy) :
+	shape(shape), uinfx(uinfx), uinfy(uinfy) {}
+
+	~OperatorIC() {}
+
+	void operator()(const BlockInfo& info, FluidBlock& block) const
+	{
+		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+			for(int ix=0; ix<FluidBlock::sizeX; ++ix)
+			{
+				Real p[2];
+				info.pos(p, ix, iy);
+
+				block(ix,iy).u = uinfx;
+				block(ix,iy).v = uinfy;
+				block(ix,iy).chi = shape->chi(p, info.h_gridpoint);
+
+				// assume fluid with density 1
+				block(ix,iy).rho = shape->rho(p, info.h_gridpoint);
+
+				block(ix,iy).p = 0;
+				block(ix,iy).pOld = 0;
+
+				block(ix,iy).tmpU = 0;
+				block(ix,iy).tmpV = 0;
+				block(ix,iy).tmp  = 0;
+			}
+	}
+};
+
 class CoordinatorIC : public GenericCoordinator
 {
 protected:
 	Shape * shape;
-	const double uinf;
+	const double uinfx, uinfy;
 
-public:
-	CoordinatorIC(Shape * shape, const double uinf, FluidGrid * grid) : GenericCoordinator(grid), shape(shape), uinf(uinf)
+	public:
+	CoordinatorIC(Shape * shape, const double uinfx, const double uinfy, FluidGrid * grid) :
+	 GenericCoordinator(grid), shape(shape), uinfx(uinfx), uinfy(uinfy)
 	{
 	}
 
@@ -29,11 +67,11 @@ public:
 		BlockInfo * ary = &vInfo.front();
 		const int N = vInfo.size();
 
-#pragma omp parallel
+		#pragma omp parallel
 		{
 			OperatorIC kernel(shape, uinf);
 
-#pragma omp for schedule(static)
+			#pragma omp for schedule(static)
 			for (int i=0; i<N; i++)
 				kernel(ary[i], *(FluidBlock*)ary[i].ptrBlock);
 		}
@@ -47,42 +85,9 @@ public:
 	}
 };
 
-class CoordinatorIC_RT : public GenericCoordinator
-{
-protected:
-	const double rhoS;
-
-public:
-	CoordinatorIC_RT(const double rhoS, FluidGrid * grid) : GenericCoordinator(grid), rhoS(rhoS)
-	{
-	}
-
-	void operator()(const double dt)
-	{
-		BlockInfo * ary = &vInfo.front();
-		const int N = vInfo.size();
-
-#pragma omp parallel
-		{
-			OperatorIC_RT kernel(rhoS);
-
-#pragma omp for schedule(static)
-			for (int i=0; i<N; i++)
-				kernel(ary[i], *(FluidBlock*)ary[i].ptrBlock);
-		}
-
-		check("IC - end");
-	}
-
-	string getName()
-	{
-		return "IC_RT";
-	}
-};
-
 class OperatorFadeOut : public GenericOperator
 {
-private:
+ private:
 	const int info[2];
 	const Real extent[2];
 	const int buffer;
@@ -104,7 +109,7 @@ private:
 		}
 	}
 
-public:
+ public:
 	OperatorFadeOut(const Real info[2], const int buffer, const Real extent[2])
 	: info{info[0],info[1]}, extent{extent[0],extent[1]}, buffer(buffer) {}
 
@@ -131,11 +136,11 @@ public:
 
 class CoordinatorFadeOut : public GenericCoordinator
 {
-protected:
+ protected:
 	const int buffer;
 	const Real *uBody, *vBody;
 
-public:
+ public:
     CoordinatorFadeOut(Real * uBody, Real * vBody, FluidGridMPI * grid, const int _buffer=8)
 	: GenericCoordinator(grid), buffer(_buffer), uBody(uBody), vBody(vBody)
 	{ }
