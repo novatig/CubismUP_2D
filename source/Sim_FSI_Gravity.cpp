@@ -37,7 +37,7 @@ void Sim_FSI_Gravity::_diagnostics()
 	double volume = 0;
 	const double dh = vInfo[0].h_gridpoint;
 
-#pragma omp parallel for schedule(static) reduction(+:drag) reduction(+:volS) reduction(+:volF) reduction(max:pMax) reduction (min:pMin) reduction(+:centerMassX) reduction(+:centerMassY) reduction(+:centroidX) reduction(+:centroidY) reduction(+:mass) reduction(+:volume)
+#pragma omp parallel for schedule(static) reduction(+:drag,volS,volF,centerMassX,centerMassY,centroidX,centroidY,mass,volume) reduction(max:pMax) reduction (min:pMin)
 	for(int i=0; i<vInfo.size(); i++)
 	{
 		BlockInfo info = vInfo[i];
@@ -103,8 +103,8 @@ void Sim_FSI_Gravity::_diagnostics()
 	stringstream ss;
 	ss << path2file << "_diagnostics.dat";
 	ofstream myfile(ss.str(), fstream::app);
-	if (verbose)
-		cout << step << " " << time << " " << dt << " " << cD << " " << Re_uBody << " "
+	//if (verbose)
+	cout << step << " " << time << " " << dt << " " << cD << " " << Re_uBody << " "
 		<< centroid[0] << " " << centroid[1] << " " << labpos[0] << " " << labpos[1] << " "
 		<< uBody[0] << " " << uBody[1] << " " << shape->getOrientation() << " " << omegaBody
 		<< " " << com[0] << " " << com[1] << " " << centerMassX << " " << centerMassY << " "
@@ -310,7 +310,7 @@ void Sim_FSI_Gravity::simulate()
 		//	dt = min(dt,nextDumpTime-_nonDimensionalTime());
 		//if (endTime>0)
 		//	dt = min(dt,endTime-_nonDimensionalTime());
-		if (verbose)
+		//if (verbose)
 			cout << "time, dt (Fourier, CFL, body): "
 			<<time<<" "<<dt<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody<<endl;
 		profiler.pop_stop();
@@ -321,8 +321,7 @@ void Sim_FSI_Gravity::simulate()
 			for (int c=0; c<pipeline.size(); c++)
 			{
 				profiler.push_start(pipeline[c]->getName());
-				if (rank == 0 || pipeline[c]->getName()=="Pressure")
-					(*pipeline[c])(dt);
+				(*pipeline[c])(dt);
 				profiler.pop_stop();
 			}
 
@@ -339,7 +338,8 @@ void Sim_FSI_Gravity::simulate()
 			uOld = uBody[0];
 			double accT = (shape->getMinRhoS()-1)/(shape->getMinRhoS()+1) * gravity[1];
 			double accN = (shape->getMinRhoS()-1)/(shape->getMinRhoS()  ) * gravity[1];
-			if (verbose) cout << "Acceleration with added mass (measured, expected, no added mass)\t"
+			//if (verbose)
+			cout << "Acceleration with added mass (measured, expected, no added mass)\t"
 					<< accMy << "\t" << accT << "\t" << accN << endl;
 			stringstream ss;
 			ss << path2file << "_addedmass.dat";
@@ -366,21 +366,6 @@ void Sim_FSI_Gravity::simulate()
 		// check nondimensional time
 		if ((endTime>0 && _nonDimensionalTime() > endTime) || (nsteps!=0 && step>=nsteps))
 		{
-			profiler.push_start("Dump");
-			stringstream ss;
-			ss << path2file << "-Final.vti";
-			cout << ss.str() << endl;
-
-			dumper.Write(*grid, ss.str());
-
-			vector<BlockInfo> vInfo = grid->getBlocksInfo();
-			Layer vorticity(sizeX,sizeY,1);
-			processOMP<Lab, OperatorVorticity>(vorticity,vInfo,*grid);
-			stringstream sVort;
-			sVort << path2file << "Vorticity-Final.vti";
-			dumpLayer2VTK(step,sVort.str(),vorticity,1);
-			profiler.pop_stop();
-
 			profiler.printSummary();
 			exit(0);
 		}

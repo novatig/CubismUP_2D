@@ -183,7 +183,7 @@ template <> inline void FluidBlock::Read<StreamerGridPoint>(ifstream& input, Str
 
 struct StreamerSerialization
 {
-	static const int NCHANNELS = 9;
+	static const int NCHANNELS = 6;
 
 	FluidBlock& ref;
 
@@ -199,9 +199,9 @@ struct StreamerSerialization
 		output[3] = input.chi;
 		output[4] = input.p;
 		output[5] = input.pOld;
-		output[6] = input.tmpU;
-		output[7] = input.tmpV;
-		output[8] = input.tmp;
+		//output[6] = input.tmpU;
+		//output[7] = input.tmpV;
+		//output[8] = input.tmp;
 		//output[9] = input.divU;
 	}
 
@@ -215,9 +215,9 @@ struct StreamerSerialization
 		output.chi  = input[3];
 		output.p    = input[4];
 		output.pOld = input[5];
-		output.tmpU = input[6];
-		output.tmpV = input[7];
-		output.tmp  = input[8];
+		//output.tmpU = input[6];
+		//output.tmpV = input[7];
+		//output.tmp  = input[8];
 		//output.divU = input[9];
 	}
 
@@ -232,9 +232,9 @@ struct StreamerSerialization
 			case 3: *ovalue = input.chi; break;
 			case 4: *ovalue = input.p; break;
 			case 5: *ovalue = input.pOld; break;
-			case 6: *ovalue = input.tmpU; break;
-			case 7: *ovalue = input.tmpV; break;
-			case 8: *ovalue = input.tmp; break;
+			//case 6: *ovalue = input.tmpU; break;
+			//case 7: *ovalue = input.tmpV; break;
+			//case 8: *ovalue = input.tmp; break;
 			//case 9: *ovalue = input.divU; break;
 			default: throw std::invalid_argument("unknown field!"); break;
 		}
@@ -251,9 +251,9 @@ struct StreamerSerialization
 			case 3:  output.chi  = ivalue; break;
 			case 4:  output.p    = ivalue; break;
 			case 5:  output.pOld = ivalue; break;
-			case 6:  output.tmpU = ivalue; break;
-			case 7:  output.tmpV = ivalue; break;
-			case 8:  output.tmp  = ivalue; break;
+			//case 6:  output.tmpU = ivalue; break;
+			//case 7:  output.tmpV = ivalue; break;
+			//case 8:  output.tmp  = ivalue; break;
 			//case 9:  output.divU = ivalue; break;
 			default: throw std::invalid_argument("unknown field!"); break;
 		}

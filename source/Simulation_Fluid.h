@@ -114,6 +114,8 @@ protected:
 		{
 			nextDumpTime += dumpTime;
 
+			vector<BlockInfo> vInfo = grid->getBlocksInfo();
+			processOMP<Lab, OperatorVorticityTmp>(0, vInfo,*grid);
 			stringstream ss;
 			ss << path2file << "-" << step << ".vti";
 			cout << ss.str() << endl;
