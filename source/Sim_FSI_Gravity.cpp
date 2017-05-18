@@ -209,7 +209,6 @@ Simulation_FSI(argc, argv), uBody{0,0}, omegaBody(0), gravity{0,-9.81},
 dtCFL(0), dtFourier(0), dtBody(0), re(0), nu(0), minRho(0), bSplit(false)
 {
 
-	if (rank==0)
 	{
 		cout << "====================================================================================================================\n";
 		cout << "\t\t\tFlow past a falling cylinder\n";
@@ -262,13 +261,12 @@ void Sim_FSI_Gravity::init()
 	pipeline.push_back(new CoordinatorDiffusion<Lab>(nu, &uBody[0], &uBody[1], &dragV, grid));
 	pipeline.push_back(new CoordinatorGravity(gravity, grid));
 	pipeline.push_back(new CoordinatorPenalization(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid));
-	pipeline.push_back(new CoordinatorPressure<Lab>(minRho, gravity, &uBody[0], &uBody[1], &dragP[0], &dragP[1], &step, bSplit, grid, rank, nprocs));
+	pipeline.push_back(new CoordinatorPressure<Lab>(minRho, gravity, &uBody[0], &uBody[1], &dragP[0], &dragP[1], &step, bSplit, grid, 0, nprocs));
 	pipeline.push_back(new CoordinatorBodyVelocities(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid));
 	#ifdef _MOVING_FRAME_
 	pipeline.push_back(new CoordinatorFadeOut(&uBody[0], &uBody[1], grid));
 	#endif
 
-	if (rank==0)
 	{
 		cout << "Coordinator/Operator ordering:\n";
 		for (int c=0; c<pipeline.size(); c++)

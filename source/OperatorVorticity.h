@@ -18,7 +18,7 @@
 class OperatorVorticityTmp : public GenericLabOperator
 {
 public:
-	OperatorVorticityTmp()
+	OperatorVorticityTmp(const double dt)
 	{
 		stencil_start[0] = -1;
 		stencil_start[1] = -1;

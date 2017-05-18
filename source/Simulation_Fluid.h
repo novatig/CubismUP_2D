@@ -66,7 +66,6 @@ protected:
 	virtual void _dump(double & nextDumpTime)
 	{
 #ifndef NDEBUG
-		if (rank==0)
 		{
 			vector<BlockInfo> vInfo = grid->getBlocksInfo();
 			const int N = vInfo.size();
@@ -109,15 +108,17 @@ protected:
 		const int sizeX = bpdx * FluidBlock::sizeX;
 		const int sizeY = bpdy * FluidBlock::sizeY;
 		vector<BlockInfo> vInfo = grid->getBlocksInfo();
-
-		if(rank==0 && (dumpFreq>0 && step % dumpFreq == 0) || (dumpTime>0 && nextDumpTime>_nonDimensionalTime()))
+                printf("Dumping? %f %f %f\n", dumpTime, nextDumpTime, _nonDimensionalTime());
+		if((dumpFreq>0 && step % dumpFreq == 0) || (dumpTime>0. && nextDumpTime>_nonDimensionalTime()))
 		{
 			nextDumpTime += dumpTime;
 
 			vector<BlockInfo> vInfo = grid->getBlocksInfo();
 			processOMP<Lab, OperatorVorticityTmp>(0, vInfo,*grid);
 			stringstream ss;
-			ss << path2file << "-" << step << ".vti";
+                        ss << path2file << "avemaria_";
+                        ss << std::setfill('0') << std::setw(7) << step;
+                        ss << ".vti";
 			cout << ss.str() << endl;
 
 			dumper.Write(*grid, ss.str());
@@ -196,7 +197,6 @@ protected:
 
 	void _serialize()
 	{
-		if (rank==0)
 		{
 			stringstream ss;
 			ss << path4serialization << "Serialized-" << bPing << ".dat";
@@ -247,7 +247,6 @@ protected:
 		grid = new FluidGrid(bpdx,bpdy,1);
 		assert(grid != NULL);
 
-		if (rank==0)
 		{
 			stringstream serializedGrid;
 			serializedGrid << "SerializedGrid-" << bPing << ".grid";
@@ -276,7 +275,6 @@ public:
 	virtual void init()
 	{
 		bRestart = parser("-restart").asBool(false);
-		if (rank==0)
 			cout << "bRestart is " << bRestart << endl;
 
 		if (!bRestart)
@@ -306,7 +304,6 @@ public:
 		}
 		else
 		{
-			if (rank==0)
 				cout << "Deserializing...";
 
 			parser.set_strict_mode();
@@ -318,13 +315,11 @@ public:
 			nsteps = parser("-nsteps").asInt(nsteps);
 			endTime = parser("tend").asDouble(endTime);
 
-			if (rank==0)
 			{
 				cout << " done - parameters:\n";
 				_outputSettings(cout);
 			}
 
-			if (rank==0)
 			{
 				double d = _nonDimensionalTime();
 				_dump(d);
