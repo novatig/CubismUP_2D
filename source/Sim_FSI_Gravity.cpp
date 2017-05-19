@@ -26,7 +26,7 @@ void Sim_FSI_Gravity::_diagnostics()
 	double drag=0, pMin=10, pMax=0, mass=0, volume=0, volS=0, volF=0;
 	const double dh = vInfo[0].h_gridpoint;
 
-	#pragma omp parallel for schedule(static) reduction(+:drag,volS,volF,centerMassX,centerMassY,centroidX,centroidY,mass,volume) reduction(max:pMax) reduction (min:pMin)
+	#pragma omp parallel for schedule(static) reduction(+:forcex,focey,volS,volF,centerMassX,centerMassY,centroidX,centroidY,mass,volume) reduction(max:pMax) reduction (min:pMin)
 	for(int i=0; i<vInfo.size(); i++)
 	{
 		BlockInfo info = vInfo[i];
@@ -43,32 +43,29 @@ void Sim_FSI_Gravity::_diagnostics()
 			centerMassY += p[1] * rhochi;
 			centroidX += p[0] * chi;
 			centroidY += p[1] * chi;
+			forcex += (b(ix,iy).u-uBody[0]) * b(ix,iy).chi;
+			forcey += (b(ix,iy).v-uBody[1]) * b(ix,iy).chi;
 			mass += rhochi;
 			volume += chi;
 
-				pMin = min(pMin,(double)b(ix,iy).p);
-				pMax = max(pMax,(double)b(ix,iy).p);
+			pMin = min(pMin,(double)b(ix,iy).p);
+			pMax = max(pMax,(double)b(ix,iy).p);
 
-				if (b(ix,iy).chi>0)
-				{
-					drag += (b(ix,iy).v-uBody[1]) * b(ix,iy).chi; // this depends on the direction of movement - here vertical!
-					volS += b(ix,iy).chi;
-					volF += (1-b(ix,iy).chi);
-				}
-
-				if (std::isnan(b(ix,iy).u) ||
-					std::isnan(b(ix,iy).v) ||
-					std::isnan(b(ix,iy).rho) ||
-					std::isnan(b(ix,iy).chi) ||
-					std::isnan(b(ix,iy).p))
-				{
-					cout << "NaN Error - Aborting now!\n";
-					abort();
-				}
+			if (b(ix,iy).chi>0) {
+				volS += b(ix,iy).chi;
+				volF += (1-b(ix,iy).chi);
 			}
+			if (std::isnan(b(ix,iy).u) || std::isnan(b(ix,iy).v) ||
+				std::isnan(b(ix,iy).rho) || std::isnan(b(ix,iy).chi) ||
+				std::isnan(b(ix,iy).p)) {
+				cout << "NaN Error - Aborting now!\n";
+				abort();
+			}
+		}
 	}
 
-	drag *= dh*dh*lambda;
+	forcex *= dh*dh*lambda;
+	forcey *= dh*dh*lambda;
 	volS *= dh*dh;
 	volF *= dh*dh;
 
@@ -76,33 +73,40 @@ void Sim_FSI_Gravity::_diagnostics()
 	centerMassY /= mass;
 	centroidX /= volume;
 	centroidY /= volume;
-	const double rhoSAvg = mass/volume;
-
-	double cD = 2*drag/(uBody[1]*uBody[1]*shape->getCharLength());
-	cD = abs(uBody[1])>0 ? cD : 1e10;
-	const Real Re_uBody = shape->getCharLength()*sqrt(uBody[0]*uBody[0]+uBody[1]*uBody[1])/nu;
-	Real centroid[2], com[2], labpos[2];
+	const Real rhoSAvg = mass/volume, length = shape->getCharLength();
+	const Real speed = sqrt(uBody[0]*uBody[0] + uBody[1]*uBody[1]);
+	const Real cDx = 2*forcex/(speed*speed*length + 2.2e-16);
+	const Real cDy = 2*forcey/(speed*speed*length + 2.2e-16);
+	const Real Re_uBody = shape->getCharLength()*speed/nu;
+	const Real theta = shape->getOrientation();
+	Real CO[2], CM[2], labpos[2];
 	shape->getLabPosition(labpos);
-	shape->getCentroid(centroid);
-	shape->getCenterOfMass(com);
+	shape->getCentroid(CO);
+	shape->getCenterOfMass(CM);
 
-    Real dragPD = (dragP[1]+dragV)*dh*dh;
-    Real cD_PD = 2*dragPD/(uBody[1]*uBody[1]*shape->getCharLength());
+  //Real dragPD = (dragP[1]+dragV)*dh*dh;
+  const Real cPx = 2*dragP[0]/(speed*speed*length + 2.2e-16);
+  const Real cPy = 2*dragP[1]/(speed*speed*length + 2.2e-16);
 
 	stringstream ss;
 	ss << path2file << "_diagnostics.dat";
 	ofstream myfile(ss.str(), fstream::app);
-	//if (verbose)
-	cout << step << " " << time << " " << dt << " " << cD << " " << Re_uBody << " "
-		<< centroid[0] << " " << centroid[1] << " " << labpos[0] << " " << labpos[1] << " "
-		<< uBody[0] << " " << uBody[1] << " " << shape->getOrientation() << " " << omegaBody
-		<< " " << com[0] << " " << com[1] << " " << centerMassX << " " << centerMassY << " "
-		<< centroidX << " " << centroidY << " " << rhoSAvg << " " << cD_PD << endl;
-	myfile << step << " " << time << " " << dt << " " << cD << " " << Re_uBody << " "
-		<< centroid[0] << " " << centroid[1] << " " << labpos[0] << " " << labpos[1] << " "
-		<< uBody[0] << " " << uBody[1] << " " << shape->getOrientation() << " " << omegaBody
-		<< " " << com[0] << " " << com[1] << " " << centerMassX << " " << centerMassY << " "
-		<< centroidX << " " << centroidY << " " << rhoSAvg << " " << cD_PD << endl;
+	if (!step)
+	myfile<<"step time dt CO[0] CO[1] CM[0] CM[1] centroidX centroidY "
+	 				"centerMassX centerMassY labpos[0] labpos[1] theta uBody[0] uBody[1] "
+					"omegaBody Re_uBody cDx cDy cPx cPy rhoSAvg"<<endl;
+
+	cout<<step<<" "<<time<<" "<<dt<<" "<<CO[0]<<" "<<CO[1]<<" "<<CM[0]<<" "<<CM[1]<<" "
+			<<centroidX<<" "<<centroidY<<" "<<centerMassX<<" "<<centerMassY<<" "<<labpos[0]
+			<<" "<<labpos[1]<<" "<<theta<<" "<<uBody[0]<<" "<<uBody[1]<<" "<<omegaBody<<" "
+			<<Re_uBody<<" "<<cDx<<" "<<cDy<<" "<<cPx<<" "<<cPy<<" "<<rhoSAvg<<endl;
+
+	myfile<<step<<" "<<time<<" "<<dt<<" "<<CO[0]<<" "<<CO[1]<<" "<<CM[0]<<" "<<CM[1]<<" "
+				<<centroidX<<" "<<centroidY<<" "<<centerMassX<<" "<<centerMassY<<" "<<labpos[0]
+				<<" "<<labpos[1]<<" "<<theta<<" "<<uBody[0]<<" "<<uBody[1]<<" "<<omegaBody<<" "
+				<<Re_uBody<<" "<<cDx<<" "<<cDy<<" "<<cPx<<" "<<cPy<<" "<<rhoSAvg<<endl;
+
+	myfile.close();
 }
 
 void Sim_FSI_Gravity::_dumpSettings(ostream& outStream)
@@ -167,8 +171,7 @@ void Sim_FSI_Gravity::_inputSettings(istream& inStream)
 	string variableName;
 
 	inStream >> variableName;
-	if (variableName != "Gravity_FSI")
-	{
+	if (variableName != "Gravity_FSI") {
 		cout << "Error in deserialization - Simulation_Gravity_FSI\n";
 		abort();
 	}
@@ -247,7 +250,7 @@ void Sim_FSI_Gravity::init()
 	pipeline.push_back(new CoordinatorDiffusion<Lab>(nu, &uBody[0], &uBody[1], &dragV, grid));
 	pipeline.push_back(new CoordinatorGravity(gravity, grid));
 	pipeline.push_back(new CoordinatorPenalization(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid));
-	pipeline.push_back(new CoordinatorPressure<Lab>(minRho, gravity, &uBody[0], &uBody[1], &dragP[0], &dragP[1], &step, grid, 0, nprocs));
+	pipeline.push_back(new CoordinatorPressure<Lab>(minRho, gravity, &uBody[0], &uBody[1], &dragP[0], &dragP[1], &step, grid));
 	pipeline.push_back(new CoordinatorBodyVelocities(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid));
 	//#ifdef _MOVING_FRAME_
 	pipeline.push_back(new CoordinatorFadeOut(&uBody[0], &uBody[1], uinfx, uinfy, grid));
@@ -308,15 +311,12 @@ void Sim_FSI_Gravity::simulate()
 			profiler.push_start(pipeline[c]->getName());
 			(*pipeline[c])(dt);
 			profiler.pop_stop();
-
-
 			stringstream ss;
       ss << path2file << "avemaria_" << pipeline[c]->getName() << "_";
       ss << std::setfill('0') << std::setw(7) << step;
       ss  << ".vti";
-//			cout << ss.str() << endl;
-//			_dump(ss);
-
+			//			cout << ss.str() << endl;
+			//			_dump(ss);
 		}
 
 		time += dt;
@@ -326,19 +326,19 @@ void Sim_FSI_Gravity::simulate()
 		{
 			// this still needs to be corrected to the frame of reference!
 			// this test only works for constant density disks as it is written now
-			double accMy = (uBody[1]-vOld)/dt;
-			double accMx = (uBody[0]-uOld)/dt;
+			const double accMy = (uBody[1]-vOld)/dt;
+			const double accMx = (uBody[0]-uOld)/dt;
 			vOld = uBody[1];
 			uOld = uBody[0];
-			double accT = (shape->getMinRhoS()-1)/(shape->getMinRhoS()+1) * gravity[1];
-			double accN = (shape->getMinRhoS()-1)/(shape->getMinRhoS()  ) * gravity[1];
+			const double accT = (shape->getMinRhoS()-1)/(shape->getMinRhoS()+1)*gravity[1];
+			const double accN = (shape->getMinRhoS()-1)/(shape->getMinRhoS()  )*gravity[1];
 			//if (verbose)
-			cout << "Acceleration with added mass (measured, expected, no added mass)\t"
-					<< accMy << "\t" << accT << "\t" << accN << endl;
+			cout<<"Acceleration with added mass (measured x,y, expected, no added mass)\t"
+					<<accMx<<"\t"<<accMy<<"\t"<<accT<<"\t"<<accN<<endl;
 			stringstream ss;
-			ss << path2file << "_addedmass.dat";
+			ss<<path2file<<"_addedmass.dat";
 			ofstream myfile(ss.str(), fstream::app);
-			myfile << step << " " << time << " " << accMy << " " << accT << " " << accN << endl;
+			myfile<<step<<" "<<time<<" "<<accMx<<" "<<accMy<<" "<<accT<<" "<<accN<<endl;
 		}
 
 		// compute diagnostics

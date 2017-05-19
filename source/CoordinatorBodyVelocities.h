@@ -12,9 +12,11 @@
 class CoordinatorBodyVelocities : public GenericCoordinator
 {
 protected:
-	Real *uBody, *vBody, *omegaBody;
-	Real *lambda;
-	Shape * shape;
+	Real* const uBody;
+	Real* const vBody;
+	Real* const omegaBody;
+	const Real* const lambda;
+	Shape* const shape;
 
 public:
 	CoordinatorBodyVelocities(Real * uBody, Real * vBody, Real * omegaBody, Shape * shape, Real * lambda, FluidGrid * grid) :
@@ -52,7 +54,7 @@ public:
 					info.pos(p, ix, iy);
 					p[0] -= centerOfMass[0];
 					p[1] -= centerOfMass[1];
-					double rhochi = b(ix,iy).rho * b(ix,iy).chi;
+					const double rhochi = b(ix,iy).rho * b(ix,iy).chi;
 					mass += rhochi;
 					u += b(ix,iy).u * rhochi;
 					v += b(ix,iy).v * rhochi;

@@ -16,7 +16,7 @@ class OperatorPenalization : public GenericOperator
 {
  private:
   const double dt;
-	const Real uBody[2],omegaBody,centerOfMass[2];
+	const Real uBody[2], omegaBody, centerOfMass[2];
 	const double lambda;
 
  public:
@@ -55,12 +55,15 @@ class OperatorPenalization : public GenericOperator
 class CoordinatorPenalization : public GenericCoordinator
 {
  protected:
-	Real *uBody, *vBody, *omegaBody;
-	Shape * shape;
-	Real * lambda;
+
+  const Real* const uBody;
+  const Real* const vBody;
+  const Real* const omegaBody;
+  const Real* const lambda;
+	const Shape* const shape;
 
  public:
-	CoordinatorPenalization(Real * uBody, Real * vBody, Real * omegaBody, Shape * shape, Real * lambda, FluidGrid * grid) :
+	CoordinatorPenalization(Real*uBody, Real*vBody, Real*omegaBody, Shape*shape, Real*lambda, FluidGrid*grid) :
 		GenericCoordinator(grid), uBody(uBody), vBody(vBody), omegaBody(omegaBody), shape(shape), lambda(lambda)
 	{
 	}

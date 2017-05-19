@@ -117,9 +117,9 @@ protected:
 			//vector<BlockInfo> vInfo = grid->getBlocksInfo();
 			//processOMP<Lab, OperatorVorticityTmp>(0, vInfo,*grid);
 			stringstream ss;
-                        ss << path2file << "avemaria_";
-                        ss << std::setfill('0') << std::setw(7) << step;
-                        ss << ".vti";
+      ss << path2file << "avemaria_";
+      ss << std::setfill('0') << std::setw(7) << step;
+      ss << ".vti";
 			cout << ss.str() << endl;
 
 			dumper.Write(*grid, ss.str());

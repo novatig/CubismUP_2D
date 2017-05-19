@@ -15,28 +15,23 @@
 class OperatorAdvectionFD : public GenericLabOperator
 {
  private:
-	double dt;
-  const Real *uBody, *vBody;
+	const double dt;
+  const	Real* const uBody;
+  const	Real* const vBody;
 
  public:
-	OperatorAdvectionFD(double dt, Real * uBody, Real * vBody)
+	OperatorAdvectionFD(double dt, const Real*const uBody, const Real*const vBody)
 	: dt(dt), uBody(uBody), vBody(vBody)
 	{
-		stencil_start[0] = -1;
-		stencil_start[1] = -1;
-		stencil_start[2] = 0;
-
-		stencil_end[0] = 2;
-		stencil_end[1] = 2;
-		stencil_end[2] = 1;
+		stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
+		stencil_end[0] = 2; stencil_end[1] = 2; stencil_end[2] = 1;
 	}
 	~OperatorAdvectionFD() {}
 
 	template <typename Lab, typename BlockType>
 	void operator()(Lab & lab, const BlockInfo& info, BlockType& o) const
 	{
-		const double dh = info.h_gridpoint;
-		const double fac =  -dt/(2.*info.h_gridpoint);
+		const double dh = info.h_gridpoint, fac = -.5*dt/info.h_gridpoint;
 
 		for (int iy=0; iy<FluidBlock::sizeY; ++iy)
 			for (int ix=0; ix<FluidBlock::sizeX; ++ix)
@@ -54,8 +49,8 @@ class OperatorAdvectionFD : public GenericLabOperator
 				const Real dvdx = lab(ix+1,iy).v - lab(ix-1,iy).v;
 				const Real dvdy = lab(ix,iy+1).v - lab(ix,iy-1).v;
 
-				o(ix,iy).tmpU = lab(ix,iy).u   + fac*(u * dudx + v * dudy);
-				o(ix,iy).tmpV = lab(ix,iy).v   + fac*(u * dvdx + v * dvdy);
+				o(ix,iy).tmpU = lab(ix,iy).u + fac*(u * dudx + v * dudy);
+				o(ix,iy).tmpV = lab(ix,iy).v + fac*(u * dvdx + v * dvdy);
 
 				#ifdef _MULTIPHASE_
 				const Real drdx = lab(ix+1,iy).rho - lab(ix-1,iy).rho;
@@ -143,10 +138,11 @@ template <typename Lab>
 class CoordinatorAdvection : public GenericCoordinator
 {
  protected:
-    Real *uBody, *vBody;
- #ifdef _MULTIPHASE_
-	Real rhoS;
- #endif
+   const Real* const uBody;
+   const Real* const vBody;
+    #ifdef _MULTIPHASE_
+    const Real rhoS;
+    #endif
 
  public:
  #ifndef _MULTIPHASE_
@@ -164,6 +160,7 @@ class CoordinatorAdvection : public GenericCoordinator
 		check("advection - start");
 		const int N = vInfo.size();
 
+    #ifndef NDEBUG
     #pragma omp parallel for schedule(static)
 		for(int i=0; i<N; i++)
 		{
@@ -180,7 +177,7 @@ class CoordinatorAdvection : public GenericCoordinator
           #endif // _MULTIPHASE_
 				}
 		}
-
+    #endif
 		////////////////////////////////////////////////////////////////////////////
 
 
@@ -198,7 +195,7 @@ class CoordinatorAdvection : public GenericCoordinator
 
       #pragma omp for schedule(static)
 			for (int i=0; i<N; i++)
-			{
+      {
         BlockInfo info = vInfo[i];
 				mylab.load(info, 0);
 				kernel(mylab, info, *(FluidBlock*)info.ptrBlock);
@@ -214,13 +211,13 @@ class CoordinatorAdvection : public GenericCoordinator
 
     #pragma omp parallel for schedule(static)
 		for(int i=0; i<N; i++)
-		{
+    {
 			BlockInfo info = vInfo[i];
 			FluidBlock& b = *(FluidBlock*)info.ptrBlock;
 
 			for(int iy=0; iy<FluidBlock::sizeY; ++iy)
 				for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-				{
+        {
 					b(ix,iy).u = b(ix,iy).tmpU;
 					b(ix,iy).v = b(ix,iy).tmpV;
           #ifdef _MULTIPHASE_ // threshold density

@@ -91,17 +91,18 @@ class OperatorFadeOut : public GenericOperator
 
    inline bool _is_touching(const BlockInfo& i, const Real h) const
 	{
-		Real max_pos[3],min_pos[3];
 		const int ax = info[0];
 		const int dir = info[1];
 		if(dir>0) //moving up
 		{
-			i.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1, FluidBlock::sizeZ-1);
+  		Real max_pos[2];
+			i.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1);
 			return max_pos[ax] > extent[ax]-(2+buffer)*h;
 		}
 		else //moving down
 		{
-			i.pos(min_pos, 0, 0, 0);
+  		Real min_pos[2];
+			i.pos(min_pos, 0, 0);
 			return min_pos[ax] < 0 +(2+buffer)*h;
 		}
 	}
@@ -123,7 +124,7 @@ class OperatorFadeOut : public GenericOperator
 			Real p[2];
 			i.pos(p, ix, iy);
 			const Real dist = dir>0 ? p[ax]-extent[ax]+(2+buffer)*h
-				                			: 0.0  -p[0]      +(2+buffer)*h;
+				                			: 0.0  -p[ax]     +(2+buffer)*h;
 			const Real fade = max(Real(0), cos(.5*M_PI*max(0.,dist)*iWidth) );
 			b(ix,iy).u = b(ix,iy).u*fade + (1-fade)*uinfx;
 			b(ix,iy).v = b(ix,iy).v*fade + (1-fade)*uinfy;
@@ -140,7 +141,7 @@ class CoordinatorFadeOut : public GenericCoordinator
 	const Real * const vBody;
 
  public:
-    CoordinatorFadeOut(Real* const uBody, Real* const vBody, const Real uinfx, const Real uinfy, FluidGrid * grid, const int _buffer=8)
+  CoordinatorFadeOut(Real* uBody, Real* vBody, Real uinfx, Real uinfy, FluidGrid* grid, int _buffer=8)
 	: GenericCoordinator(grid), buffer(_buffer), uBody(uBody), vBody(vBody), uinfx(uinfx), uinfy(uinfy)
 	{ }
 
@@ -150,8 +151,8 @@ class CoordinatorFadeOut : public GenericCoordinator
 
 		const int N = vInfo.size();
 		const Real ext[2] = {
-		        vInfo[0].h_gridpoint * grid->getBlocksPerDimension(0) * FluidBlock::sizeX,
-			vInfo[0].h_gridpoint * grid->getBlocksPerDimension(1) * FluidBlock::sizeY
+      vInfo[0].h_gridpoint * grid->getBlocksPerDimension(0) * FluidBlock::sizeX,
+      vInfo[0].h_gridpoint * grid->getBlocksPerDimension(1) * FluidBlock::sizeY
 		};
 		const int movey = fabs(uinfy-*vBody) > fabs(uinfx-*uBody);
 		const int dirs[2] = {*uBody-uinfx>0 ? 1 : -1, *vBody-uinfy>0 ? 1 : -1};
@@ -161,10 +162,8 @@ class CoordinatorFadeOut : public GenericCoordinator
 		{
 			OperatorFadeOut kernel(info, buffer, ext, uinfx, uinfy);
 			#pragma omp for schedule(static)
-			for (int i=0; i<N; i++) {
-				FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-				kernel(vInfo[i], b);
-			}
+			for (int i=0; i<N; i++)
+				kernel(vInfo[i], *(FluidBlock*)vInfo[i].ptrBlock);
 		}
 
 		check((string)"FadeOut - end");

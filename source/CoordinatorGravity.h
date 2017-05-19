@@ -39,7 +39,7 @@ class OperatorGravity : public GenericOperator
 class CoordinatorGravity : public GenericCoordinator
 {
  protected:
-	Real gravity[2];
+	const Real gravity[2];
 
  public:
 	CoordinatorGravity(Real gravity[2], FluidGrid * grid) :

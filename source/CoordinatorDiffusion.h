@@ -14,7 +14,7 @@
 class OperatorViscousDrag : public GenericLabOperator
 {
  private:
-	double dt;
+	const double dt;
 	Real viscousDrag;
 
  public:
@@ -91,8 +91,9 @@ class CoordinatorDiffusion : public GenericCoordinator
 {
  protected:
   const double coeff;
-  Real *uBody, *vBody;
-  Real *viscousDrag;
+  const	Real* const uBody;
+  const	Real* const vBody;
+  Real* const viscousDrag;
 
 	inline void reset()
 	{
@@ -204,7 +205,7 @@ class CoordinatorDiffusion : public GenericCoordinator
 		reset();
 		diffuse(dt,0);
 		update();
-    drag();
+    //drag();
 
 		check("diffusion - end");
 	}

@@ -16,9 +16,8 @@
 class OperatorDivergenceSplit : public GenericLabOperator
 {
  private:
-	double dt;
-	const double rho0;
-	int step;
+	const double dt, rho0;
+	const int step;
 
 	inline Real mean(const Real a, const Real b) const {return .5 * (a + b);}
   //harmonic mean: (why?)
@@ -27,12 +26,8 @@ class OperatorDivergenceSplit : public GenericLabOperator
  public:
 	OperatorDivergenceSplit(double dt, double rho0, int step) : rho0(rho0), dt(dt), step(step)
 	{
-		stencil_start[0] = -1;
-		stencil_start[1] = -1;
-		stencil_start[2] = 0;
-		stencil_end[0] = 2;
-		stencil_end[1] = 2;
-		stencil_end[2] = 1;
+		stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
+		stencil_end[0] = 2; stencil_end[1] = 2; stencil_end[2] = 1;
 	}
 
 	~OperatorDivergenceSplit() {}
@@ -74,19 +69,14 @@ class OperatorDivergenceSplit : public GenericLabOperator
 class OperatorGradPSplit : public GenericLabOperator
 {
  private:
-	double rho0;
-	double dt;
-	int step;
+	const double rho0, dt;
+	const int step;
 
  public:
 	OperatorGradPSplit(double dt, double rho0, int step) : rho0(rho0), dt(dt), step(step)
 	{
-		stencil_start[0] = -1;
-		stencil_start[1] = -1;
-		stencil_start[2] = 0;
-		stencil_end[0] = 2;
-		stencil_end[1] = 2;
-		stencil_end[2] = 1;
+		stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
+		stencil_end[0] = 2; stencil_end[1] = 2; stencil_end[2] = 1;
 	}
 
 	~OperatorGradPSplit() {}
@@ -125,7 +115,7 @@ class OperatorGradPSplit : public GenericLabOperator
 class OperatorPressureDrag : public GenericLabOperator
 {
  private:
-	double dt;
+	const double dt;
 	Real pressureDrag[2];
 
  public:
@@ -168,10 +158,11 @@ class CoordinatorPressure : public GenericCoordinator
  protected:
 	const double minRho;
 	const Real gravity[2];
-	int * const step;
+	const int* const step;
   const Real *const uBody;
 	const Real *const vBody;
-  Real *pressureDragX, *pressureDragY;
+  Real* const pressureDragX;
+  Real* const pressureDragY;
 
 	#ifndef _MIXED_
 	#ifndef _BOX_
@@ -273,7 +264,7 @@ class CoordinatorPressure : public GenericCoordinator
 			#endif
 			mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, false);
 
-			#pragma omp for schedule(static) reduction(+:tmpDragX) reduction(+:tmpDragY)
+			#pragma omp for schedule(static) reduction(+:tmpDragX,tmpDragY)
 			for (int i=0; i<N; i++)
 			{
 				BlockInfo info = vInfo[i];
@@ -290,7 +281,7 @@ class CoordinatorPressure : public GenericCoordinator
 public:
 	CoordinatorPressure(const double minRho, const Real gravity[2], Real * uBody,
 			Real * vBody, Real * pressureDragX, Real * pressureDragY, int * step,
-			FluidGrid * grid, const int rank, const int nprocs)
+			FluidGrid * grid)
 : GenericCoordinator(grid), minRho(minRho), step(step),  uBody(uBody), vBody(vBody),
 	pressureDragX(pressureDragX), pressureDragY(pressureDragY), gravity{gravity[0],gravity[1]},
 	pressureSolver(NTHREADS,*grid)

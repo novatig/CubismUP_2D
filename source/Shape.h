@@ -16,11 +16,11 @@
 
 class Shape
 {
-public:
+ public:
 	Real M = 0;
 	Real J = 0;
 	Real labCenterOfMass[2] = {0,0};
-protected:
+ protected:
 	// general quantities
 	Real centerOfMass[2], orientation;
 	Real center[2]; // for single density, this corresponds to centerOfMass
@@ -65,10 +65,10 @@ public:
 	void updatePosition(Real u[2], Real omega, Real dt)
 	{
 		// update centerOfMass - this is the reference point from which we compute the center
-#ifndef _MOVING_FRAME_
+		#ifndef _MOVING_FRAME_
 		centerOfMass[0] += dt*u[0];
     centerOfMass[1] += dt*u[1];
-#endif
+		#endif
 
 		labCenterOfMass[0] += dt*u[0];
 		labCenterOfMass[1] += dt*u[1];
@@ -98,19 +98,19 @@ public:
 		center[1] = centerOfMass[1] + sin(orientation)*d_gm[0] + cos(orientation)*d_gm[1];
 	}
 
-	void getCentroid(Real centroid[2])
+	void getCentroid(Real centroid[2]) const
 	{
 		centroid[0] = center[0];
 		centroid[1] = center[1];
 	}
 
-	void getCenterOfMass(Real com[2])
+	void getCenterOfMass(Real com[2]) const
 	{
 		com[0] = centerOfMass[0];
 		com[1] = centerOfMass[1];
 	}
 
-	void getLabPosition(Real com[2])
+	void getLabPosition(Real com[2]) const
 	{
 		com[0] = labCenterOfMass[0];
 		com[1] = labCenterOfMass[1];
@@ -137,7 +137,7 @@ public:
 		return rho(p,h,mask);
 	}
 
-	virtual void outputSettings(ostream &outStream)
+	virtual void outputSettings(ostream &outStream) const
 	{
 		outStream << "centerX " << center[0] << endl;
 		outStream << "centerY " << center[1] << endl;
@@ -177,7 +177,7 @@ public:
 		return 2 * radius;
 	}
 
-	void outputSettings(ostream &outStream)
+	void outputSettings(ostream &outStream) const
 	{
 		outStream << "Disk\n";
 		outStream << "radius " << radius << endl;
@@ -188,11 +188,11 @@ public:
 
 class DiskVarDensity : public Shape
 {
-protected:
+ protected:
 	Real radius;
 	Real rhoS1, rhoS2;
 
-public:
+ public:
 	DiskVarDensity(Real center[2], const Real radius, const Real orientation, const Real rhoS1, const Real rhoS2, const Real mollChi, const Real mollRho, bool bPeriodic[2], Real domainSize[2]) : Shape(center, orientation, min(rhoS1,rhoS2), mollChi, mollRho, bPeriodic, domainSize), radius(radius), rhoS1(rhoS1), rhoS2(rhoS2)
 	{
 		d_gm[0] = 0;
@@ -261,7 +261,7 @@ public:
 
 class Ellipse : public Shape
 {
-protected:
+ protected:
 	// these quantities are defined in the local coordinates of the ellipse
 	Real semiAxis[2];
 
@@ -403,11 +403,11 @@ protected:
 		return distance;
 	}
 
-public:
+ public:
 	Ellipse(Real center[2], Real semiAxis[2], Real orientation, const Real rhoS, const Real mollChi, const Real mollRho, bool bPeriodic[2], Real domainSize[2]) : Shape(center, orientation, rhoS, mollChi, mollRho, bPeriodic, domainSize), semiAxis{semiAxis[0],semiAxis[1]} {}
 
 	Real chi(Real p[2], Real h) const
-    {
+  {
 		/*
 		// based on https://www.spaceroots.org/documents/distance/distance-to-ellipse.pdf
 		const int maxIter = 100;
@@ -554,7 +554,7 @@ public:
 		return 2 * semiAxis[1];
 	}
 
-	void outputSettings(ostream &outStream)
+	void outputSettings(ostream &outStream) const
 	{
 		outStream << "Ellipse\n";
 		outStream << "semiAxisX " << semiAxis[0] << endl;
@@ -567,7 +567,7 @@ public:
 
 class EllipseVarDensity : public Shape
 {
-protected:
+ protected:
 	// these quantities are defined in the local coordinates of the ellipse
 	Real semiAxis[2];
 	Real rhoS1, rhoS2;
@@ -710,7 +710,7 @@ protected:
 		return distance;
 	}
 
-public:
+ public:
 	EllipseVarDensity(Real center[2], Real semiAxis[2], Real orientation, const Real rhoS1, const Real rhoS2, const Real mollChi, const Real mollRho, bool bPeriodic[2], Real domainSize[2]) : Shape(center, orientation, min(rhoS1,rhoS2), mollChi, mollRho, bPeriodic, domainSize), semiAxis{semiAxis[0],semiAxis[1]}, rhoS1(rhoS1), rhoS2(rhoS2)
 	{
 		d_gm[0] = 0;
@@ -769,7 +769,7 @@ public:
 		return 2 * semiAxis[1];
 	}
 
-	void outputSettings(ostream &outStream)
+	void outputSettings(ostream &outStream) const
 	{
 		outStream << "Ellipse\n";
 		outStream << "semiAxisX " << semiAxis[0] << endl;
