@@ -290,7 +290,7 @@ class CoordinatorPressure : public GenericCoordinator
 public:
 	CoordinatorPressure(const double minRho, const Real gravity[2], Real * uBody,
 			Real * vBody, Real * pressureDragX, Real * pressureDragY, int * step,
-			const bool bSplit, FluidGrid * grid, const int rank, const int nprocs)
+			FluidGrid * grid, const int rank, const int nprocs)
 : GenericCoordinator(grid), minRho(minRho), step(step),  uBody(uBody), vBody(vBody),
 	pressureDragX(pressureDragX), pressureDragY(pressureDragY), gravity{gravity[0],gravity[1]},
 	pressureSolver(NTHREADS,*grid)

@@ -16,9 +16,6 @@ using namespace std;
 #include "Definitions.h"
 
 #include "Simulation_Fluid.h"
-#include "Sim_FSI_Fixed.h"
-#include "Sim_FSI_Moving.h"
-#include "Sim_FSI_Oscillating.h"
 #include "Sim_FSI_Gravity.h"
 //#include "Sim_RayleighTaylor.h"
 //#include "Sim_Bubble.h"

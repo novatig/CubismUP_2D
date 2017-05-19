@@ -13,8 +13,7 @@
 #define CubismUP_2D_Simulation_Fluid_h
 
 #include "Definitions.h"
-#include "ProcessOperatorsOMP.h"
-#include "OperatorVorticity.h"
+//#include "ProcessOperatorsOMP.h"
 #include "GenericCoordinator.h"
 #include "GenericOperator.h"
 
@@ -115,8 +114,8 @@ protected:
 		{
 			nextDumpTime += dumpTime;
 
-			vector<BlockInfo> vInfo = grid->getBlocksInfo();
-			processOMP<Lab, OperatorVorticityTmp>(0, vInfo,*grid);
+			//vector<BlockInfo> vInfo = grid->getBlocksInfo();
+			//processOMP<Lab, OperatorVorticityTmp>(0, vInfo,*grid);
 			stringstream ss;
                         ss << path2file << "avemaria_";
                         ss << std::setfill('0') << std::setw(7) << step;
@@ -124,7 +123,7 @@ protected:
 			cout << ss.str() << endl;
 
 			dumper.Write(*grid, ss.str());
-			_serialize();
+			//_serialize();
 		}
 	}
 
@@ -132,8 +131,8 @@ protected:
 	{
 		const int sizeX = bpdx * FluidBlock::sizeX;
 		const int sizeY = bpdy * FluidBlock::sizeY;
-		vector<BlockInfo> vInfo = grid->getBlocksInfo();
-		processOMP<Lab, OperatorVorticityTmp>(0, vInfo,*grid);
+		//vector<BlockInfo> vInfo = grid->getBlocksInfo();
+		//processOMP<Lab, OperatorVorticityTmp>(0, vInfo,*grid);
                 cout << fname.str() << endl;
 		dumper.Write(*grid, fname.str());
 		_serialize();

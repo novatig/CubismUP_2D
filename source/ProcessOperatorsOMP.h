@@ -11,6 +11,7 @@
 
 #include "Definitions.h"
 #include "Shape.h"
+#include "GenericOperator.h"
 
 template<typename Lab>
 double findMaxAOMP(vector<BlockInfo>& myInfo, FluidGrid & grid)
@@ -98,7 +99,7 @@ double findMaxUOMP(vector<BlockInfo>& myInfo, FluidGrid & grid)
 	}
 
 	return maxU;
-};
+}
 
 void computeForcesFromVorticity(vector<BlockInfo>& myInfo, FluidGrid & grid,
 	Real ub[2], Real oldAccVort[2], Real rhoS)

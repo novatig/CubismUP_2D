@@ -9,8 +9,6 @@
 #include "Sim_FSI_Gravity.h"
 
 #include "ProcessOperatorsOMP.h"
-#include "OperatorVorticity.h"
-
 #include "CoordinatorIC.h"
 #include "CoordinatorAdvection.h"
 #include "CoordinatorDiffusion.h"
@@ -249,7 +247,7 @@ void Sim_FSI_Gravity::init()
 	pipeline.push_back(new CoordinatorDiffusion<Lab>(nu, &uBody[0], &uBody[1], &dragV, grid));
 	pipeline.push_back(new CoordinatorGravity(gravity, grid));
 	pipeline.push_back(new CoordinatorPenalization(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid));
-	pipeline.push_back(new CoordinatorPressure<Lab>(minRho, gravity, &uBody[0], &uBody[1], &dragP[0], &dragP[1], &step, bSplit, grid, 0, nprocs));
+	pipeline.push_back(new CoordinatorPressure<Lab>(minRho, gravity, &uBody[0], &uBody[1], &dragP[0], &dragP[1], &step, grid, 0, nprocs));
 	pipeline.push_back(new CoordinatorBodyVelocities(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid));
 	//#ifdef _MOVING_FRAME_
 	pipeline.push_back(new CoordinatorFadeOut(&uBody[0], &uBody[1], uinfx, uinfy, grid));

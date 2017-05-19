@@ -139,8 +139,7 @@ LIBS += -L../tools/fpzip/lib -lfpzip
 BUILDDIR = .
 SRC_DIR = $(BUILDDIR)/../source/
 CUBISM_DIR = $(BUILDDIR)/../Cubism/
-OBJECTS = PoissonSolverScalarFFTW.o ProcessOperatorsOMP.o  Sim_FSI_Gravity.o Profiler.o main.o #Sim_Jet.o Sim_RayleighTaylor.o Sim_Bubble.o 
-OBJECTS_TEST = PoissonSolverScalarFFTW.o ProcessOperatorsOMP.o TestConditionNumber.o TestBoundaryConditions.o TestAddedMass.o TestPoiseuille.o TestShearLayer.o TestTravelingWave.o TestRotation.o TestTranslation.o TestPenalization.o TestGravity.o TestVarCoeffPoisson.o TestPressure.o TestAdvection.o TestDiffusion.o Profiler.o mainTest.o
+OBJECTS = PoissonSolverScalarFFTW.o Sim_FSI_Gravity.o Profiler.o main.o 
 
 VPATH := $(SRC_DIR):$(CUBISM_DIR)
 
