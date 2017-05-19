@@ -19,7 +19,7 @@ class OperatorGravity : public GenericOperator
 	const Real g[2];
 
  public:
-	OperatorGravity(Real g[2], double dt) : dt(dt), g{g[0],g[1]} {}
+	OperatorGravity(const Real g[2], double dt) : dt(dt), g{g[0],g[1]} {}
 	~OperatorGravity() {}
 
 	void operator()(const BlockInfo& info, FluidBlock& block) const

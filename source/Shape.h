@@ -62,7 +62,7 @@ public:
 	virtual Real getCharLength() const = 0;
 
 
-	void updatePosition(Real u[2], Real omega, Real dt)
+	void updatePosition(const Real u[2], Real omega, Real dt)
 	{
 		// update centerOfMass - this is the reference point from which we compute the center
 		#ifndef _MOVING_FRAME_
