@@ -67,13 +67,13 @@
 class Sim_FSI_Gravity : public Simulation_FSI
 {
 protected:
-	Real uBody[2], omegaBody;
-	double dtCFL, dtLCFL, dtFourier, dtBody;
-	double re, nu, uinfx, uinfy;
-	double minRho;
-	bool bSplit;
+	Real uBody[2] = {0,0};
+	Real omegaBody = 0;
+	double dtCFL=0, dtLCFL=0, dtFourier=0, dtBody=0;
+	double re=0, nu=0, uinfx=0, uinfy=0;
+	double minRho=0;
 
-	Real gravity[2];
+	Real gravity[2] = {0,-9.81};
 
 	void _diagnostics();
 	void _ic();

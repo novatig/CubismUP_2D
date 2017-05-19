@@ -196,15 +196,11 @@ void Sim_FSI_Gravity::_inputSettings(istream& inStream)
 }
 
 Sim_FSI_Gravity::Sim_FSI_Gravity(const int argc, const char ** argv) :
-Simulation_FSI(argc, argv), uBody{0,0}, omegaBody(0), gravity{0,-9.81},
-dtCFL(0), dtFourier(0), dtBody(0), re(0), nu(0), minRho(0), bSplit(false)
+Simulation_FSI(argc, argv)
 {
-
-	{
-		cout << "====================================================================================================================\n";
-		cout << "\t\t\tFlow past a falling cylinder\n";
-		cout << "====================================================================================================================\n";
-	}
+	cout << "=================================================================\n";
+	cout << "\t\tFlow past a falling obstacle\n";
+	cout << "=================================================================\n";
 }
 
 Sim_FSI_Gravity::~Sim_FSI_Gravity()
@@ -218,13 +214,12 @@ void Sim_FSI_Gravity::init()
 	if (!bRestart)
 	{
 		// simulation settings
-		//bSplit = parser("-split").asBool(false);
 		nu = parser("-nu").asDouble(1e-2);
 		minRho = min((Real)1.,shape->getMinRhoS());
 
 		gravity[1] = -parser("-g").asDouble(9.81);
-		uinfx = -parser("-uinfx").asDouble(0);
-		uinfy = -parser("-uinfy").asDouble(0);
+		uinfx = parser("-uinfx").asDouble(0);
+		uinfy = parser("-uinfy").asDouble(0);
 
 		const Real aspectRatio = (Real)bpdx/(Real)bpdy;
 		Real center[2] = {
@@ -260,11 +255,9 @@ void Sim_FSI_Gravity::init()
 	pipeline.push_back(new CoordinatorFadeOut(&uBody[0], &uBody[1], uinfx, uinfy, grid));
 	//#endif
 
-	{
-		cout << "Coordinator/Operator ordering:\n";
-		for (int c=0; c<pipeline.size(); c++)
-			cout << "\t" << pipeline[c]->getName() << endl;
-	}
+	cout << "Coordinator/Operator ordering:\n";
+	for (int c=0; c<pipeline.size(); c++)
+		cout << "\t" << pipeline[c]->getName() << endl;
 }
 
 void Sim_FSI_Gravity::simulate()
@@ -274,7 +267,7 @@ void Sim_FSI_Gravity::simulate()
 
 	double uOld = 0, vOld = 0;
 	double nextDumpTime = time;
-	double maxU = 0;
+	double maxU = uBody[0];
 	double maxA = 0;
 
 	while (true)
@@ -284,19 +277,21 @@ void Sim_FSI_Gravity::simulate()
 		// choose dt (CFL, Fourier)
 		profiler.push_start("DT");
 		maxU = findMaxUOMP(vInfo,*grid);
-		const Real maxMu = nu / min(shape->getMinRhoS(),(Real)1);
-		dtFourier = CFL*vInfo[0].h_gridpoint*vInfo[0].h_gridpoint / maxMu;
 
-		dtCFL  = maxU < 2.2e-16 ? 1 : CFL*vInfo[0].h_gridpoint/abs(maxU);
+		const Real maxMu = nu / min(shape->getMinRhoS(),(Real)1);
 		const Real maxUbody = max(abs(uBody[0]),abs(uBody[1]));
+
+		dtFourier = CFL*vInfo[0].h_gridpoint*vInfo[0].h_gridpoint / maxMu;
+		dtCFL  = maxU < 2.2e-16 ? 1 : CFL*vInfo[0].h_gridpoint/abs(maxU);
 		dtBody = maxUbody < 2.2e-16 ? 1 : CFL*vInfo[0].h_gridpoint/maxUbody;
 
 		assert(!std::isnan(maxU));
 		assert(!std::isnan(maxA));
 		assert(!std::isnan(uBody[0]));
 		assert(!std::isnan(uBody[1]));
+
 		dt = min(min(dtCFL,dtFourier),dtBody);
-                lambda = 10./dt;
+    lambda = 10./dt;
 
 		//if (dumpTime>0)
 		//	dt = min(dt,nextDumpTime-_nonDimensionalTime());
@@ -308,27 +303,27 @@ void Sim_FSI_Gravity::simulate()
 		profiler.pop_stop();
 
 
-		if (dt!=0)
+		assert(dt>2.2e-16);
+
+		for (int c=0; c<pipeline.size(); c++)
 		{
-			for (int c=0; c<pipeline.size(); c++)
-			{
-				profiler.push_start(pipeline[c]->getName());
-				(*pipeline[c])(dt);
-				profiler.pop_stop();
+			profiler.push_start(pipeline[c]->getName());
+			(*pipeline[c])(dt);
+			profiler.pop_stop();
 
 
-				stringstream ss;
-        ss << path2file << "avemaria_" << pipeline[c]->getName() << "_";
-        ss << std::setfill('0') << std::setw(7) << step;
-        ss  << ".vti";
-	//			cout << ss.str() << endl;
-	//			_dump(ss);
+			stringstream ss;
+      ss << path2file << "avemaria_" << pipeline[c]->getName() << "_";
+      ss << std::setfill('0') << std::setw(7) << step;
+      ss  << ".vti";
+//			cout << ss.str() << endl;
+//			_dump(ss);
 
-			}
-
-			time += dt;
-			step++;
 		}
+
+		time += dt;
+		step++;
+
 		//if (step<100)
 		{
 			// this still needs to be corrected to the frame of reference!

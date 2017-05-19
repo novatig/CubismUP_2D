@@ -20,7 +20,7 @@
 
 struct FluidElement
 {
-    Real rho, u, v, chi, p, pOld;
+  Real rho, u, v, chi, p, pOld;
 	Real tmpU, tmpV, tmp;
 	//Real divU;
 	//Real x, y;
@@ -41,7 +41,8 @@ struct FluidElement
 
 struct FluidVTKStreamer
 {
-	static const int channels = 6;
+	//static const int channels = 6;
+	static const int channels = 4;
 
 	void operate(FluidElement input, Real output[channels])
 	{
@@ -49,8 +50,8 @@ struct FluidVTKStreamer
 		output[1] = input.u;
 		output[2] = input.v;
 		output[3] = input.p;
-		output[4] = input.chi;
-		output[5] = input.tmp;
+		//output[k++] = input.chi;
+		//output[k++] = input.tmp;
 	}
 };
 
@@ -116,13 +117,13 @@ struct StreamerDiv
 	static const int channels = 1;
 	static void operate(const FluidElement& input, Real output[1])
 	{
-		output[0] = input.tmp;
-    }
+	   output[0] = input.tmp;
+  }
 
-    static void operate(const Real input[1], FluidElement& output)
-    {
-        output.tmp = input[0];
-    }
+  static void operate(const Real input[1], FluidElement& output)
+  {
+      output.tmp = input[0];
+  }
 };
 
 struct FluidBlock
@@ -267,7 +268,7 @@ class BlockLabBottomWall : public BlockLab<BlockType,allocator>
 {
 	typedef typename BlockType::ElementType ElementTypeBlock;
 
-public:
+ public:
     ElementTypeBlock pDirichlet;
 
 	BlockLabBottomWall(): BlockLab<BlockType,allocator>()
@@ -299,7 +300,7 @@ class BlockLabPipe : public BlockLab<BlockType,allocator>
 {
 	typedef typename BlockType::ElementType ElementTypeBlock;
 
-public:
+ public:
 	BlockLabPipe(): BlockLab<BlockType,allocator>(){}
 
 	void _apply_bc(const BlockInfo& info, const Real t=0)
@@ -316,7 +317,7 @@ class BlockLabVortex : public BlockLab<BlockType,allocator>
 {
 	typedef typename BlockType::ElementType ElementTypeBlock;
 
-public:
+ public:
 	BlockLabVortex(): BlockLab<BlockType,allocator>(){}
 
 	void _apply_bc(const BlockInfo& info, const Real t=0)
@@ -335,7 +336,7 @@ class BlockLabOpenBox : public BlockLab<BlockType,allocator>
 {
 	typedef typename BlockType::ElementType ElementTypeBlock;
 
-public:
+ public:
 	ElementTypeBlock pDirichlet;
 
 	BlockLabOpenBox(): BlockLab<BlockType,allocator>()
@@ -368,7 +369,7 @@ class BlockLabBox : public BlockLab<BlockType,allocator>
 {
 	typedef typename BlockType::ElementType ElementTypeBlock;
 
-public:
+ public:
 	ElementTypeBlock pDirichlet;
 
 	BlockLabBox(): BlockLab<BlockType,allocator>()
@@ -442,8 +443,5 @@ typedef BlockLabOpenBox<FluidBlock, std::allocator> Lab;
 #ifdef _BOX_
 typedef BlockLabBox<FluidBlock, std::allocator> Lab;
 #endif // _PIPE_
-
-
-
 
 #endif

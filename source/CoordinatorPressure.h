@@ -21,6 +21,7 @@ class OperatorDivergenceSplit : public GenericLabOperator
 	int step;
 
 	inline Real mean(const Real a, const Real b) const {return .5 * (a + b);}
+  //harmonic mean: (why?)
 	//inline Real mean(const Real a, const Real b) const {return 2.*a*b/(a+b);}
 
  public:

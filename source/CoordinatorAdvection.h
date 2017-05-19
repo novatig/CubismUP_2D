@@ -142,20 +142,20 @@ class OperatorAdvectionUpwind3rdOrder : public GenericLabOperator
 template <typename Lab>
 class CoordinatorAdvection : public GenericCoordinator
 {
-protected:
+ protected:
     Real *uBody, *vBody;
-#ifdef _MULTIPHASE_
+ #ifdef _MULTIPHASE_
 	Real rhoS;
-#endif
+ #endif
 
-public:
-#ifndef _MULTIPHASE_
+ public:
+ #ifndef _MULTIPHASE_
     CoordinatorAdvection(Real * uBody, Real * vBody, FluidGrid * grid) :
     GenericCoordinator(grid), uBody(uBody), vBody(vBody)
-#else
+ #else
     CoordinatorAdvection(Real * uBody, Real * vBody, FluidGrid * grid, Real rhoS) :
     GenericCoordinator(grid), uBody(uBody), vBody(vBody), rhoS(rhoS)
-#endif
+ #endif
     {
     }
 

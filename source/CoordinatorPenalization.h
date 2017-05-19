@@ -10,7 +10,6 @@
 #define CubismUP_2D_CoordinatorPenalization_h
 
 #include "GenericCoordinator.h"
-#include "OperatorPenalization.h"
 #include "Shape.h"
 
 class OperatorPenalization : public GenericOperator
@@ -55,12 +54,12 @@ class OperatorPenalization : public GenericOperator
 
 class CoordinatorPenalization : public GenericCoordinator
 {
-protected:
+ protected:
 	Real *uBody, *vBody, *omegaBody;
 	Shape * shape;
 	Real * lambda;
 
-public:
+ public:
 	CoordinatorPenalization(Real * uBody, Real * vBody, Real * omegaBody, Shape * shape, Real * lambda, FluidGrid * grid) :
 		GenericCoordinator(grid), uBody(uBody), vBody(vBody), omegaBody(omegaBody), shape(shape), lambda(lambda)
 	{

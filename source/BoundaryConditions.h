@@ -14,7 +14,7 @@
 template<typename TBlock, typename TElement, template<typename X> class allocator=std::allocator>
 class BoundaryCondition
 {
-protected:
+ protected:
 
 	int s[3], e[3];
 	int stencilStart[3], stencilEnd[3];
@@ -33,7 +33,7 @@ protected:
 		e[1] =	dir==1 ? (side==0 ? 0: TBlock::sizeY + stencilEnd[1]-1) : TBlock::sizeY +  stencilEnd[1]-1;
 		e[2] =	dir==2 ? (side==0 ? 0: TBlock::sizeZ + stencilEnd[2]-1) : TBlock::sizeZ +  stencilEnd[2]-1;
 	}
-public:
+ public:
 
 	BoundaryCondition(const int ss[3], const int se[3], Matrix3D<TElement, true, allocator> * cacheBlock):
 	cacheBlock(cacheBlock)

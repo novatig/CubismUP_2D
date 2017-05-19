@@ -13,7 +13,6 @@
 
 
 //lo metto qui perche' mi fa schifo
-
 #define _FORBID_COPIES(x) \
 x(const x& culo){abort();}\
 x& operator=(const x& culatone){abort(); return *this;}
@@ -28,24 +27,24 @@ private:
 	bool m_bDataOwner;
 public:
 	//_FORBID_COPIES(Matrix2D)
-	
+
 	Matrix2D(unsigned int nSizeX, unsigned int nSizeY, DataType * data=NULL);
 	~Matrix2D() { if (m_bDataOwner) delete [] m_pData; }
-	
+
 	DataType & Access(unsigned int ix, unsigned int iy) const;
 	DataType & LinAccess(unsigned int i) const;
 	inline DataType & operator()(unsigned int ix, unsigned int iy) const
 	{
 		assert(ix<m_vSize[0]);
 		assert(iy<m_vSize[1]);
-		
+
 		return m_pData[iy*m_vSize[0] + ix];
 	}
-	
+
 	const unsigned int * getSize() const;
 	unsigned int getNumberOfElements() const;
 	DataType * getData() const;
-	
+
 	Matrix2D& operator= (DataType val);
 	Matrix2D& operator*= (DataType val);
 };
@@ -57,9 +56,9 @@ template <class DataType>  Matrix2D<DataType>::Matrix2D(unsigned int nSizeX, uns
 {
 	m_vSize[0] = nSizeX;
 	m_vSize[1] = nSizeY;
-	
+
 	m_nElements = nSizeX*nSizeY;
-	
+
 	if (m_bDataOwner)
 		m_pData = new DataType[m_nElements];
 	else
@@ -70,7 +69,7 @@ template <class DataType>  Matrix2D<DataType>::Matrix2D(unsigned int nSizeX, uns
 {
 	assert(ix<m_vSize[0]);
 	assert(iy<m_vSize[1]);
-	
+
 	return m_pData[ iy*m_vSize[0] + ix];
 }
 

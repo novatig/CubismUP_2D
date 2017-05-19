@@ -38,10 +38,10 @@ class OperatorGravity : public GenericOperator
 
 class CoordinatorGravity : public GenericCoordinator
 {
-protected:
+ protected:
 	Real gravity[2];
 
-public:
+ public:
 	CoordinatorGravity(Real gravity[2], FluidGrid * grid) :
 	GenericCoordinator(grid), gravity{gravity[0],gravity[1]}
 	{

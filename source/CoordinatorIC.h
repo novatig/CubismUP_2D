@@ -10,7 +10,6 @@
 #define CubismUP_2D_CoordinatorIC_h
 
 #include "GenericCoordinator.h"
-#include "OperatorIC.h"
 #include "Shape.h"
 
 class OperatorIC : public GenericOperator
