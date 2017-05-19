@@ -256,9 +256,9 @@ void Sim_FSI_Gravity::init()
 	pipeline.push_back(new CoordinatorPenalization(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid));
 	pipeline.push_back(new CoordinatorPressure<Lab>(minRho, gravity, &uBody[0], &uBody[1], &dragP[0], &dragP[1], &step, bSplit, grid, 0, nprocs));
 	pipeline.push_back(new CoordinatorBodyVelocities(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid));
-	#ifdef _MOVING_FRAME_
+	//#ifdef _MOVING_FRAME_
 	pipeline.push_back(new CoordinatorFadeOut(&uBody[0], &uBody[1], uinfx, uinfy, grid));
-	#endif
+	//#endif
 
 	{
 		cout << "Coordinator/Operator ordering:\n";
@@ -296,6 +296,7 @@ void Sim_FSI_Gravity::simulate()
 		assert(!std::isnan(uBody[0]));
 		assert(!std::isnan(uBody[1]));
 		dt = min(min(dtCFL,dtFourier),dtBody);
+                lambda = 10./dt;
 
 		//if (dumpTime>0)
 		//	dt = min(dt,nextDumpTime-_nonDimensionalTime());
@@ -320,8 +321,8 @@ void Sim_FSI_Gravity::simulate()
         ss << path2file << "avemaria_" << pipeline[c]->getName() << "_";
         ss << std::setfill('0') << std::setw(7) << step;
         ss  << ".vti";
-				cout << ss.str() << endl;
-				_dump(ss);
+	//			cout << ss.str() << endl;
+	//			_dump(ss);
 
 			}
 

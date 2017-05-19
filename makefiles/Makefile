@@ -2,7 +2,7 @@ CC ?= g++
 LD=$(CC)
 
 nthreads ?= 48
-config ?= debug
+config ?= production 
 bc ?= periodic
 precision ?= double
 poisson ?= fftw
@@ -14,7 +14,8 @@ dlm ?= false
 
 constnu ?= false
 densitydiff ?= false
-movingframe ?= true
+#movingframe ?= true
+movingframe ?= false
 rk2 ?= false
 
 CPPFLAGS+= -w
@@ -138,7 +139,7 @@ LIBS += -L../tools/fpzip/lib -lfpzip
 BUILDDIR = .
 SRC_DIR = $(BUILDDIR)/../source/
 CUBISM_DIR = $(BUILDDIR)/../Cubism/
-OBJECTS = PoissonSolverScalarFFTW.o ProcessOperatorsOMP.o  Sim_FSI_Gravity.o Sim_FSI_Moving.o Sim_FSI_Oscillating.o Sim_FSI_Fixed.o Profiler.o main.o #Sim_Jet.o Sim_RayleighTaylor.o Sim_Bubble.o 
+OBJECTS = PoissonSolverScalarFFTW.o ProcessOperatorsOMP.o  Sim_FSI_Gravity.o Profiler.o main.o #Sim_Jet.o Sim_RayleighTaylor.o Sim_Bubble.o 
 OBJECTS_TEST = PoissonSolverScalarFFTW.o ProcessOperatorsOMP.o TestConditionNumber.o TestBoundaryConditions.o TestAddedMass.o TestPoiseuille.o TestShearLayer.o TestTravelingWave.o TestRotation.o TestTranslation.o TestPenalization.o TestGravity.o TestVarCoeffPoisson.o TestPressure.o TestAdvection.o TestDiffusion.o Profiler.o mainTest.o
 
 VPATH := $(SRC_DIR):$(CUBISM_DIR)

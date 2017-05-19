@@ -109,10 +109,8 @@ protected:
 		const int sizeY = bpdy * FluidBlock::sizeY;
 		vector<BlockInfo> vInfo = grid->getBlocksInfo();
 
-		const bool timeDump = dumpTime>0. && nextDumpTime>_nonDimensionalTime();
+		const bool timeDump = dumpTime>0. && _nonDimensionalTime()>nextDumpTime;
 		const bool stepDump = dumpFreq>0  && step % dumpFreq == 0;
-    printf("Dumping? %f %f %f %d\n",
-			dumpTime, nextDumpTime, _nonDimensionalTime(), timeDump);
 		if(stepDump || timeDump)
 		{
 			nextDumpTime += dumpTime;
@@ -136,7 +134,8 @@ protected:
 		const int sizeY = bpdy * FluidBlock::sizeY;
 		vector<BlockInfo> vInfo = grid->getBlocksInfo();
 		processOMP<Lab, OperatorVorticityTmp>(0, vInfo,*grid);
-		dumper.Write(*grid, ss.str());
+                cout << fname.str() << endl;
+		dumper.Write(*grid, fname.str());
 		_serialize();
 	}
 

@@ -151,11 +151,11 @@ class CoordinatorFadeOut : public GenericCoordinator
 
 		const int N = vInfo.size();
 		const Real ext[2] = {
-				vInfo[0].h_gridpoint * grid->getBlocksPerDimension(0) * FluidBlock::sizeX,
-				vInfo[0].h_gridpoint * grid->getBlocksPerDimension(1) * FluidBlock::sizeY
+		        vInfo[0].h_gridpoint * grid->getBlocksPerDimension(0) * FluidBlock::sizeX,
+			vInfo[0].h_gridpoint * grid->getBlocksPerDimension(1) * FluidBlock::sizeY
 		};
-		const int movey = fabs(*vBody) > fabs(*uBody);
-		const int dirs[2] = {*uBody>0 ? 1 : -1, *vBody>0 ? 1 : -1};
+		const int movey = fabs(uinfy-*vBody) > fabs(uinfx-*uBody);
+		const int dirs[2] = {*uBody-uinfx>0 ? 1 : -1, *vBody-uinfy>0 ? 1 : -1};
 		const int info[2] = {movey, dirs[movey]};
 
 		#pragma omp parallel
