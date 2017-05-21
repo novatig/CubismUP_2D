@@ -295,10 +295,10 @@ public:
 		check("pressure - start");
 
 		// pressure
-		#ifdef _HYDROSTATIC_
-		abort();
+		//#ifdef _HYDROSTATIC_
+		//abort();
 		addHydrostaticPressure(dt);
-		#endif // _HYDROSTATIC_
+		//#endif // _HYDROSTATIC_
 		computeSplit<OperatorDivergenceSplit>(dt);
 		pressureSolver.solve(*grid,true);
 		computeSplit<OperatorGradPSplit>(dt);
