@@ -65,11 +65,12 @@ class OperatorAdvectionFD : public GenericLabOperator
 class OperatorAdvectionUpwind3rdOrder : public GenericLabOperator
 {
  private:
-	  double dt;
-    Real *uBody, *vBody;
+	double dt;
+        const Real* const uBody;
+        const Real* const vBody;
 
  public:
-    OperatorAdvectionUpwind3rdOrder(double dt, Real * uBody, Real * vBody)
+    OperatorAdvectionUpwind3rdOrder(double dt, const Real* const uBody, const Real* const vBody)
 	: dt(dt), uBody(uBody), vBody(vBody)
     {
         stencil_start[0] = -2;
@@ -91,6 +92,15 @@ class OperatorAdvectionUpwind3rdOrder : public GenericLabOperator
 		for (int iy=0; iy<FluidBlock::sizeY; ++iy)
 			for (int ix=0; ix<FluidBlock::sizeX; ++ix)
 			{
+                                #ifndef _MOVING_FRAME_
+				const Real v = o(ix,iy).v;
+				const Real u = o(ix,iy).u;
+                                #else
+				const Real v = o(ix,iy).v - *vBody;
+				const Real u = o(ix,iy).u - *uBody;
+                                #endif
+
+                                #if 0
 				const Real dudx[2] = {  2*lab(ix+1,iy  ).u + 3*lab(ix  ,iy  ).u - 6*lab(ix-1,iy  ).u +   lab(ix-2,iy  ).u,
 									   -  lab(ix+2,iy  ).u + 6*lab(ix+1,iy  ).u - 3*lab(ix  ,iy  ).u - 2*lab(ix-1,iy  ).u};
 
@@ -103,13 +113,6 @@ class OperatorAdvectionUpwind3rdOrder : public GenericLabOperator
 				const Real dvdy[2] = {  2*lab(ix  ,iy+1).v + 3*lab(ix  ,iy  ).v - 6*lab(ix  ,iy-1).v +   lab(ix  ,iy-2).v,
 									   -  lab(ix  ,iy+2).v + 6*lab(ix  ,iy+1).v - 3*lab(ix  ,iy  ).v - 2*lab(ix  ,iy-1).v};
 
-        #ifndef _MOVING_FRAME_
-				const Real v = o(ix,iy).v;
-				const Real u = o(ix,iy).u;
-        #else
-				const Real v = o(ix,iy).v - *vBody;
-				const Real u = o(ix,iy).u - *uBody;
-        #endif
 
 				o(ix,iy).tmpU = o(ix,iy).u + factor*(
 						max(u,(Real)0) * dudx[0] + min(u,(Real)0) * dudx[1] +
@@ -130,6 +133,18 @@ class OperatorAdvectionUpwind3rdOrder : public GenericLabOperator
 				o(ix,iy).tmp  = o(ix,iy).rho + factor*(max(u,(Real)0) * drdx[0] + min(u,(Real)0) * drdx[1] +
 										   max(v,(Real)0) * drdy[0] + min(v,(Real)0) * drdy[1]);
         #endif // _MULTIPHASE_
+                        #else
+                                
+o(ix,iy).tmpU = o(ix,iy).u + factor*((u>0 ? u*(2*lab(ix+1,iy  ).u +3*lab(ix  ,iy  ).u -6*lab(ix-1,iy  ).u +  lab(ix-2,iy  ).u)
+                                          : u*(- lab(ix+2,iy  ).u +6*lab(ix+1,iy  ).u -3*lab(ix  ,iy  ).u -2*lab(ix-1,iy  ).u))
+                                    +(v>0 ? v*(2*lab(ix  ,iy+1).u +3*lab(ix  ,iy  ).u -6*lab(ix  ,iy-1).u +  lab(ix  ,iy-2).u)
+                                          : v*(- lab(ix  ,iy+2).u +6*lab(ix  ,iy+1).u -3*lab(ix  ,iy  ).u -2*lab(ix  ,iy-1).u)));
+
+o(ix,iy).tmpV = o(ix,iy).v + factor*((u>0 ? u*(2*lab(ix+1,iy  ).v +3*lab(ix  ,iy  ).v -6*lab(ix-1,iy  ).v +  lab(ix-2,iy  ).v)
+                                          : u*(- lab(ix+2,iy  ).v +6*lab(ix+1,iy  ).v -3*lab(ix  ,iy  ).v -2*lab(ix-1,iy  ).v))
+                                    +(v>0 ? v*(2*lab(ix  ,iy+1).v +3*lab(ix  ,iy  ).v -6*lab(ix  ,iy-1).v +  lab(ix  ,iy-2).v)
+                                          : v*(- lab(ix  ,iy+2).v +6*lab(ix  ,iy+1).v -3*lab(ix  ,iy  ).v -2*lab(ix  ,iy-1).v)));
+                        #endif
 		}
 	}
 };
@@ -183,8 +198,8 @@ class CoordinatorAdvection : public GenericCoordinator
 
     #pragma omp parallel
 		{
-			//OperatorAdvectionUpwind3rdOrder kernel(dt,uBody,vBody);
-			OperatorAdvectionFD kernel(dt,uBody,vBody);
+			OperatorAdvectionUpwind3rdOrder kernel(dt,uBody,vBody);
+			//OperatorAdvectionFD kernel(dt,uBody,vBody);
 
       Lab mylab;
       #ifdef _MOVING_FRAME_

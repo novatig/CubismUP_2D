@@ -284,15 +284,19 @@ void Sim_FSI_Gravity::simulate()
 
 		dtFourier = CFL*vInfo[0].h_gridpoint*vInfo[0].h_gridpoint / maxMu;
 		dtCFL  = maxU < 2.2e-16 ? 1 : CFL*vInfo[0].h_gridpoint/abs(maxU);
+		dt = min(dtCFL,dtFourier);
+
+                #ifndef _MOVING_FRAME_
 		dtBody = maxUbody < 2.2e-16 ? 1 : CFL*vInfo[0].h_gridpoint/maxUbody;
+		dt = min(min(dtCFL,dtFourier),dtBody);
+                #endif
 
 		assert(!std::isnan(maxU));
 		assert(!std::isnan(maxA));
 		assert(!std::isnan(uBody[0]));
 		assert(!std::isnan(uBody[1]));
 
-		dt = min(min(dtCFL,dtFourier),dtBody);
-    lambda = 10./dt;
+                lambda = 10./dt;
 
 		//if (dumpTime>0)
 		//	dt = min(dt,nextDumpTime-_nonDimensionalTime());

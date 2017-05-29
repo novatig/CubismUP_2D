@@ -77,7 +77,7 @@ class CoordinatorComputeShape : public GenericCoordinator
 		{
 			OperatorComputeShape kernel(shape);
 
-			#pragma omp for schedule(static)
+			#pragma omp for schedule(dynamic)
 			for(int i=0; i<N; i++)
 				kernel(vInfo[i], *(FluidBlock*)vInfo[i].ptrBlock);
 		}
