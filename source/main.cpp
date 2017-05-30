@@ -28,34 +28,18 @@ int main(int argc, const char **argv)
 		cout << "\t\tCubism UP 2D (velocity-pressure 2D incompressible Navier-Stokes solver)\n";
 		cout << "====================================================================================================================\n";
 	}
-	
+	#ifdef RL_MPI_CLIENT
+	const int socket = parser("-Socket").asInt(-1);
+	//HARDCODED FOR GLIDER ENVIRONMENT
+	Communicator* const communicator = socket>=0 ? new Communicator(socket,9,1) : nullptr;
+	#endif
+	communicator = nullptr;
 	ArgumentParser parser(argc,argv);
 	parser.set_strict_mode();
-	
-	//string simSetting = parser("-sim").asString();
-	//Simulation_Fluid * sim;
-	/*
-	if (simSetting=="fixed")
-		sim = new Sim_FSI_Fixed(argc, argv);
-	else if (simSetting=="moving")
-		sim = new Sim_FSI_Moving(argc, argv);
-	else if (simSetting=="oscillating")
-		sim = new Sim_FSI_Oscillating(argc, argv);
-	else if (simSetting=="falling")
-	*/
+
 	Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(argc, argv);
-	/*
-	else if (simSetting=="rti")
-		sim = new Sim_RayleighTaylor(argc, argv);
-	else if (simSetting=="bubble")
-		sim = new Sim_Bubble(argc, argv);
-	else if (simSetting=="jet")
-		sim = new Sim_Jet(argc, argv);
-	else
-		throw std::invalid_argument("This simulation setting does not exist!");
-	*/
 	sim->init();
 	sim->simulate();
-	
+
 	return 0;
 }

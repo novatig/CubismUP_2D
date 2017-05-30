@@ -9,6 +9,9 @@
 #ifndef CubismUP_2D_CoordinatorComputeBodyVelocities_h
 #define CubismUP_2D_CoordinatorComputeBodyVelocities_h
 
+#define TERM_REW_FAC 50
+#define HEIGHT_PENAL 10
+
 class CoordinatorBodyVelocities : public GenericCoordinator
 {
 protected:
@@ -17,10 +20,27 @@ protected:
 	Real* const omegaBody;
 	const Real* const lambda;
 	Shape* const shape;
-
+	#ifdef RL_MPI_CLIENT
+	Communicator*const communicator;
+	_AGENT_STATUS info = _AGENT_FIRSTCOMM;
+	unsigned iter = 0;
+	bool initialized_time_next_comm = false;
+	Real Torque = 0, time_next_comm = 0, old_Torque = 0, old_Dist = 100;
+	Real powerOutput = 0, old_powerOutput = 0;
+	Real*const time;
+	#endif
 public:
-	CoordinatorBodyVelocities(Real * uBody, Real * vBody, Real * omegaBody, Shape * shape, Real * lambda, FluidGrid * grid) :
-		GenericCoordinator(grid), uBody(uBody), vBody(vBody), omegaBody(omegaBody), lambda(lambda), shape(shape)
+	CoordinatorBodyVelocities(Real * uBody, Real * vBody, Real * omegaBody,
+		Shape * shape, Real * lambda, FluidGrid * grid
+		#ifdef RL_MPI_CLIENT
+		, Communicator*const comm, Real * t
+		#endif
+	) :
+		GenericCoordinator(grid), uBody(uBody), vBody(vBody), omegaBody(omegaBody),
+		lambda(lambda), shape(shape)
+		#ifdef RL_MPI_CLIENT
+		, communicator(comm), time(t)
+		#endif
 	{
 	}
 
@@ -73,9 +93,55 @@ public:
 		#endif
 
 		*omegaBody = angularMomentum / momOfInertia;
-
 		shape->M = mass * vInfo[0].h_gridpoint * vInfo[0].h_gridpoint;
 		shape->J = momOfInertia * vInfo[0].h_gridpoint * vInfo[0].h_gridpoint;
+
+		#ifdef RL_MPI_CLIENT
+		if(!initialized_time_next_comm || time>time_next_comm)
+		{
+			initialized_time_next_comm = true;
+			time_next_comm = time_next_comm + 0.5;
+			const Real rhoS = shape->rhoS;
+			const Real angle = shape->getOrientation, omega = *omegaBody;
+			const Real cosTheta = std::cos(angle), sinTheta = std::sin(angle);
+			const Real a=max(semiAxis[0],semiAxis[1]), b=min(semiAxis[0],semiAxis[1]);
+			//Characteristic scales:
+			const Real lengthscale = a;
+			const Real velscale = std::sqrt((rhoS/1.-1)*9.8*b);
+			const Real torquescale = 1/8 *M_PI*1*pow((a*a-b*b)*velscale,2)*a/b;
+			//Nondimensionalization:
+			const Real xdot=*uBody/velscale,ydot=*vBody/velscale,T=Torque/torquescale;
+			const Real X =shape->labCenterOfMass[0]/a, Y =shape->labCenterOfMass[1]/a;
+			const Real U =xdot*cosTheta+ydot*sinTheta, V =ydot*cosTheta-xdot*sinTheta;
+
+			const bool ended = X>125 || X<-10 || Y<=-50;
+			const bool landing = std::fabs(angle - .25*M_PI) < 0.1;
+			const Real vertDist = std::fabs(Y+50), horzDist = std::fabs(X-100);
+
+			Real reward;
+			if (ended) {
+				info = _AGENT_LASTCOMM;
+				reward = (X>125 || X<-10) ? -100 -HEIGHT_PENAL*vertDist*vertDist
+								: (horzDist<1? TERM_REW_FAC : -horzDist) +
+								 	( landing  ? TERM_REW_FAC : 0 );
+			} else
+			reward = (old_Dist-horzDist) -fabs(Torque-old_Torque) -(powerOutput-old_powerOutput);
+
+			vector<double> state = {U,V,omega,X,Y,angle,T,xdot,ydot}, action(1,0.);
+			comm->sendState(iter++, info, state, reward);
+
+			if(info == _AGENT_LASTCOMM) abort();
+			old_Dist = horzDist;
+			old_Torque = Torque;
+			old_powerOutput = powerOutput;
+			_AGENT_STATUS = _AGENT_NORMALCOMM;
+
+			comm->recvAction(action);
+			Torque = action[0]*torquescale;
+		}
+		*omegaBody += dt*Torque/shape->J;
+		powerOutput += dt*Torque*Torque;
+		#endif
 	}
 
 	string getName()

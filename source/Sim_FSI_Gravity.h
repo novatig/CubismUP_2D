@@ -67,6 +67,9 @@
 class Sim_FSI_Gravity : public Simulation_FSI
 {
 protected:
+	#ifdef RL_MPI_CLIENT
+	Communicator*const communicator;
+	#endif
 	Real uBody[2] = {0,0};
 	Real omegaBody = 0;
 	double dtCFL=0, dtLCFL=0, dtFourier=0, dtBody=0;
@@ -86,7 +89,11 @@ protected:
 	void _dumpSettings(ostream& outStream);
 
 public:
+	#ifdef RL_MPI_CLIENT
+	Sim_FSI_Gravity(Communicator*const comm, const int argc, const char ** argv);
+	#else
 	Sim_FSI_Gravity(const int argc, const char ** argv);
+	#endif
 	~Sim_FSI_Gravity();
 
 	void init();

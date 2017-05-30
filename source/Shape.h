@@ -20,13 +20,14 @@ class Shape
 	Real M = 0;
 	Real J = 0;
 	Real labCenterOfMass[2] = {0,0};
+  Real semiAxis[2] = {0,0};
+	// single density
+	const Real rhoS;
  protected:
 	// general quantities
 	Real centerOfMass[2], orientation;
 	Real center[2]; // for single density, this corresponds to centerOfMass
 	Real d_gm[2] ; // distance of center of geometry to center of mass
-	// single density
-	const Real rhoS;
 	// periodicity - currently unused
     const Real domainSize[2];
     const bool bPeriodic[2];
@@ -46,8 +47,11 @@ class Shape
 	}
 
 public:
-	Shape(Real center[2], Real orientation, const Real rhoS, const Real mollChi, const Real mollRho, bool bPeriodic[2], Real domainSize[2]) :
-		center{center[0],center[1]}, centerOfMass{center[0],center[1]}, d_gm{0,0}, orientation(orientation), rhoS(rhoS), mollChi(mollChi), mollRho(mollRho), domainSize{domainSize[0],domainSize[1]}, bPeriodic{bPeriodic[0],bPeriodic[1]}
+	Shape(Real center[2], Real orientation, const Real rhoS, const Real mollChi,
+    const Real mollRho, bool bPeriodic[2], Real domainSize[2]) :
+		center{center[0],center[1]}, centerOfMass{center[0],center[1]}, d_gm{0,0},
+    orientation(orientation), rhoS(rhoS), mollChi(mollChi), mollRho(mollRho),
+    domainSize{domainSize[0],domainSize[1]}, bPeriodic{bPeriodic[0],bPeriodic[1]}
 	{
 		if (bPeriodic[0] || bPeriodic[1])
 		{
@@ -156,9 +160,12 @@ protected:
 	Real radius;
 
 public:
-	Disk(Real center[2], Real radius, const Real rhoS, const Real mollChi, const Real mollRho, bool bPeriodic[2], Real domainSize[2]) :
-		Shape(center, 0, rhoS, mollChi, mollRho, bPeriodic, domainSize), radius(radius)
+	Disk(Real center[2], Real radius, const Real rhoS, const Real mollChi,
+    const Real mollRho, bool bPeriodic[2], Real domainSize[2]) :
+		Shape(center, 0, rhoS, mollChi, mollRho, bPeriodic, domainSize),
+    radius(radius),
 	{
+    semiAxis = {radius,radius};
 	}
 
 	Real chi(Real p[2], Real h) const
@@ -263,7 +270,6 @@ class Ellipse : public Shape
 {
  protected:
 	// these quantities are defined in the local coordinates of the ellipse
-	Real semiAxis[2];
 
 	// code from http://www.geometrictools.com/
 	//----------------------------------------------------------------------------
@@ -401,7 +407,12 @@ class Ellipse : public Shape
 	}
 
  public:
-	Ellipse(Real center[2], Real semiAxis[2], Real orientation, const Real rhoS, const Real mollChi, const Real mollRho, bool bPeriodic[2], Real domainSize[2]) : Shape(center, orientation, rhoS, mollChi, mollRho, bPeriodic, domainSize), semiAxis{semiAxis[0],semiAxis[1]} {}
+	Ellipse(Real center[2], Real semiAxis[2], Real orientation, const Real rhoS,
+    const Real mollChi, const Real mollRho, bool bPeriodic[2], Real domainSize[2]) :
+    Shape(center, orientation, rhoS, mollChi, mollRho, bPeriodic, domainSize)
+    {
+      semiAxis = {semiAxis[0], semiAxis[1]};
+    }
 
 	Real chi(Real p[2], Real h) const
   {

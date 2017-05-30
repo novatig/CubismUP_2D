@@ -196,7 +196,13 @@ void Sim_FSI_Gravity::_inputSettings(istream& inStream)
 	Simulation_FSI::_inputSettings(inStream);
 }
 
+
+#ifdef RL_MPI_CLIENT
+Sim_FSI_Gravity::Sim_FSI_Gravity(Communicator*const comm,const int argc, const char ** argv) :
+communicator(comm),
+#else
 Sim_FSI_Gravity::Sim_FSI_Gravity(const int argc, const char ** argv) :
+#endif
 Simulation_FSI(argc, argv)
 {
 	cout << "=================================================================\n";
@@ -218,7 +224,7 @@ void Sim_FSI_Gravity::init()
 		nu = parser("-nu").asDouble(1e-2);
 		minRho = min((Real)1.,shape->getMinRhoS());
 
-		gravity[1] = -parser("-g").asDouble(9.81);
+		gravity[1] = -parser("-g").asDouble(9.8);
 		uinfx = parser("-uinfx").asDouble(0);
 		uinfy = parser("-uinfy").asDouble(0);
 
@@ -241,19 +247,39 @@ void Sim_FSI_Gravity::init()
 	}
 
 	pipeline.clear();
-	pipeline.push_back(new CoordinatorComputeShape(&uBody[0], &uBody[1], &omegaBody, shape, grid));
+	pipeline.push_back(
+		new CoordinatorComputeShape(&uBody[0], &uBody[1], &omegaBody, shape, grid)
+	);
 #ifndef _MULTIPHASE_
-	pipeline.push_back(new CoordinatorAdvection<Lab>(&uBody[0], &uBody[1], grid));
+	pipeline.push_back(
+		new CoordinatorAdvection<Lab>(&uBody[0], &uBody[1], grid)
+	);
 #else
-	pipeline.push_back(new CoordinatorAdvection<Lab>(&uBody[0], &uBody[1], grid, 1));
+	pipeline.push_back(
+		new CoordinatorAdvection<Lab>(&uBody[0], &uBody[1], grid, 1)
+	);
 #endif
-	pipeline.push_back(new CoordinatorDiffusion<Lab>(nu, &uBody[0], &uBody[1], &dragV, grid));
-	pipeline.push_back(new CoordinatorGravity(gravity, grid));
-	pipeline.push_back(new CoordinatorBodyVelocities(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid));
-	pipeline.push_back(new CoordinatorPenalization(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid));
-	pipeline.push_back(new CoordinatorPressure<Lab>(minRho, gravity, &uBody[0], &uBody[1], &dragP[0], &dragP[1], &step, grid));
+	pipeline.push_back(
+		new CoordinatorDiffusion<Lab>(nu, &uBody[0], &uBody[1], &dragV, grid)
+	);
+	pipeline.push_back(
+		new CoordinatorGravity(gravity, grid));
+	pipeline.push_back(
+		new CoordinatorBodyVelocities(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid
+	#ifdef RL_MPI_CLIENT
+		, communicator, &time
+	#endif
+	));
+	pipeline.push_back(
+		new CoordinatorPenalization(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid)
+	);
+	pipeline.push_back(
+		new CoordinatorPressure<Lab>(minRho, gravity, &uBody[0], &uBody[1], &dragP[0], &dragP[1], &step, grid)
+	);
 	//#ifdef _MOVING_FRAME_
-	pipeline.push_back(new CoordinatorFadeOut(&uBody[0], &uBody[1], uinfx, uinfy, grid));
+	pipeline.push_back(
+		new CoordinatorFadeOut(&uBody[0], &uBody[1], uinfx, uinfy, grid)
+	);
 	//#endif
 
 	cout << "Coordinator/Operator ordering:\n";

@@ -2,7 +2,7 @@ CC ?= g++
 LD=$(CC)
 
 nthreads ?= 48
-config ?= production 
+config ?= production
 bc ?= periodic
 precision ?= double
 poisson ?= fftw
@@ -11,6 +11,8 @@ bs ?= 32
 vertexcentered ?= false
 particles ?= false
 dlm ?= false
+
+smarties ?= false
 
 constnu ?= false
 densitydiff ?= false
@@ -46,7 +48,7 @@ endif
 CPPFLAGS+= -D_BS_=$(bs)
 
 ifeq "$(config)" "production"
-	CPPFLAGS += -DNDEBUG -O3
+	CPPFLAGS += -DNDEBUG -O3 -fstrict-aliasing -march=native -mtune=native -ffast-math -falign-functions=32
 else
 	CPPFLAGS += -g
 endif
@@ -139,9 +141,16 @@ LIBS += -L../tools/fpzip/lib -lfpzip
 BUILDDIR = .
 SRC_DIR = $(BUILDDIR)/../source/
 CUBISM_DIR = $(BUILDDIR)/../Cubism/
-OBJECTS = PoissonSolverScalarFFTW.o Sim_FSI_Gravity.o Profiler.o main.o 
+OBJECTS = PoissonSolverScalarFFTW.o Sim_FSI_Gravity.o Profiler.o main.o
+VPATH := $(SRC_DIR) $(CUBISM_DIR)
 
-VPATH := $(SRC_DIR):$(CUBISM_DIR)
+ifeq "$(smarties)" "true"
+CPPFLAGS += -D__RL_MPI_CLIENT
+OBJECTS += Communicator.o
+VPATH := $(SRC_DIR) $(CUBISM_DIR) ${HOME}/smarties/source/
+else
+VPATH := $(SRC_DIR) $(CUBISM_DIR)
+endif
 
 .DEFAULT: all;
 
