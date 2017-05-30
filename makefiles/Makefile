@@ -16,8 +16,8 @@ smarties ?= false
 
 constnu ?= false
 densitydiff ?= false
-#movingframe ?= true
-movingframe ?= false
+movingframe ?= true
+#movingframe ?= false
 rk2 ?= false
 
 CPPFLAGS+= -w

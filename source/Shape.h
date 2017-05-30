@@ -430,14 +430,14 @@ class Ellipse : public Shape
     const Real sqDist = rotatedP[0]*rotatedP[0] + rotatedP[1]*rotatedP[1];
     const Real sqMinSemiAx = semiAxis[0]>semiAxis[1]  ? semiAxis[1]*semiAxis[1]
                                                       : semiAxis[0]*semiAxis[0];
-    if (sqDist < sqMinSemiAx)  return 0;
+    if (sqDist < sqMinSemiAx)  return 1;
 
 		const Real dist = DistancePointEllipse(rotatedP, x);
 		const int sign = ( sqDist > (x[0]*x[0]+x[1]*x[1]) ) ? 1 : -1;
 
     if (sign*dist < -eps*.5) return 1;
     if (sign*dist >  eps*.5) return 0;
-    return (Real) ((1.+cos(M_PI*((rR-radius)/eps+.5)))*.5);
+    return (1.+cos(M_PI*(sign*dist/eps+.5)))*.5;
 	}
 
 	Real getCharLength() const

@@ -35,17 +35,10 @@ class OperatorPenalization : public GenericOperator
       p[1] -= centerOfMass[1];
       const Real alpha = 1./(1. + dt * lambda * block(ix,iy).chi);
 
-			#ifndef _MOVING_FRAME_
-	      const Real U_TOT[2] = {
-	      		uBody[0] - omegaBody*p[1],
-						uBody[1] + omegaBody*p[0]
+        const Real U_TOT[2] = {
+	      	uBody[0] - omegaBody*p[1],
+	        uBody[1] + omegaBody*p[0]
 				};
-			#else
-	      const Real U_TOT[2] = {
-	      		- omegaBody*p[1],
-						+ omegaBody*p[0]
-				};
-			#endif
       block(ix,iy).u = alpha*block(ix,iy).u + (1-alpha)*U_TOT[0];
       block(ix,iy).v = alpha*block(ix,iy).v + (1-alpha)*U_TOT[1];
 		}
