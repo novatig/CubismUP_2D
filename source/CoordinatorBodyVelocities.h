@@ -20,15 +20,17 @@ protected:
 	Real* const omegaBody;
 	const Real* const lambda;
 	Shape* const shape;
+
 	#ifdef RL_MPI_CLIENT
-	Communicator*const communicator;
-	_AGENT_STATUS info = _AGENT_FIRSTCOMM;
-	unsigned iter = 0;
-	bool initialized_time_next_comm = false;
-	Real Torque = 0, time_next_comm = 0, old_Torque = 0, old_Dist = 100;
-	Real powerOutput = 0, old_powerOutput = 0;
-	Real*const time;
+		Communicator*const communicator;
+		_AGENT_STATUS info = _AGENT_FIRSTCOMM;
+		unsigned iter = 0;
+		bool initialized_time_next_comm = false;
+		Real Torque = 0, time_next_comm = 0, old_Torque = 0, old_Dist = 100;
+		Real powerOutput = 0, old_powerOutput = 0;
+		Real*const time;
 	#endif
+
 public:
 	CoordinatorBodyVelocities(Real * uBody, Real * vBody, Real * omegaBody,
 		Shape * shape, Real * lambda, FluidGrid * grid
@@ -83,28 +85,23 @@ public:
 				}
 		}
 
-		#ifdef _MOVING_FRAME_
-		//then uinf = ubody
 		*uBody = u / mass;
 		*vBody = v / mass;
-		#else
-		*uBody = u / mass;
-		*vBody = v / mass;
-		#endif
 
 		*omegaBody = angularMomentum / momOfInertia;
 		shape->M = mass * vInfo[0].h_gridpoint * vInfo[0].h_gridpoint;
 		shape->J = momOfInertia * vInfo[0].h_gridpoint * vInfo[0].h_gridpoint;
 
 		#ifdef RL_MPI_CLIENT
-		if(!initialized_time_next_comm || time>time_next_comm)
+		if(!initialized_time_next_comm || *time>time_next_comm)
 		{
 			initialized_time_next_comm = true;
 			time_next_comm = time_next_comm + 0.5;
 			const Real rhoS = shape->rhoS;
-			const Real angle = shape->getOrientation, omega = *omegaBody;
+			const Real angle = shape->getOrientation(), omega = *omegaBody;
 			const Real cosTheta = std::cos(angle), sinTheta = std::sin(angle);
-			const Real a=max(semiAxis[0],semiAxis[1]), b=min(semiAxis[0],semiAxis[1]);
+			const Real a=max(shape->semiAxis[0], shape->semiAxis[1]);
+			const Real b=min(shape->semiAxis[0], shape->semiAxis[1]);
 			//Characteristic scales:
 			const Real lengthscale = a;
 			const Real velscale = std::sqrt((rhoS/1.-1)*9.8*b);
@@ -121,22 +118,21 @@ public:
 			Real reward;
 			if (ended) {
 				info = _AGENT_LASTCOMM;
-				reward = (X>125 || X<-10) ? -100 -HEIGHT_PENAL*vertDist*vertDist
-								: (horzDist<1? TERM_REW_FAC : -horzDist) +
-								 	( landing  ? TERM_REW_FAC : 0 );
+				reward= (X>125 || X<-10) ? -100 -HEIGHT_PENAL*vertDist
+							: (horzDist<1? (landing?2:1) * TERM_REW_FAC : -horzDist) ;
 			} else
-			reward = (old_Dist-horzDist) -fabs(Torque-old_Torque) -(powerOutput-old_powerOutput);
+			reward = (old_Dist-horzDist) -fabs(Torque-old_Torque)/0.5; //-(powerOutput-old_powerOutput);
 
-			vector<double> state = {U,V,omega,X,Y,angle,T,xdot,ydot}, action(1,0.);
-			comm->sendState(iter++, info, state, reward);
+			vector<double> state = {U,V,omega,X,Y,cosTheta,sinTheta,T,xdot,ydot}; vector<double> action = {0.};
+			communicator->sendState(0, info, state, reward);
 
 			if(info == _AGENT_LASTCOMM) abort();
 			old_Dist = horzDist;
 			old_Torque = Torque;
 			old_powerOutput = powerOutput;
-			_AGENT_STATUS = _AGENT_NORMALCOMM;
+			info = _AGENT_NORMALCOMM;
 
-			comm->recvAction(action);
+			communicator->recvAction(action);
 			Torque = action[0]*torquescale;
 		}
 		*omegaBody += dt*Torque/shape->J;
