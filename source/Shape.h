@@ -163,9 +163,9 @@ public:
 	Disk(Real center[2], Real radius, const Real rhoS, const Real mollChi,
     const Real mollRho, bool bPeriodic[2], Real domainSize[2]) :
 		Shape(center, 0, rhoS, mollChi, mollRho, bPeriodic, domainSize),
-    radius(radius),
+    radius(radius)
 	{
-    semiAxis = {radius,radius};
+    semiAxis[0] = semiAxis[1] = radius;
 	}
 
 	Real chi(Real p[2], Real h) const
@@ -407,11 +407,12 @@ class Ellipse : public Shape
 	}
 
  public:
-	Ellipse(Real center[2], Real semiAxis[2], Real orientation, const Real rhoS,
+	Ellipse(Real center[2], Real sA[2], Real orientation, const Real rhoS,
     const Real mollChi, const Real mollRho, bool bPeriodic[2], Real domainSize[2]) :
     Shape(center, orientation, rhoS, mollChi, mollRho, bPeriodic, domainSize)
     {
-      semiAxis = {semiAxis[0], semiAxis[1]};
+      semiAxis[0] = sA[0]; 
+      semiAxis[1] = sA[1];
     }
 
 	Real chi(Real p[2], Real h) const

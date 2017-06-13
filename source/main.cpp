@@ -28,16 +28,18 @@ int main(int argc, const char **argv)
 		cout << "\t\tCubism UP 2D (velocity-pressure 2D incompressible Navier-Stokes solver)\n";
 		cout << "====================================================================================================================\n";
 	}
+
+	ArgumentParser parser(argc,argv);
+	parser.set_strict_mode();
+
 	#ifdef RL_MPI_CLIENT
 	const int socket = parser("-Socket").asInt(-1);
 	//HARDCODED FOR GLIDER ENVIRONMENT
 	Communicator* const communicator = socket>=0 ? new Communicator(socket,9,1) : nullptr;
-	#endif
-	communicator = nullptr;
-	ArgumentParser parser(argc,argv);
-	parser.set_strict_mode();
-
+	Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(communicator, argc, argv);
+   #else
 	Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(argc, argv);
+	#endif
 	sim->init();
 	sim->simulate();
 
