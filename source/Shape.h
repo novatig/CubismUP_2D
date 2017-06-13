@@ -407,12 +407,14 @@ class Ellipse : public Shape
 	}
 
  public:
-	Ellipse(Real center[2], Real SA[2], Real orientation, const Real rhoS,
-    const Real mollChi, const Real mollRho, bool bPeriodic[2], Real domainSize[2]) :
-    Shape(center, orientation, rhoS, mollChi, mollRho, bPeriodic, domainSize)
+	Ellipse(Real _center[2], Real SA[2], Real _orientation, const Real _rhoS,
+    const Real _mollChi, const Real _mollRho, bool _bPeriodic[2], Real _domainSize[2]) :
+    Shape(_center, _orientation, _rhoS, _mollChi, _mollRho, _bPeriodic, _domainSize)
     {
 			semiAxis[0] = SA[0];
 			semiAxis[1] = SA[1];
+
+         printf("Created ellipse %f %f %f\n", semiAxis[0], semiAxis[1],rhoS); fflush(0);
     }
 
 	Real chi(Real p[2], Real h) const

@@ -85,10 +85,10 @@ public:
 				}
 		}
 
-		*uBody = u / mass;
-		*vBody = v / mass;
+		*uBody = u / (mass+2.2e-16);
+		*vBody = v / (mass+2.2e-16);
 
-		*omegaBody = angularMomentum / momOfInertia;
+		*omegaBody = angularMomentum / (momOfInertia+2.2e-16);
 		shape->M = mass * vInfo[0].h_gridpoint * vInfo[0].h_gridpoint;
 		shape->J = momOfInertia * vInfo[0].h_gridpoint * vInfo[0].h_gridpoint;
 
@@ -105,7 +105,7 @@ public:
 			//Characteristic scales:
 			const Real lengthscale = a;
 			const Real velscale = std::sqrt((rhoS/1.-1)*9.8*b);
-			const Real torquescale = 1/8 *M_PI*1*pow((a*a-b*b)*velscale,2)*a/b;
+			const Real torquescale = M_PI/8*pow((a*a-b*b)*velscale,2)*a/b;
 			//Nondimensionalization:
 			const Real xdot=*uBody/velscale,ydot=*vBody/velscale,T=Torque/torquescale;
 			const Real X =shape->labCenterOfMass[0]/a, Y =shape->labCenterOfMass[1]/a;
@@ -124,6 +124,8 @@ public:
 			reward = (old_Dist-horzDist) -fabs(Torque-old_Torque)/0.5; //-(powerOutput-old_powerOutput);
 
 			vector<double> state = {U,V,omega,X,Y,cosTheta,sinTheta,T,xdot,ydot}; vector<double> action = {0.};
+         printf("Sending (%lu) [%f %f %f %f %f %f %f %f %f %f], %f %f\n", 
+         state.size(),U,V,omega,X,Y,cosTheta,sinTheta,T,xdot,ydot, Torque,torquescale);
 			communicator->sendState(0, info, state, reward);
 
 			if(info == _AGENT_LASTCOMM) abort();
@@ -133,6 +135,7 @@ public:
 			info = _AGENT_NORMALCOMM;
 
 			communicator->recvAction(action);
+         printf("Received %f\n", action[0]);
 			Torque = action[0]*torquescale;
 		}
 		*omegaBody += dt*Torque/shape->J;

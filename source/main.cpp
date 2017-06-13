@@ -34,6 +34,7 @@ int main(int argc, const char **argv)
 
 	#ifdef RL_MPI_CLIENT
 		const int socket = parser("-Socket").asInt(-1);
+		printf("Starting communication with RL over socket %d\n",socket); fflush(0);
 		//HARDCODED FOR GLIDER ENVIRONMENT
 		Communicator* const communicator = socket>=0 ?
 				new Communicator(socket,10,1) : nullptr;
