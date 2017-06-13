@@ -23,6 +23,10 @@ typedef double Real;
 typedef float Real;
 #endif // _SP_COMP_
 
+#ifdef RL_MPI_CLIENT
+#include "Communicator.h"
+#endif
+
 //this is all cubism file we need
 #include <ArgumentParser.h>
 #include <Grid.h>

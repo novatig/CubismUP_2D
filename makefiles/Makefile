@@ -1,5 +1,5 @@
 CC ?= g++
-LD=$(CC)
+LD ?= g++
 
 nthreads ?= 48
 config ?= production
@@ -89,6 +89,10 @@ ifeq "$(movingframe)" "true"
 CPPFLAGS += -D_MOVING_FRAME_
 endif
 
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+include make.macos
+endif
 
 ifneq "$(findstring brutus,$(shell hostname))" ""
 include make.brutus
@@ -105,29 +109,6 @@ CPPFLAGS += -D_USE_FPZIP_  -I../tools/fpzip/inc
 
 LDFLAGS = $(CPPFLAGS)
 
-LIBS += -lstdc++
-#	-lm \
-#	-L$(vtk-lib) \
-#	-lvtkHybrid \
-#	-lvtkVolumeRendering \
-#	-lvtkRendering \
-#	-lvtkIO \
-#	-lvtkGenericFiltering \
-#	-lvtkGraphics \
-#	-lvtkImaging \
-#	-lvtkFiltering \
-#	-lvtkCommon \
-#	-lvtkftgl \
-#	-lvtkfreetype \
-#	-lvtkDICOMParser \
-#	-lvtkexpat \
-#	-lvtktiff \
-#	-lvtkpng \
-#	-lvtkjpeg \
-#	-lvtkzlib \
-#	-lvtksys -lz \
-#	-L$(fftw-lib)
-
 ifeq "$(precision)" "single"
     LIBS += -lfftw3 -lfftw3f -lfftw3f_threads
 endif
@@ -141,13 +122,12 @@ LIBS += -L../tools/fpzip/lib -lfpzip
 BUILDDIR = .
 SRC_DIR = $(BUILDDIR)/../source/
 CUBISM_DIR = $(BUILDDIR)/../Cubism/
-OBJECTS = PoissonSolverScalarFFTW.o Sim_FSI_Gravity.o Profiler.o main.o
-VPATH := $(SRC_DIR) $(CUBISM_DIR)
+OBJECTS = PoissonSolverScalarFFTW.o Sim_FSI_Gravity.o main.o #Profiler.o
 
 ifeq "$(smarties)" "true"
-CPPFLAGS += -D__RL_MPI_CLIENT
+CPPFLAGS += -DRL_MPI_CLIENT -I../../smarties/source/
 OBJECTS += Communicator.o
-VPATH := $(SRC_DIR) $(CUBISM_DIR) ${HOME}/smarties/source/
+VPATH := $(SRC_DIR) $(CUBISM_DIR) ../../smarties/source/
 else
 VPATH := $(SRC_DIR) $(CUBISM_DIR)
 endif
@@ -163,16 +143,9 @@ simulation: $(OBJECTS)
 	$(LD) $(OBJECTS) -o $@ $(LIBS) $(LDFLAGS)
 #	echo ************************
 
-test: $(OBJECTS_TEST)
-#	echo Linking
-#	echo OBJECTS = $(OBJECTS_TEST)
-#	echo ************************
-	$(LD) $(OBJECTS_TEST) -o $@ $(LIBS) $(LDFLAGS)
-#	echo ************************
-
-%.o: $(SRC_DIR)/%.cpp
+%.o: %.cpp
 #	echo PRODUCING $@
-	$(CC) $(CPPFLAGS) -c -o $@ $<
+	$(CC) $(CPPFLAGS) -c $< -o $@
 
 clean:
 	rm -f simulation test

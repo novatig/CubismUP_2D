@@ -33,13 +33,15 @@ int main(int argc, const char **argv)
 	parser.set_strict_mode();
 
 	#ifdef RL_MPI_CLIENT
-	const int socket = parser("-Socket").asInt(-1);
-	//HARDCODED FOR GLIDER ENVIRONMENT
-	Communicator* const communicator = socket>=0 ? new Communicator(socket,9,1) : nullptr;
-	Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(communicator, argc, argv);
-   #else
-	Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(argc, argv);
+		const int socket = parser("-Socket").asInt(-1);
+		//HARDCODED FOR GLIDER ENVIRONMENT
+		Communicator* const communicator = socket>=0 ?
+				new Communicator(socket,10,1) : nullptr;
+		Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(communicator, argc, argv);
+	#else
+		Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(argc, argv);
 	#endif
+
 	sim->init();
 	sim->simulate();
 

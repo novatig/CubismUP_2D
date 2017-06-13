@@ -407,12 +407,12 @@ class Ellipse : public Shape
 	}
 
  public:
-	Ellipse(Real center[2], Real sA[2], Real orientation, const Real rhoS,
+	Ellipse(Real center[2], Real SA[2], Real orientation, const Real rhoS,
     const Real mollChi, const Real mollRho, bool bPeriodic[2], Real domainSize[2]) :
     Shape(center, orientation, rhoS, mollChi, mollRho, bPeriodic, domainSize)
     {
-      semiAxis[0] = sA[0]; 
-      semiAxis[1] = sA[1];
+			semiAxis[0] = SA[0];
+			semiAxis[1] = SA[1];
     }
 
 	Real chi(Real p[2], Real h) const
