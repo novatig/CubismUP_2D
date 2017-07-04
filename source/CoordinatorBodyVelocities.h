@@ -95,17 +95,16 @@ public:
 		#ifdef RL_MPI_CLIENT
 		if(!initialized_time_next_comm || *time>time_next_comm)
 		{
-			initialized_time_next_comm = true;
-			time_next_comm = time_next_comm + 0.5;
 			const Real rhoS = shape->rhoS;
 			const Real angle = shape->getOrientation(), omega = *omegaBody;
 			const Real cosTheta = std::cos(angle), sinTheta = std::sin(angle);
 			const Real a=max(shape->semiAxis[0], shape->semiAxis[1]);
 			const Real b=min(shape->semiAxis[0], shape->semiAxis[1]);
 			//Characteristic scales:
-			const Real lengthscale = a;
 			const Real velscale = std::sqrt((rhoS/1.-1)*9.8*b);
-			const Real torquescale = M_PI/8*pow((a*a-b*b)*velscale,2)*a/b;
+			const Real lengthscale = a, timescale = a/velscale;
+			//const Real torquescale = M_PI/8*pow((a*a-b*b)*velscale,2)*a/b;
+			const Real torquescale = lengthscale*lengthscale*velscale*velscale; 
 			//Nondimensionalization:
 			const Real xdot=*uBody/velscale,ydot=*vBody/velscale,T=Torque/torquescale;
 			const Real X =shape->labCenterOfMass[0]/a, Y =shape->labCenterOfMass[1]/a;
@@ -136,6 +135,8 @@ public:
 
 			communicator->recvAction(action);
          printf("Received %f\n", action[0]);
+			initialized_time_next_comm = true;
+			time_next_comm = time_next_comm + 0.5*timescale;
 			Torque = action[0]*torquescale;
 		}
 		*omegaBody += dt*Torque/shape->J;
