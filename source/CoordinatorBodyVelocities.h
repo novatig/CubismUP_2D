@@ -104,7 +104,8 @@ public:
 			const Real velscale = std::sqrt((rhoS/1.-1)*9.8*b);
 			const Real lengthscale = a, timescale = a/velscale;
 			//const Real torquescale = M_PI/8*pow((a*a-b*b)*velscale,2)*a/b;
-			const Real torquescale = lengthscale*lengthscale*velscale*velscale; 
+			//const Real torquescale = lengthscale*lengthscale*velscale*velscale; 
+			const Real torquescale = M_PI*a*a*a*a;
 			//Nondimensionalization:
 			const Real xdot=*uBody/velscale,ydot=*vBody/velscale,T=Torque/torquescale;
 			const Real X =shape->labCenterOfMass[0]/a, Y =shape->labCenterOfMass[1]/a;
