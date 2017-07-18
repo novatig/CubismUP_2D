@@ -81,7 +81,6 @@ class BoundaryCondition
 		{
 			(*this)(ix,iy).rho  = p.rho;
 			(*this)(ix,iy).tmp  = p.tmp;
-			(*this)(ix,iy).chi  = 0;
 
 			// dirichlet BC
 			(*this)(ix,iy).u = 2*p.u - (*this)(ix, -iy-1).u;
@@ -109,7 +108,6 @@ class BoundaryCondition
             {
                 (*this)(ix,iy).rho  = (*this)(ix, TBlock::sizeY-1).rho;//p.rho;
                 (*this)(ix,iy).tmp  = (*this)(ix, TBlock::sizeY-1).tmp;//p.rho;
-                (*this)(ix,iy).chi  = 0;
 
                 // dirichlet BC
                 (*this)(ix,iy).p    = 2*p.p    - (*this)(ix,2*TBlock::sizeY-1-iy).p;
@@ -137,7 +135,6 @@ class BoundaryCondition
 		{
 			(*this)(ix,iy).rho  = p.rho;
 			(*this)(ix,iy).tmp  = p.tmp;
-			(*this)(ix,iy).chi  = 0;
 
 			// dirichlet BC
 			(*this)(ix,iy).u = 2*p.u - (*this)(-ix-1, iy).u;
@@ -165,7 +162,6 @@ class BoundaryCondition
 		{
 			(*this)(ix,iy).rho  = p.rho;
 			(*this)(ix,iy).tmp  = p.tmp;
-			(*this)(ix,iy).chi  = 0;
 
 			// dirichlet BC
 			(*this)(ix,iy).u = 2*p.u - (*this)(2*TBlock::sizeX-1-ix,iy).u;
@@ -193,7 +189,6 @@ class BoundaryCondition
 		{
 			(*this)(ix,iy).rho  = p.rho;
 			(*this)(ix,iy).tmp  = p.tmp;
-			(*this)(ix,iy).chi  = 0;
 
 			// dirichlet BC
 			(*this)(ix,iy).u = 2*p.u - (*this)(ix,2*TBlock::sizeY-1-iy).u;
@@ -232,10 +227,9 @@ class BoundaryCondition
                 const Real r = sqrt(p[0]*p[0] + p[1]*p[1]);
 				const Real invR = 1./r;
 
-                (*this)(ix,iy).rho = r;
-                (*this)(ix,iy).u   =   sin(p[1])*cos(r*M_PI/2)*invR;//-p[1];//
-                (*this)(ix,iy).v   =  -sin(p[0])*cos(r*M_PI/2)*invR;// p[0];//
-				(*this)(ix,iy).chi = 0;
+        (*this)(ix,iy).rho = r;
+        (*this)(ix,iy).u   =   sin(p[1])*cos(r*M_PI/2)*invR;//-p[1];//
+        (*this)(ix,iy).v   =  -sin(p[0])*cos(r*M_PI/2)*invR;// p[0];//
 				 // what about pressure?
 				 //*/
 			}

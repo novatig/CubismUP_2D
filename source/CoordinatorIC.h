@@ -34,11 +34,7 @@ class OperatorIC : public GenericOperator
 
 				block(ix,iy).u = uinfx;
 				block(ix,iy).v = uinfy;
-        const Real chi = shape->chi(p, info.h_gridpoint);
-				block(ix,iy).chi = chi;
-
-				// assume fluid with density 1
-				block(ix,iy).rho = shape->rho(p, info.h_gridpoint, chi);
+				block(ix,iy).rho = 1;
 
 				block(ix,iy).p = 0;
 				block(ix,iy).pOld = 0;

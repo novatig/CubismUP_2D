@@ -12,51 +12,21 @@
 #include "GenericCoordinator.h"
 #include "Shape.h"
 
-class OperatorComputeShape : public GenericOperator
-{
- private:
-	const Shape * const shape;
-
- public:
-	OperatorComputeShape(Shape * shape) : shape(shape) {}
-	~OperatorComputeShape() {}
-
-	void operator()(const BlockInfo& info, FluidBlock& block) const
-	{
-		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-			for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-			{
-				Real p[2];
-				info.pos(p, ix, iy);
-
-				const Real chi = shape->chi(p, info.h_gridpoint);
-				block(ix,iy).chi = chi;
-				//block(ix,iy).rho = shape->getRhoS()*chi + 1.*(1.-chi);
-				block(ix,iy).rho = shape->rho(p, info.h_gridpoint, chi);
-			}
-	}
-};
-
 class CoordinatorComputeShape : public GenericCoordinator
 {
  protected:
-	const Real* const uBody;
-  const Real* const vBody;
-  const Real* const omegaBody;
-	Shape * const shape;
+	const Real*const uBody;
+  const Real*const vBody;
+  const Real*const omegaBody;
+	Shape*const shape;
 
  public:
-	CoordinatorComputeShape(Real * uBody, Real * vBody, Real * omegaBody, Shape * shape, FluidGrid * grid) :
-  GenericCoordinator(grid), uBody(uBody), vBody(vBody), omegaBody(omegaBody), shape(shape)
-	{
-	}
+	CoordinatorComputeShape(const Real*const u, const Real*const v, const Real*const w, Shape*const s, FluidGrid*const g) :
+  GenericCoordinator(g), uBody(u), vBody(v), omegaBody(w), shape(s) { }
 
 	void operator()(const double dt)
 	{
 		check("shape - start");
-
-		//BlockInfo * ary = &vInfo.front();
-		const int N = vInfo.size();
 
 		const Real ub[2] = { *uBody, *vBody };
 		shape->updatePosition(ub, *omegaBody, dt);
@@ -73,14 +43,19 @@ class CoordinatorComputeShape : public GenericCoordinator
 			exit(0);
 		}
 
-		#pragma omp parallel
-		{
-			OperatorComputeShape kernel(shape);
+		#pragma omp parallel for schedule(static)
+		for(int i=0; i<vInfo.size(); i++) {
+			FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
 
-			#pragma omp for schedule(dynamic)
-			for(int i=0; i<N; i++)
-				kernel(vInfo[i], *(FluidBlock*)vInfo[i].ptrBlock);
+			for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+			for(int ix=0; ix<FluidBlock::sizeX; ++ix)
+			{
+				b(ix,iy).rho = 1;
+				b(ix,iy).tmp = 0;
+			}
 		}
+
+		shape->create(vInfo);
 
 		check("shape - end");
 	}
