@@ -78,7 +78,7 @@ class Blowfish : public Shape
 				const Real U = u*cosAng + v*sinAng, V = v*cosAng - u*sinAng;
 				const Real WR = flapVel_R*timescale, WL = flapVel_L*timescale;
 
-				const bool ended = (angle>M_PI || angle<-M_PI);
+				const bool ended = cosAng<0; //(angle>M_PI || angle<-M_PI);
 				const Real reward = ended ? -10 : cosAng -sqrt(u*u+v*v);
 				if (ended) {
 					printf("End of episode due to angle: %f\n", orientation);

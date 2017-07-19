@@ -46,10 +46,12 @@ int main(int argc, const char **argv)
 		{
 			Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(communicator, argc, argv);
 			sim->init();
-			try sim->simulate();
-	    catch (int count)
-				printf("Episode finished after %d transitions\n", count);
-			delete sim;
+			try {
+            sim->simulate();
+	      } catch (unsigned int count) {
+				printf("Episode finished after %u transitions\n", count);
+			}
+         delete sim;
 		}
 
 
