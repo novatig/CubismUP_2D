@@ -24,7 +24,7 @@
 
 class Simulation_Fluid
 {
-protected:
+ protected:
 	ArgumentParser parser;
 	Profiler profiler;
 
@@ -133,107 +133,27 @@ protected:
 		const int sizeY = bpdy * FluidBlock::sizeY;
 		//vector<BlockInfo> vInfo = grid->getBlocksInfo();
 		//processOMP<Lab, OperatorVorticityTmp>(0, vInfo,*grid);
-                cout << fname.str() << endl;
+    cout << fname.str() << endl;
 		dumper.Write(*grid, fname.str());
 		_serialize();
 	}
 
-	virtual void _outputSettings(ostream& outStream)
-	{
-		outStream << "Simulation_Fluid\n";
-
-		outStream << "step " << step << endl;
-		outStream << "nsteps " << nsteps << endl;
-		outStream << "time " << time << endl;
-		outStream << "endTime " << endTime << endl;
-
-		outStream << "verbose " << verbose << endl;
-
-		outStream << "CFL " << CFL << endl;
-		outStream << "LCFL " << LCFL << endl;
-
-		outStream << "dumpFreq " << dumpFreq << endl;
-		outStream << "dumpTime " << dumpTime << endl;
-		outStream << "path2file " << path2file << endl;
-
-		outStream << "Grid " << bpdx << " " << bpdy << endl;
-	}
-
-	virtual void _inputSettings(istream& inStream)
-	{
-		string variableName;
-
-		inStream >> variableName;
-		if (variableName != "Simulation_Fluid")
-		{
-			cout << "Error in deserialization - Simulation_Fluid\n";
-			abort();
-		}
-
-		// read data
-		inStream >> variableName;
-		assert(variableName=="step");
-		inStream >> step;
-		inStream >> variableName;
-		assert(variableName=="nsteps");
-		inStream >> nsteps;
-		inStream >> variableName;
-		assert(variableName=="time");
-		inStream >> time;
-		inStream >> variableName;
-		assert(variableName=="endTime");
-		inStream >> endTime;
-		inStream >> variableName;
-		assert(variableName=="verbose");
-		inStream >> verbose;
-		inStream >> variableName;
-		assert(variableName=="CFL");
-		inStream >> CFL;
-		inStream >> variableName;
-		assert(variableName=="LCFL");
-		inStream >> LCFL;
-		inStream >> variableName;
-		assert(variableName=="dumpFreq");
-		inStream >> dumpFreq;
-		inStream >> variableName;
-		assert(variableName=="dumpTime");
-		inStream >> dumpTime;
-		inStream >> variableName;
-		assert(variableName=="path2file");
-		inStream >> path2file;
-		inStream >> variableName;
-		assert(variableName=="Grid");
-		inStream >> bpdx;
-		inStream >> bpdy;
-	}
-
 	void _serialize()
 	{
-		{
-			stringstream ss;
-			ss << path4serialization << "Serialized-" << bPing << ".dat";
-			cout << ss.str() << endl;
+		stringstream ss;
+		ss << path4serialization << "Serialized-" << bPing << ".dat";
+		cout << ss.str() << endl;
 
-			stringstream serializedGrid;
-			serializedGrid << "SerializedGrid-" << bPing << ".grid";
-			DumpZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
+		stringstream serializedGrid;
+		serializedGrid << "SerializedGrid-" << bPing << ".grid";
+		DumpZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
 
-			ofstream file;
-			file.open(ss.str());
-
-			if (file.is_open())
-			{
-				_outputSettings(file);
-
-				file.close();
-			}
-
-			bPing = !bPing;
-		}
+		bPing = !bPing;
 	}
 
 	void _deserialize()
 	{
+		/*
 		stringstream ss0, ss1, ss;
 		struct stat st0, st1;
 		ss0 << path4serialization << "Serialized-0.dat";
@@ -241,32 +161,17 @@ protected:
 		stat(ss0.str().c_str(), &st0);
 		stat(ss1.str().c_str(), &st1);
 
-
-		// direct comparison of the two quantities leads to segfault
-		bPing = st0.st_mtime<st1.st_mtime ? false : true;
-		ss << (!bPing ? ss0.str() : ss1.str());
-
-		ifstream file;
-		file.open(ss.str());
-
-		if (file.is_open())
-		{
-			_inputSettings(file);
-
-			file.close();
-		}
-
 		grid = new FluidGrid(bpdx,bpdy,1);
 		assert(grid != NULL);
-
 		{
 			stringstream serializedGrid;
 			serializedGrid << "SerializedGrid-" << bPing << ".grid";
 			ReadZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
 		}
+		*/
 	}
 
-public:
+ public:
 	Simulation_Fluid(const int argc, const char ** argv) :
 		parser(argc,argv), step(0), time(0), dt(0), rank(0), nprocs(1), bPing(false)
 	{
@@ -287,57 +192,30 @@ public:
 	virtual void init()
 	{
 		bRestart = parser("-restart").asBool(false);
-			cout << "bRestart is " << bRestart << endl;
+		cout << "bRestart is " << bRestart << endl;
 
-		if (!bRestart)
-		{
-			// initialize grid
-			parser.set_strict_mode();
-			bpdx = parser("-bpdx").asInt();
-			bpdy = parser("-bpdy").asInt();
-			grid = new FluidGrid(bpdx,bpdy,1);
-			assert(grid != NULL);
+		// initialize grid
+		parser.set_strict_mode();
+		bpdx = parser("-bpdx").asInt();
+		bpdy = parser("-bpdy").asInt();
+		grid = new FluidGrid(bpdx,bpdy,1);
+		assert(grid != NULL);
 
-			// simulation ending parameters
-			parser.unset_strict_mode();
-			nsteps = parser("-nsteps").asInt(0);		// nsteps==0   means that this stopping criteria is not active
-			endTime = parser("-tend").asDouble(0);		// endTime==0  means that this stopping criteria is not active
+		// simulation ending parameters
+		parser.unset_strict_mode();
+		nsteps = parser("-nsteps").asInt(0);		// nsteps==0   means that this stopping criteria is not active
+		endTime = parser("-tend").asDouble(0);		// endTime==0  means that this stopping criteria is not active
 
-			// output parameters
-			dumpFreq = parser("-fdump").asDouble(0);	// dumpFreq==0 means that this dumping frequency (in #steps) is not active
-			dumpTime = parser("-tdump").asDouble(0);	// dumpTime==0 means that this dumping frequency (in time)   is not active
-			path2file = parser("-file").asString("./");
-			path4serialization = parser("-serialization").asString(path2file);
+		// output parameters
+		dumpFreq = parser("-fdump").asDouble(0);	// dumpFreq==0 means that this dumping frequency (in #steps) is not active
+		dumpTime = parser("-tdump").asDouble(0);	// dumpTime==0 means that this dumping frequency (in time)   is not active
+		path2file = parser("-file").asString("./");
+		path4serialization = parser("-serialization").asString(path2file);
 
-			CFL = parser("-CFL").asDouble(.1);
-			LCFL = parser("-LCFL").asDouble(.1);
+		CFL = parser("-CFL").asDouble(.1);
+		LCFL = parser("-LCFL").asDouble(.1);
 
-			verbose = parser("-verbose").asBool(false);
-		}
-		else
-		{
-				cout << "Deserializing...";
-
-			parser.set_strict_mode();
-			path4serialization = parser("-serialization").asString();
-			parser.unset_strict_mode();
-			_deserialize();
-
-			// evenutally read new endTime, nsteps
-			nsteps = parser("-nsteps").asInt(nsteps);
-			endTime = parser("tend").asDouble(endTime);
-
-			{
-				cout << " done - parameters:\n";
-				_outputSettings(cout);
-			}
-
-			{
-				double d = _nonDimensionalTime();
-				_dump(d);
-			}
-
-		}
+		verbose = parser("-verbose").asBool(false);
 	}
 
 	virtual void simulate() = 0;

@@ -66,7 +66,7 @@
 
 class Sim_FSI_Gravity : public Simulation_FSI
 {
-protected:
+ protected:
 	#ifdef RL_MPI_CLIENT
 	Communicator*const communicator;
 	#endif
@@ -81,9 +81,6 @@ protected:
 	void _diagnostics();
 	void _ic();
 	double _nonDimensionalTime();
-
-	void _outputSettings(ostream& outStream);
-	void _inputSettings(istream& inStream);
 
 	// should this stuff be moved? - serialize method will do that
 	void _dumpSettings(ostream& outStream);

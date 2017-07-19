@@ -14,11 +14,18 @@
 #ifndef CubismUP_2D_Shape_h
 #define CubismUP_2D_Shape_h
 
+#include "IF2D_ObstacleLibrary.h"
 #define TERM_REW_FAC 50
 #define HEIGHT_PENAL 10
 
 class Shape
 {
+ #ifdef RL_MPI_CLIENT
+	 public:
+			Communicator* communicator = nullptr;
+			Real* time_ptr = nullptr;
+ #endif
+
  protected:
 	// general quantities
 	Real centerOfMass[2], orientation;
@@ -27,6 +34,7 @@ class Shape
 	Real labCenterOfMass[2] = {0,0};
 	Real M = 0;
 	Real J = 0;
+
 	const Real rhoS;
 	std::map<int,ObstacleBlock*> obstacleBlocks;
 
@@ -47,7 +55,7 @@ class Shape
 			return (Real) ((1.+cos(M_PI*((rR-radius)/eps+.5)))*.5);
 	}
 
-	inline void rotate(Real pos[2]) const
+	inline void rotate(Real p[2]) const
 	{
 		const Real x = p[0], y = p[1];
 		p[0] =  x*cos(orientation) + y*sin(orientation);
@@ -63,9 +71,10 @@ class Shape
 	virtual ~Shape() {}
 
 	virtual Real getCharLength() const = 0;
-	virtual void create(const vector<BlockInfo>& vInfo);
+	virtual void create(const vector<BlockInfo>& vInfo) = 0;
+
 	#ifdef RL_MPI_CLIENT
-	virtual void act(Real*const uBody, Real*const vBody, Real*const omegaBody, const Real time, const Real dt) {}
+	virtual void act(Real*const uBody, Real*const vBody, Real*const omegaBody, const Real dt) {}
 	#endif
 
 	virtual void updatePosition(const Real u[2], Real omega, Real dt)
@@ -161,7 +170,7 @@ class Shape
 				const Real chi = pos->second->chi[iy][ix];
   			if (chi == 0) continue;
 				Real p[2];
-  			info.pos(p, ix, iy);
+  			vInfo[i].pos(p, ix, iy);
   			p[0] -= centerOfMass[0];
   			p[1] -= centerOfMass[1];
 				const Real u_ = pos->second->udef[iy][ix][0];
@@ -199,8 +208,8 @@ class Shape
           info.pos(p, ix, iy);
           p[0] -= centerOfMass[0];
           p[1] -= centerOfMass[1];
-          pos->second->udef[iz][iy][ix][0] -= um -am*p[1];
-          pos->second->udef[iz][iy][ix][1] -= vm +am*p[0];
+          pos->second->udef[iy][ix][0] -= um -am*p[1];
+          pos->second->udef[iy][ix][1] -= vm +am*p[0];
       }
     }
 	};
@@ -256,16 +265,72 @@ class Shape
         const Real chi = pos->second->chi[iy][ix];
   			if (chi == 0) continue;
 				Real p[2];
-  			info.pos(p, ix, iy);
+  			vInfo[i].pos(p, ix, iy);
   			p[0] -= centerOfMass[0];
   			p[1] -= centerOfMass[1];
 				const Real alpha = 1./(1. + dt * lambda * chi);
 				const Real uTot = u -omega*p[1] +pos->second->udef[iy][ix][0];
 				const Real vTot = v +omega*p[0] +pos->second->udef[iy][ix][1];
-				block(ix,iy).u = alpha*block(ix,iy).u + (1-alpha)*uTot;
-	      block(ix,iy).v = alpha*block(ix,iy).v + (1-alpha)*vTot;
+				b(ix,iy).u = alpha*b(ix,iy).u + (1-alpha)*uTot;
+	      b(ix,iy).v = alpha*b(ix,iy).v + (1-alpha)*vTot;
       }
     }
+	}
+
+	void _diagnostics(const Real uBody, const Real vBody, const Real omegaBody, const vector<BlockInfo>&vInfo, const Real nu, const Real time, const int step, const Real lambda)
+	{
+		double cX=0, cY=0, cmX=0, cmY=0, fx=0, fy=0, pMin=10, pMax=0, mass=0, volS=0, volF=0;
+		const double dh = vInfo[0].h_gridpoint;
+
+		#pragma omp parallel for reduction(max : pMax) reduction (min : pMin) reduction(+ : cX,cY,volF,cmX,cmY,fx,fy,mass,volS)
+		for(int i=0; i<vInfo.size(); i++) {
+			FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+			const auto pos = obstacleBlocks.find(vInfo[i].blockID);
+
+			for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+			for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
+				double p[2] = {0,0};
+				vInfo[i].pos(p, ix, iy);
+				const Real chi = pos==obstacleBlocks.end()?0 : pos->second->chi[iy][ix];
+				const Real rhochi = b(ix,iy).rho * chi;
+				cmX += p[0] * rhochi; cX += p[0] * chi; fx += (b(ix,iy).u-uBody)*chi;
+				cmY += p[1] * rhochi; cY += p[1] * chi; fy += (b(ix,iy).v-vBody)*chi;
+				mass += rhochi; volS += chi; volF += (1-chi);
+				pMin = min(pMin,(double)b(ix,iy).p);
+				pMax = max(pMax,(double)b(ix,iy).p);
+			}
+		}
+
+		cmX /= mass; cX /= volS; volS *= dh*dh; fx *= dh*dh*lambda;
+		cmY /= mass; cY /= volS; volF *= dh*dh; fy *= dh*dh*lambda;
+		const Real rhoSAvg = mass/volS, length = getCharLength();
+		const Real speed = sqrt ( uBody * uBody + vBody * vBody);
+		const Real cDx = 2*fx/(speed*speed*length + 2.2e-16);
+		const Real cDy = 2*fy/(speed*speed*length + 2.2e-16);
+		const Real Re_uBody = getCharLength()*speed/nu;
+		const Real theta = getOrientation();
+		Real CO[2], CM[2], labpos[2];
+		getLabPosition(labpos);
+		getCentroid(CO);
+		getCenterOfMass(CM);
+
+		stringstream ss;
+		ss << "./_diagnostics.dat";
+		ofstream myfile(ss.str(), fstream::app);
+		if (!step)
+		myfile<<"step time CO[0] CO[1] CM[0] CM[1] centroidX centroidY centerMassX centerMassY labpos[0] labpos[1] theta uBody[0] uBody[1] omegaBody Re_uBody cDx cDy rhoSAvg"<<endl;
+
+		cout<<step<<" "<<time<<" "<<CO[0]<<" "<<CO[1]<<" "<<CM[0]<<" "<<CM[1]
+			<<" " <<cX<<" "<<cY<<" "<<cmX<<" "<<cmY<<" "<<labpos[0]<<" "<<labpos[1]
+			<<" "<<theta<<" "<<uBody<<" "<<vBody<<" "<<omegaBody<<" "<<Re_uBody
+			<<" "<<cDx<<" "<<cDy<<" "<<rhoSAvg<<" "<<fx<<" "<<fy<<endl;
+
+		myfile<<step<<" "<<time<<" "<<CO[0]<<" "<<CO[1]<<" "<<CM[0]<<" "<<CM[1]
+			<<" " <<cX<<" "<<cY<<" "<<cmX<<" "<<cmY<<" "<<labpos[0]<<" "<<labpos[1]
+			<<" "<<theta<<" "<<uBody<<" "<<vBody<<" "<<omegaBody<<" "<<Re_uBody
+			<<" "<<cDx<<" "<<cDy<<" "<<rhoSAvg<<" "<<fx<<" "<<fy<<endl;
+
+		myfile.close();
 	}
 };
 
@@ -276,12 +341,9 @@ class Disk : public Shape
 
  public:
 	Disk(Real center[2], Real radius, const Real rhoS) :
-	Shape(center, 0, rhoS), radius(radius)
-	{
-    semiAxis[0] = semiAxis[1] = radius;
-	}
+	Shape(center, 0, rhoS), radius(radius) { }
 
-	Real getCharLength() const
+	Real getCharLength() const override
 	{
 		return 2 * radius;
 	}
@@ -294,9 +356,8 @@ class Disk : public Shape
 		Shape::outputSettings(outStream);
 	}
 
-	void create(const vector<BlockInfo>& vInfo)
+	void create(const vector<BlockInfo>& vInfo) override
 	{
-		vInfo = grid->getBlocksInfo();
 		const Real h =  vInfo[0].h_gridpoint;
 		for(auto & entry : obstacleBlocks) delete entry.second;
     obstacleBlocks.clear();
@@ -347,14 +408,13 @@ class DiskVarDensity : public Shape
 		centerOfMass[1] = center[1] - sin(orientation)*d_gm[0] - cos(orientation)*d_gm[1];
 	}
 
-	Real getCharLength() const
+	Real getCharLength() const  override
 	{
 		return 2 * radius;
 	}
 
-	void create(const vector<BlockInfo>& vInfo)
+	void create(const vector<BlockInfo>& vInfo) override
 	{
-		vInfo = grid->getBlocksInfo();
 		const Real h =  vInfo[0].h_gridpoint;
 		for(auto & entry : obstacleBlocks) delete entry.second;
     obstacleBlocks.clear();
@@ -415,7 +475,7 @@ class Ellipse : public Shape
 		printf("Created ellipse %f %f %f\n", semiAxis[0], semiAxis[1],rhoS); fflush(0);
   }
 
-	Real getCharLength() const
+	Real getCharLength() const  override
 	{
 		return 2 * max(semiAxis[1],semiAxis[0]);
 	}
@@ -430,25 +490,27 @@ class Ellipse : public Shape
 	}
 
 	#ifdef RL_MPI_CLIENT
-	void act(Real*const uBody, Real*const vBody, Real*const omegaBody, const Real time, const Real dt) override
+	void act(Real*const uBody, Real*const vBody, Real*const omegaBody, const Real dt) override
 	{
-		if(!initialized_time_next_comm || time>time_next_comm)
+		assert(time_ptr not_eq nullptr);
+		assert(communicator not_eq nullptr);
+		if(!initialized_time_next_comm || *time_ptr>time_next_comm)
 		{
-			initialized_time_next_comm = true;
-			time_next_comm = time_next_comm + 0.5;
 			const Real w = *omegaBody, u = *uBody, v = *vBody;
 			const Real cosAng = cos(orientation), sinAng = sin(orientation);
 			const Real a=max(semiAxis[0],semiAxis[1]), b=min(semiAxis[0],semiAxis[1]);
 			//Characteristic scales:
-			const Real lengthscale = a;
+			const Real lengthscale = a, timescale = a/velscale;
 			const Real velscale = std::sqrt((rhoS/1.-1)*9.8*b);
-			const Real torquescale = M_PI/8*pow((a*a-b*b)*velscale,2)*a/b;
+			//const Real torquescale = M_PI/8*pow((a*a-b*b)*velscale,2)*a/b;
+			const Real torquescale = M_PI*lengthscale*lengthscale*velscale*velscale;
 			//Nondimensionalization:
-			const Real xdot=u/velscale, ydot=v/velscale, T=Torque/torquescale;
+			const Real xdot = u/velscale, ydot = v/velscale;
 			const Real X = labCenterOfMass[0]/a, Y = labCenterOfMass[1]/a;
 			const Real U = xdot*cosAng +ydot*sinAng;
 			const Real V = ydot*cosAng -xdot*sinAng;
 			const Real W = w*timescale;
+			const Real T = Torque/torquescale;
 			const bool ended = X>125 || X<-10 || Y<=-50;
 			const bool landing = std::fabs(angle - .25*M_PI) < 0.1;
 			const Real vertDist = std::fabs(Y+50), horzDist = std::fabs(X-100);
@@ -463,9 +525,10 @@ class Ellipse : public Shape
 				reward = (old_Dist-horzDist) -fabs(Torque-old_Torque)/.5;
 			//-(powerOutput-old_powerOutput);
 
-			vector<double> state = {U,V,omega,X,Y,cosTheta,sinTheta,T,xdot,ydot}; vector<double> action = {0.};
+			vector<double> state = {U, V, W, X, Y, cosAng, sinAng, T, xdot, ydot}; vector<double> action = {0.};
 
-	    printf("Sending (%lu) [%f %f %f %f %f %f %f %f %f %f], %f %f\n", state.size(),U,V,omega,X,Y,cosTheta,sinTheta,T,xdot,ydot, Torque,torquescale);
+	    printf("Sending (%lu) [%f %f %f %f %f %f %f %f %f %f], %f %f\n",
+			state.size(),U,V,W,X,Y,cosAng,sinAng,T,xdot,ydot, Torque,torquescale);
 
 			communicator->sendState(0, info, state, reward);
 
@@ -473,6 +536,8 @@ class Ellipse : public Shape
 			old_Dist = horzDist;
 			old_Torque = Torque;
 			old_powerOutput = powerOutput;
+			initialized_time_next_comm = true;
+			time_next_comm = time_next_comm + 0.5*timescale;
 			info = _AGENT_NORMALCOMM;
 
 			communicator->recvAction(action);
@@ -485,9 +550,8 @@ class Ellipse : public Shape
 	}
 	#endif
 
-	void create(const vector<BlockInfo>& vInfo)
+	void create(const vector<BlockInfo>& vInfo) override
 	{
-		vInfo = grid->getBlocksInfo();
 		const Real h =  vInfo[0].h_gridpoint;
 		for(auto & entry : obstacleBlocks) delete entry.second;
     obstacleBlocks.clear();

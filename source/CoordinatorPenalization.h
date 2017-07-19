@@ -20,7 +20,7 @@ class CoordinatorPenalization : public GenericCoordinator
   const Real* const vBody;
   const Real* const omegaBody;
   const Real* const lambda;
-	const Shape* const shape;
+	Shape* const shape;
 
  public:
 	CoordinatorPenalization(Real*uBody, Real*vBody, Real*omegaBody, Shape*shape, Real*lambda, FluidGrid*grid) :

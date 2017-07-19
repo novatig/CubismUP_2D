@@ -18,28 +18,15 @@ protected:
 	const Real* const lambda;
 	Shape* const shape;
 
-	#ifdef RL_MPI_CLIENT
-		Communicator*const communicator;
-		Real*const time;
-	#endif
-
 public:
-	CoordinatorBodyVelocities(Real*const u, Real*const v, Real*const w, Real*const s, Real*const l, FluidGrid*const g
-		#ifdef RL_MPI_CLIENT
-		, Communicator*const c, Real*const t
-		#endif
-	) : GenericCoordinator(g),uBody(u),vBody(v),omegaBody(w),lambda(l),shape(s)
-		#ifdef RL_MPI_CLIENT
-		, communicator(c), time(t)
-		#endif
-	{ }
+	CoordinatorBodyVelocities(Real*const u, Real*const v, Real*const w, Shape*const s, Real*const l, FluidGrid*const g) : GenericCoordinator(g),uBody(u),vBody(v),omegaBody(w),lambda(l),shape(s)	{ }
 
 	void operator()(const double dt)
 	{
-		computeVelocities(uBody, vBody, omegaBody, vInfo);
+		shape->computeVelocities(uBody, vBody, omegaBody, vInfo);
 
 		#ifdef RL_MPI_CLIENT
-		shape->act(uBody, vBody, omegaBody, time, communicator)
+		shape->act(uBody, vBody, omegaBody, dt);
 		#endif
 	}
 

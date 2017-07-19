@@ -88,20 +88,14 @@ class OperatorFadeOut : public GenericOperator
 
    inline bool _is_touching(const BlockInfo& i, const Real h) const
 	{
-		const int ax = info[0];
-		const int dir = info[1];
-		if(dir>0) //moving up
-		{
-  		Real max_pos[2];
-			i.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1);
-			return max_pos[ax] > extent[ax]-(2+buffer)*h;
-		}
-		else //moving down
-		{
-  		Real min_pos[2];
-			i.pos(min_pos, 0, 0);
-			return min_pos[ax] < 0 +(2+buffer)*h;
-		}
+  		Real min_pos[2], max_pos[2];
+      i.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1);
+		i.pos(min_pos, 0, 0);
+      const bool touchN = max_pos[1] > extent[1]-(2+buffer)*h;
+      const bool touchE = max_pos[0] > extent[0]-(2+buffer)*h;
+      const bool touchS = min_pos[1] < 0 +(2+buffer)*h;
+      const bool touchW = min_pos[0] < 0 +(2+buffer)*h;
+      return touchN || touchE || touchS || touchW;
 	}
 
  public:
@@ -120,9 +114,12 @@ class OperatorFadeOut : public GenericOperator
 		for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
 			Real p[2];
 			i.pos(p, ix, iy);
-			const Real dist = dir>0 ? p[ax]-extent[ax]+(2+buffer)*h
-				                			: 0.0  -p[ax]     +(2+buffer)*h;
-			const Real fade = max(Real(0), cos(.5*M_PI*max(0.,dist)*iWidth) );
+         const Real arg1= max(0.,  p[0] -extent[0] +(2+buffer)*h );
+         const Real arg2= max(0.,  p[1] -extent[1] +(2+buffer)*h );
+         const Real arg3= max(0., -p[0] +(2+buffer)*h );
+         const Real arg4= max(0., -p[1] +(2+buffer)*h );
+			const Real dist= max(max(arg1, arg2), max(arg3, arg4));
+			const Real fade= max(0., cos(.5*M_PI*dist*iWidth) );
 			b(ix,iy).u = b(ix,iy).u*fade + (1-fade)*uinfx;
 			b(ix,iy).v = b(ix,iy).v*fade + (1-fade)*uinfy;
 		}

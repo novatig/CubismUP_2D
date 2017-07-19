@@ -101,6 +101,7 @@ double findMaxUOMP(vector<BlockInfo>& myInfo, FluidGrid & grid)
 	return maxU;
 }
 
+/*
 void computeForcesFromVorticity(vector<BlockInfo>& myInfo, FluidGrid & grid,
 	Real ub[2], Real oldAccVort[2], Real rhoS)
 {
@@ -134,6 +135,7 @@ void computeForcesFromVorticity(vector<BlockInfo>& myInfo, FluidGrid & grid,
 	oldAccVort[0] = mU;
 	oldAccVort[1] = mV;
 }
+*/
 
 class OperatorVorticityTmp : public GenericLabOperator
 {

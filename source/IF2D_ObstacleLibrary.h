@@ -10,8 +10,6 @@
 
 #include "common.h"
 #include "Definitions.h"
-#include "IF2D_Frenet.h"
-#include "IF2D_Interpolation1D.h"
 #include <map>
 #include <limits>
 #include <vector>
@@ -133,7 +131,7 @@ struct FillBlocks_HalfCylinder
 	const double sinang = std::sin(angle);
   Real cylinder_box[2][2];
 
-	inline void changeFrame(Real pos[2]) const
+	inline void changeFrame(Real p[2]) const
 	{
 		const Real x = p[0]-cylinder_position[0];
 		const Real y = p[1]-cylinder_position[1];
@@ -343,8 +341,8 @@ struct FillBlocks_Ellipse
 
 		// Determine the axis order for decreasing extents.
 		int permute[2];
-		if (e[0] < e[1]) permute[0] = 1;  permute[1] = 0;
-		else permute[0] = 0;  permute[1] = 1;
+		if (e[0] < e[1]) { permute[0] = 1;  permute[1] = 0; }
+		else { permute[0] = 0;  permute[1] = 1; }
 
 		int invpermute[2];
 		for (int i = 0; i < 2; ++i) invpermute[permute[i]] = i;
@@ -381,10 +379,10 @@ struct FillBlocks_Ellipse
   void _find_cylinder_box()
   {
       const Real maxAxis = std::max(e0,e1);
-      sphere_box[0][0] = position[0] - (maxAxis + smoothing_length);
-      sphere_box[0][1] = position[0] + (maxAxis + smoothing_length);
-      sphere_box[1][0] = position[1] - (maxAxis + smoothing_length);
-      sphere_box[1][1] = position[1] + (maxAxis + smoothing_length);
+      sphere_box[0][0] = position[0] - (maxAxis + safety);
+      sphere_box[0][1] = position[0] + (maxAxis + safety);
+      sphere_box[1][0] = position[1] - (maxAxis + safety);
+      sphere_box[1][1] = position[1] + (maxAxis + safety);
   }
 
   FillBlocks_Ellipse(const Real e0, const Real e1, const Real h, const double pos[2], Real ang, Real rho): e0(e0), e1(e1), safety(4*h), position{pos[0], pos[1]}, angle(ang), rhoS(rho)
@@ -415,7 +413,7 @@ struct FillBlocks_Ellipse
     Real min_pos[2], max_pos[2];
 
     info.pos(min_pos, 0,0);
-    info.pos(max_pos, FluidBlock2D::sizeX-1, FluidBlock2D::sizeY-1);
+    info.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1);
     for(int i=0;i<2;++i) {
         min_pos[i] -= buffer_dx*info.h_gridpoint;
         max_pos[i] += buffer_dx*info.h_gridpoint;
@@ -434,8 +432,8 @@ struct FillBlocks_Ellipse
 
     if(_is_touching(info))
 		{
-	    for(int iy=0; iy<FluidBlock2D::sizeY; iy++)
-      for(int ix=0; ix<FluidBlock2D::sizeX; ix++)
+	    for(int iy=0; iy<FluidBlock::sizeY; iy++)
+      for(int ix=0; ix<FluidBlock::sizeX; ix++)
       {
         Real p[2];
         info.pos(p, ix, iy);
@@ -485,7 +483,7 @@ struct FillBlocks_Plate
 {
 	//position is not the center of mass, is is the center of the base
   const Real LX, LY, safety;
-  const Real position[2], angle, angvel;
+  const Real position[2], angle, angvel, rhoS;
 	const double cosang = std::cos(angle);
 	const double sinang = std::sin(angle);
   Real bbox[2][2];
@@ -506,8 +504,8 @@ struct FillBlocks_Plate
       bbox[1][1] = position[1] + maxreach;
   }
 
-  FillBlocks_Plate(Real lx, Real ly, Real h, Real pos[2], Real ang, Real avel):
-  LX(lx), LY(ly), safety(h*4), position{pos[0],pos[1]}, angle(ang), angvel(avel)
+  FillBlocks_Plate(Real lx, Real ly, Real h, const Real pos[2], Real ang, Real avel, Real rho):
+  LX(lx), LY(ly), safety(h*4), position{pos[0],pos[1]}, angle(ang), angvel(avel), rhoS(rho)
   {
       _find_bbox();
   }
@@ -517,7 +515,7 @@ struct FillBlocks_Plate
     Real min_pos[2], max_pos[2];
 
     info.pos(min_pos, 0,0);
-    info.pos(max_pos, FluidBlock2D::sizeX-1, FluidBlock2D::sizeY-1);
+    info.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1);
 
     Real intersection[2][2] = {
         max(min_pos[0], bbox[0][0]), min(max_pos[0], bbox[0][1]),
@@ -567,8 +565,8 @@ struct FillBlocks_Plate
   inline void operator()(const BlockInfo& info, FluidBlock& block, ObstacleBlock * const obstblock) const
   {
     if(_is_touching(info))
-    for(int iy=0; iy<FluidBlock2D::sizeY; iy++)
-    for(int ix=0; ix<FluidBlock2D::sizeX; ix++)
+    for(int iy=0; iy<FluidBlock::sizeY; iy++)
+    for(int ix=0; ix<FluidBlock::sizeX; ix++)
     {
         Real p[2];
         info.pos(p, ix, iy);

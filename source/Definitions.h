@@ -30,7 +30,8 @@ struct ObstacleBlock
   {
     memset(chi,  0, sizeof(Real)*sizeX*sizeY);
     memset(udef, 0, sizeof(Real)*sizeX*sizeY*2);
-		for(int i=0; i<sizeX*sizeY; i++) rho[i] = 1;
+		Real*const p = &rho[0][0];
+		for(int i=0; i<sizeX*sizeY; i++) p[i] = 1;
   }
 };
 
