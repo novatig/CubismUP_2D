@@ -36,14 +36,13 @@ int main(int argc, const char **argv)
 		const int socket  = parser("-Socket").asInt(-1);
 		const int nStates = parser("-nStates").asInt(-1);
 		const int nAction = parser("-nAction").asInt(-1);
-      if(socket>0 && nStates>0 && nAction>0)
-      {
+      const bool bRL = socket>0 && nStates>0 && nAction>0;
+		Communicator* const communicator = bRL ? new Communicator(socket,nStates,nAction) : nullptr;
+      if(bRL){
 		   printf("Starting communication with RL over socket %d\n",socket); fflush(0);
-		   Communicator* const communicator = new Communicator(socket,nStates,nAction);
-		   Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(communicator, argc, argv);
       }
-      else
-         Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(nullptr, argc, argv);
+
+		Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(communicator, argc, argv);
 	#else
 		Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(argc, argv);
 	#endif

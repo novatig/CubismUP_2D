@@ -75,7 +75,7 @@ class Blowfish : public Shape
 				const Real w = (*omegaBody)*timescale, angle = orientation;
 				const Real u = (*uBody)/velscale, v = (*vBody)/velscale;
 				const Real cosAng = cos(angle), sinAng = sin(angle);
-				const Real U = u*cosAng + v*sinAng, V = y*cosAng - u*sinAng;
+				const Real U = u*cosAng + v*sinAng, V = v*cosAng - u*sinAng;
 				const Real WR = flapVel_R*timescale;
 				const Real WL = flapVel_L*timescale;
 
