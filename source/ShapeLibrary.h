@@ -113,11 +113,13 @@ struct FillBlocks_Cylinder
 							p[0] -= cylinder_position[0];
 							p[1] -= cylinder_position[1];
 							const Real chi = getHeavisideFDMH1(p[0], p[1], info.h_gridpoint);
-							const Real rho = rhoS*chi + block(ix, iy).rho*(1-chi);
-
-							obstblock->chi[iy][ix] = chi;
-							obstblock->rho[iy][ix] = rho;
-			        block(ix, iy).rho = rho;
+							if (chi >= obstblock->chi[iy][ix])
+							{
+								const Real rho = rhoS*chi + block(ix, iy).rho*(1-chi);
+				        obstblock->chi[iy][ix] = chi;
+								obstblock->rho[iy][ix] = rho;
+				        block(ix, iy).rho = rho;
+							}
           }
       }
     }
@@ -145,7 +147,7 @@ struct FillBlocks_HalfCylinder
 		top					= max(top,		 safety);
 
 		Real bot		= cosang<=0 ? -safe_radius : -safe_radius*abs(sinang);
-		bot 				= min(top,		-safety);
+		bot 				= min(bot,		-safety);
 
 		Real left		= sinang>=0 ? -safe_radius : -safe_radius*abs(cosang);
 		left 				= min(left,		-safety);
@@ -166,30 +168,27 @@ struct FillBlocks_HalfCylinder
   }
 
   bool _is_touching(const Real min_pos[2], const Real max_pos[2]) const
-  {
-      Real intersection[2][2] =
-      {
-          max(min_pos[0], cylinder_box[0][0]), min(max_pos[0], cylinder_box[0][1]),
-          max(min_pos[1], cylinder_box[1][0]), min(max_pos[1], cylinder_box[1][1])
-      };
+	{
+		Real intersection[2][2] = {
+			max(min_pos[0], cylinder_box[0][0]), min(max_pos[0], cylinder_box[0][1]),
+			max(min_pos[1], cylinder_box[1][0]), min(max_pos[1], cylinder_box[1][1])
+		};
 
-      return
-      intersection[0][1]-intersection[0][0]>0 &&
-      intersection[1][1]-intersection[1][0]>0;
-  }
+		return
+		intersection[0][1]-intersection[0][0]>0 &&
+		intersection[1][1]-intersection[1][0]>0;
+	}
 
   bool _is_touching(const BlockInfo& info, const int buffer_dx = 0) const
   {
-      Real min_pos[2], max_pos[2];
-
-      info.pos(min_pos, 0,0);
-      info.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1);
-      for(int i=0;i<2;++i)
-      {
-          min_pos[i]-=buffer_dx*info.h_gridpoint;
-          max_pos[i]+=buffer_dx*info.h_gridpoint;
-      }
-      return _is_touching(min_pos,max_pos);
+    Real min_pos[2], max_pos[2];
+    info.pos(min_pos, 0,0);
+    info.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1);
+    for(int i=0;i<2;++i) {
+        min_pos[i]-=buffer_dx*info.h_gridpoint;
+        max_pos[i]+=buffer_dx*info.h_gridpoint;
+    }
+    return _is_touching(min_pos,max_pos);
   }
 
   inline Real distanceTocylinder(const Real x, const Real y) const
@@ -200,40 +199,38 @@ struct FillBlocks_HalfCylinder
 
   Real getHeavisideFDMH1(const Real x, const Real y, const Real h) const
   {
+			static const Real EPS = 2.2e-16;
       const Real dist = distanceTocylinder(x,y);
       if(dist >= +h) return 1;
       if(dist <= -h) return 0;
       assert(std::abs(dist)<=h);
 
       // compute first primitive of H(x): I(x) = int_0^x H(y) dy
-      Real IplusX = distanceTocylinder(x+h,y);
-      Real IminuX = distanceTocylinder(x-h,y);
-      Real IplusY = distanceTocylinder(x,y+h);
-      Real IminuY = distanceTocylinder(x,y-h);
-
+      const Real DplusX = distanceTocylinder(x+h,y);
+      const Real DminuX = distanceTocylinder(x-h,y);
+      const Real DplusY = distanceTocylinder(x,y+h);
+      const Real DminuY = distanceTocylinder(x,y-h);
 
       // set it to zero outside the cylinder
-      IplusX = IplusX < 0 ? 0 : IplusX;
-      IminuX = IminuX < 0 ? 0 : IminuX;
-      IplusY = IplusY < 0 ? 0 : IplusY;
-      IminuY = IminuY < 0 ? 0 : IminuY;
+      const Real IplusX = DplusX < 0 ? 0 : DplusX;
+      const Real IminuX = DminuX < 0 ? 0 : DminuX;
+      const Real IplusY = DplusY < 0 ? 0 : DplusY;
+      const Real IminuY = DminuY < 0 ? 0 : DminuY;
 
       // gradI
       const Real gradIX = 0.5/h * (IplusX - IminuX);
       const Real gradIY = 0.5/h * (IplusY - IminuY);
 
       // gradU
-      const Real gradUX = 0.5/h * ( distanceTocylinder(x+h,y) - distanceTocylinder(x-h,y));
-      const Real gradUY = 0.5/h * ( distanceTocylinder(x,y+h) - distanceTocylinder(x,y-h));
+      const Real gradUX = 0.5/h * (DplusX - DminuX);
+      const Real gradUY = 0.5/h * (DplusY - DminuY);
 
-      const Real H = (gradIX*gradUX + gradIY*gradUY)/(gradUX*gradUX+gradUY*gradUY);
-
-      return H;
+      return (gradIX*gradUX+gradIY*gradUY)/(gradUX*gradUX+gradUY*gradUY+EPS);
   }
 
   inline void operator()(const BlockInfo& info, FluidBlock& block, ObstacleBlock * const obstblock) const
   {
-    if(_is_touching(info))
+    //if(_is_touching(info))
     {
       for(int iy=0; iy<FluidBlock::sizeY; iy++)
       for(int ix=0; ix<FluidBlock::sizeX; ix++)
@@ -242,11 +239,13 @@ struct FillBlocks_HalfCylinder
         info.pos(p, ix, iy);
 				changeFrame(p);
 				const Real chi = getHeavisideFDMH1(p[0], p[1], info.h_gridpoint);
-				const Real rho = rhoS*chi + block(ix, iy).rho*(1-chi);
-
-        obstblock->chi[iy][ix] = chi;
-				obstblock->rho[iy][ix] = rho;
-        block(ix, iy).rho = rho;
+				if (chi >= obstblock->chi[iy][ix])
+				{
+					const Real rho = rhoS*chi + block(ix, iy).rho*(1-chi);
+	        obstblock->chi[iy][ix] = chi;
+					obstblock->rho[iy][ix] = rho;
+	        block(ix, iy).rho = rho;
+				}
       }
     }
   }
@@ -497,7 +496,7 @@ struct FillBlocks_Plate
 
   void _find_bbox()
   {
-      const double maxreach = LX + LY/2 + safety;
+      const double maxreach = LX + LY + safety;
       bbox[0][0] = position[0] - maxreach;
       bbox[0][1] = position[0] + maxreach;
       bbox[1][0] = position[1] - maxreach;
@@ -513,7 +512,6 @@ struct FillBlocks_Plate
   bool _is_touching(const BlockInfo& info) const
   {
     Real min_pos[2], max_pos[2];
-
     info.pos(min_pos, 0,0);
     info.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1);
 
@@ -529,7 +527,7 @@ struct FillBlocks_Plate
 
 	inline Real distance(const Real x, const Real y) const
   {  // pos inside, neg outside
-		return min(min(x, LX - x), min(y, LY - y));
+		return min(min(x, LX - x), min(LY/2 + y, LY/2 - y));
   }
 
 	Real getHeavisideFDMH1(const Real x, const Real y, const Real h) const
@@ -568,19 +566,136 @@ struct FillBlocks_Plate
     for(int iy=0; iy<FluidBlock::sizeY; iy++)
     for(int ix=0; ix<FluidBlock::sizeX; ix++)
     {
-        Real p[2];
-        info.pos(p, ix, iy);
-				toFrame(p);
-				const Real chi = getHeavisideFDMH1(p[0], p[1], info.h_gridpoint);
+      Real p[2];
+      info.pos(p, ix, iy);
+			toFrame(p);
+			const Real chi = getHeavisideFDMH1(p[0], p[1], info.h_gridpoint);
+			if (chi > obstblock->chi[iy][ix]) {
 				const Real rho = rhoS*chi + block(ix, iy).rho*(1-chi);
-
 				obstblock->chi[iy][ix] = chi;
 				obstblock->rho[iy][ix] = rho;
 				obstblock->udef[iy][ix][0] = -p[1]*angvel;
 				obstblock->udef[iy][ix][1] =  p[0]*angvel;
 				block(ix, iy).rho = rho;
+			}
     }
   }
 };
 
+struct FillBlocks_VarRhoCylinder
+{
+  const Real radius, safe_radius, rhoTop, rhoBot, angle;
+	const double cosang = std::cos(angle);
+	const double sinang = std::sin(angle);
+  const double cylinder_position[2];
+  Real cylinder_box[2][2];
+
+  void _find_cylinder_box()
+  {
+    cylinder_box[0][0] = cylinder_position[0] - safe_radius;
+    cylinder_box[0][1] = cylinder_position[0] + safe_radius;
+    cylinder_box[1][0] = cylinder_position[1] - safe_radius;
+    cylinder_box[1][1] = cylinder_position[1] + safe_radius;
+  }
+
+	inline Real mollified_heaviside(const Real x) const
+  {
+    const Real alpha = M_PI*min(1., max(0., .5*x + .5));
+    return 0.5+0.5*cos(alpha);
+  }
+
+	inline void changeFrame(Real p[2]) const
+	{
+		const Real x = p[0]-cylinder_position[0];
+		const Real y = p[1]-cylinder_position[1];
+		p[0] =  x*cosang + y*sinang;
+		p[1] = -x*sinang + y*cosang;
+	}
+
+  FillBlocks_VarRhoCylinder(Real rad, Real h, double pos[2], Real rhoT, Real rhoB, Real ang) : radius(rad), safe_radius(rad+4*h), rhoTop(rhoT), rhoBot(rhoB), angle(ang), cylinder_position{pos[0],pos[1]}
+  {
+    _find_cylinder_box();
+  }
+
+  bool _is_touching(const Real min_pos[2], const Real max_pos[2]) const
+  {
+    Real intersection[2][2] = {
+      max(min_pos[0], cylinder_box[0][0]), min(max_pos[0], cylinder_box[0][1]),
+      max(min_pos[1], cylinder_box[1][0]), min(max_pos[1], cylinder_box[1][1])
+    };
+
+    return
+    intersection[0][1]-intersection[0][0]>0 &&
+    intersection[1][1]-intersection[1][0]>0;
+  }
+
+  bool _is_touching(const BlockInfo& info, const int buffer_dx = 0) const
+  {
+    Real min_pos[2], max_pos[2];
+
+    info.pos(min_pos, 0,0);
+    info.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1);
+    for(int i=0;i<2;++i) {
+      min_pos[i]-=buffer_dx*info.h_gridpoint;
+      max_pos[i]+=buffer_dx*info.h_gridpoint;
+    }
+    return _is_touching(min_pos,max_pos);
+  }
+
+  inline Real distanceTocylinder(const Real x, const Real y) const
+  {
+      return radius - std::sqrt(x*x+y*y); // pos inside, neg outside
+  }
+
+	Real getHeavisideFDMH1(const Real x, const Real y, const Real h) const
+  {
+			static const Real EPS = 2.2e-16;
+      const Real dist = distanceTocylinder(x,y);
+      if(dist >= +h) return 1;
+      if(dist <= -h) return 0;
+      assert(std::abs(dist)<=h);
+      // compute first primitive of H(x): I(x) = int_0^x H(y) dy
+      const Real DplusX = distanceTocylinder(x+h,y);
+      const Real DminuX = distanceTocylinder(x-h,y);
+      const Real DplusY = distanceTocylinder(x,y+h);
+      const Real DminuY = distanceTocylinder(x,y-h);
+      // set it to zero outside the cylinder
+      const Real IplusX = DplusX < 0 ? 0 : DplusX;
+      const Real IminuX = DminuX < 0 ? 0 : DminuX;
+      const Real IplusY = DplusY < 0 ? 0 : DplusY;
+      const Real IminuY = DminuY < 0 ? 0 : DminuY;
+      // gradI
+      const Real gradIX = 0.5/h * (IplusX - IminuX);
+      const Real gradIY = 0.5/h * (IplusY - IminuY);
+      // gradU
+      const Real gradUX = 0.5/h * (DplusX - DminuX);
+      const Real gradUY = 0.5/h * (DplusY - DminuY);
+      return (gradIX*gradUX+gradIY*gradUY)/(gradUX*gradUX+gradUY*gradUY+EPS);
+  }
+
+  inline void operator()(const BlockInfo& info, FluidBlock& block, ObstacleBlock * const obstblock) const
+  {
+		const Real h = info.h_gridpoint;
+    if(_is_touching(info))
+    for(int iy=0; iy<FluidBlock::sizeY; iy++)
+    for(int ix=0; ix<FluidBlock::sizeX; ix++)
+    {
+			Real p[2];
+      info.pos(p, ix, iy);
+			changeFrame(p);
+			const Real chi = getHeavisideFDMH1(p[0], p[1], h);
+			if (chi > obstblock->chi[iy][ix])
+			{
+				const Real Y = 0.5*p[1]/h;
+				//0 is top, 1 is bottom:
+				const Real moll = Y>1 ? 0 : (Y<-1 ? 1 : mollified_heaviside(Y));
+				const Real rhoS = (1-moll)*rhoTop + moll*rhoBot;
+				const Real rho = rhoS*chi + block(ix, iy).rho*(1-chi);
+        obstblock->chi[iy][ix] = chi;
+				obstblock->rho[iy][ix] = rho;
+        block(ix, iy).rho = rho;
+			}
+    }
+  }
+};
 #endif

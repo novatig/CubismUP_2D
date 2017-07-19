@@ -27,23 +27,24 @@ class Blowfish : public Shape
 	const Real finWidth  = 0.1*radius; //fins
 	const Real finAngle0 = M_PI/6; //fins
 
-	const Real attachDist = radius +finWidth/2;
+	const Real attachDist = radius+finWidth;
 	Real flapAng_R = 0, flapAng_L = 0;
 	Real flapVel_R = 0, flapVel_L = 0;
 	Real flapAcc_R = 0, flapAcc_L = 0;
 	//Real powerOutput = 0, old_powerOutput = 0;
-
+	const Real rhoF = 1; //ASSUME RHO FLUID == 1
+	const Real lengthscale = 2*radius;
 	const Real distHalfCM = 4*radius/(3*M_PI);
 	const Real halfarea = 0.5*M_PI*radius*radius;
 	const Real minRho = min(rhoTop,rhoBot), maxRho = max(rhoTop,rhoBot);
-	const Real forceDw = halfarea*(1-minRho)*9.8;
-	const Real forceUp = halfarea*(maxRho-1)*9.8;
+	const Real forceDw = halfarea*(rhoF-minRho)*9.8;
+	const Real forceUp = halfarea*(maxRho-rhoF)*9.8;
 	const Real torquescale = distHalfCM*(forceDw+forceUp);
-	const Real velscale = sqrt(torquescale/radius/radius);
-	const Real timescale = radius/velscale;
+	const Real velscale = sqrt(torquescale/lengthscale/lengthscale/rhoF);
+	const Real timescale = lengthscale/velscale;
 
  public:
-	Blowfish(Real C[2], const Real ang, const Real R): Shape(C,.5,ang), radius(R)
+	Blowfish(Real C[2],const Real ang,const Real R):Shape(C,ang,0.5),radius(R)
 	{
 		// based on weighted average
 		const Real CentTop =  distHalfCM;
@@ -61,65 +62,80 @@ class Blowfish : public Shape
 	}
 
 	#ifdef RL_MPI_CLIENT
-	void act(Real*const uBody, Real*const vBody, Real*const omegaBody, const Real dt) override
-	{
-		assert(time_ptr not_eq nullptr);
-		assert(communicator not_eq nullptr);
-		if(!initialized_time_next_comm || *time_ptr>time_next_comm)
+		void act(Real*const uBody, Real*const vBody, Real*const omegaBody, const Real dt) override
 		{
-			initialized_time_next_comm = true;
-			time_next_comm = time_next_comm + 0.1*timescale;
-			//compute torque scale:
+			assert(time_ptr not_eq nullptr);
+			assert(communicator not_eq nullptr);
+			if(!initialized_time_next_comm || *time_ptr>time_next_comm)
+			{
+				initialized_time_next_comm = true;
+				time_next_comm = time_next_comm + 0.1*timescale;
+				//compute torque scale:
 
-			const Real w = (*omegaBody)*timescale, angle = orientation;
-			const Real u = (*uBody)/velscale, v = (*vBody)/velscale;
-			const Real cosAng = cos(angle), sinAng = sin(angle);
-			const Real U = u*cosAng + v*sinAng, V = y*cosAng - u*sinAng;
-			const Real WR = flapVel_R*timescale;
-			const Real WL = flapVel_L*timescale;
+				const Real w = (*omegaBody)*timescale, angle = orientation;
+				const Real u = (*uBody)/velscale, v = (*vBody)/velscale;
+				const Real cosAng = cos(angle), sinAng = sin(angle);
+				const Real U = u*cosAng + v*sinAng, V = y*cosAng - u*sinAng;
+				const Real WR = flapVel_R*timescale;
+				const Real WL = flapVel_L*timescale;
 
-			const bool ended = (angle>M_PI || angle<-M_PI);
-			const Real reward = ended ? -10 : cosAng -sqrt(u*u+v*v);
-			if (ended) info = _AGENT_LASTCOMM;
+				const bool ended = (angle>M_PI || angle<-M_PI);
+				const Real reward = ended ? -10 : cosAng -sqrt(u*u+v*v);
+				if (ended) info = _AGENT_LASTCOMM;
 
-			vector<double> state ={U, V, w, angle, flapAng_R, flapAng_L, WR, WL};
-			vector<double> action = {0, 0};
+				vector<double> state ={U, V, w, angle, flapAng_R, flapAng_L, WR, WL};
+				vector<double> action = {0, 0};
 
-	    printf("Sending (%lu) [%f %f %f %f %f %f %f %f]\n",
-				state.size(), U, V, w, angle, flapAng_R, flapAng_L, WR, WL);
+		    printf("Sending (%lu) [%f %f %f %f %f %f %f %f]\n",
+					state.size(), U, V, w, angle, flapAng_R, flapAng_L, WR, WL);
 
-			communicator->sendState(0, info, state, reward);
+				communicator->sendState(0, info, state, reward);
 
-			if(info == _AGENT_LASTCOMM) throw 66;
-			else info = _AGENT_NORMALCOMM;
+				if(info == _AGENT_LASTCOMM) throw 66;
+				else info = _AGENT_NORMALCOMM;
 
-			communicator->recvAction(action);
-	    printf("Received %f %f\n", action[0], action[1]);
-			flapAcc_R = action[0]*timescale*timescale;
-			flapAcc_L = action[1]*timescale*timescale;
+				communicator->recvAction(action);
+		    printf("Received %f %f\n", action[0], action[1]);
+				flapAcc_R = action[0]/timescale/timescale;
+				flapAcc_L = action[1]/timescale/timescale;
+			}
 		}
-	}
+	#else
+		void act(Real*const uBody, Real*const vBody, Real*const omegaBody, const Real dt) override
+		{
+			*omegaBody = 0;
+			const Real omega = 2*M_PI/timescale;
+			const Real amp = omega*omega*M_PI/8;
+			printf("V:%f, L:%f, Flap amp %f, omega %f\n",velscale,lengthscale,amp,omega);
+			//accelation is a sine, therefore angvel is cosine and angle is sine
+			flapAcc_R =  amp*std::sin(omega*(*time_ptr));
+			flapAcc_L = -amp*std::sin(omega*(*time_ptr));
+		}
 	#endif
 
 	void updatePosition(const Real u[2], Real omega, Real dt) override
 	{
 		Shape::updatePosition(u, omega, dt);
 		if(flapAng_R > M_PI/2) { //maximum extent of fin is pi/2
+			printf("Blocked flapAng_R at  M_PI/2\n");
 			flapAng_R =  M_PI/2;
 			if(flapVel_R>0) flapVel_R = 0;
 			if(flapAcc_R>0) flapAcc_R = 0;
 		}
 		if(flapAng_R < -M_PI/2) { //maximum extent of fin is pi/2
+			printf("Blocked flapAng_R at -M_PI/2\n");
 			flapAng_R = -M_PI/2;
 			if(flapVel_R<0) flapVel_R = 0;
 			if(flapAcc_R<0) flapAcc_R = 0;
 		}
 		if(flapAng_L > M_PI/2) { //maximum extent of fin is pi/2
+			printf("Blocked flapAng_L at  M_PI/2\n");
 			flapAng_L =  M_PI/2;
 			if(flapVel_L>0) flapVel_L = 0;
 			if(flapAcc_L>0) flapAcc_L = 0;
 		}
 		if(flapAng_L < -M_PI/2) { //maximum extent of fin is pi/2
+			printf("Blocked flapAng_L at -M_PI/2\n");
 			flapAng_L = -M_PI/2;
 			if(flapVel_L<0) flapVel_L = 0;
 			if(flapAcc_L<0) flapAcc_L = 0;
@@ -129,6 +145,8 @@ class Blowfish : public Shape
 		flapAng_L += dt*flapVel_L + .5*dt*dt*flapAcc_L;
 		flapVel_R += dt*flapAcc_R;
 		flapVel_L += dt*flapAcc_L;
+		printf("[ang, angvel, angacc] : right:[%f %f %f] left:[%f %f %f]\n",
+		 flapAng_R, flapVel_R, flapAcc_R, flapAng_L, flapVel_L, flapAcc_L);
 	}
 
 	void create(const vector<BlockInfo>& vInfo) override
@@ -138,8 +156,14 @@ class Blowfish : public Shape
 		const Real angleTotFin1 = angleAttFin1 +flapAng_R;
 		const Real angleTotFin2 = angleAttFin2 +flapAng_L;
 
-		const Real attach1[2] = {center[0]+attachDist*cos(angleAttFin1), center[1]+attachDist*sin(angleAttFin1)};
-		const Real attach2[2] = {center[0]+attachDist*cos(angleAttFin2), center[1]+attachDist*sin(angleAttFin2)};
+		const Real attach1[2] = {
+			center[0]+attachDist*cos(angleAttFin1),
+			center[1]+attachDist*sin(angleAttFin1)
+		};
+		const Real attach2[2] = {
+			center[0]+attachDist*cos(angleAttFin2),
+			center[1]+attachDist*sin(angleAttFin2)
+		};
 
 		const Real h = vInfo[0].h_gridpoint;
 		for(auto & entry : obstacleBlocks) delete entry.second;
@@ -173,24 +197,22 @@ class Blowfish : public Shape
 
 		#pragma omp parallel
 		{
-			const FillBlocks_Cylinder kernelC(radius, h, center, rhoBot);
-			const FillBlocks_HalfCylinder kernelH(radius, h, center, rhoTop, orientation);
+			const FillBlocks_VarRhoCylinder kernelC(radius, h, center, rhoTop, rhoBot, orientation);
 			const FillBlocks_Plate kernelF1(finLength, finWidth, h, attach1, angleTotFin1, flapVel_R, rhoFin);
 			const FillBlocks_Plate kernelF2(finLength, finWidth, h, attach2, angleTotFin2, flapVel_L, rhoFin);
 
-	    #pragma omp for
+	    #pragma omp for schedule(dynamic)
 			for(int i=0; i<vInfo.size(); i++) {
 				BlockInfo info = vInfo[i];
 				const auto pos = obstacleBlocks.find(info.blockID);
 				if(pos == obstacleBlocks.end()) continue;
 				FluidBlock& b = *(FluidBlock*)info.ptrBlock;
 				kernelC(info, b, pos->second);
-				kernelH(info, b, pos->second);
 				kernelF1(info, b, pos->second);
 				kernelF2(info, b, pos->second);
 			}
 		}
-
+		/*
 		{
 			// Update center of mass
 			const Real Mfin = finLength*finWidth*rhoFin;
@@ -215,6 +237,7 @@ class Blowfish : public Shape
 			centerOfMass[0] = center[0] -cosAng*d_gm[0] +sinAng*d_gm[1];
 			centerOfMass[1] = center[1] -sinAng*d_gm[0] -cosAng*d_gm[1];
 		}
+		*/
 
 		removeMoments(vInfo);
 	}
@@ -229,7 +252,6 @@ class Blowfish : public Shape
 		outStream << "Blowfish\n";
 		Shape::outputSettings(outStream);
 	}
-
 };
 
 #endif

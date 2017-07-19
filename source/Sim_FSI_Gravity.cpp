@@ -12,11 +12,9 @@
 #include "CoordinatorIC.h"
 #include "CoordinatorAdvection.h"
 #include "CoordinatorDiffusion.h"
-#include "CoordinatorPenalization.h"
-#include "CoordinatorComputeShape.h"
+#include "CoordinatorShape.h"
 #include "CoordinatorPressure.h"
 #include "CoordinatorGravity.h"
-#include "CoordinatorBodyVelocities.h"
 
 void Sim_FSI_Gravity::_diagnostics()
 {
@@ -30,6 +28,19 @@ void Sim_FSI_Gravity::_ic()
 	CoordinatorIC coordIC(shape, uinfx, uinfy, grid);
 	profiler.push_start(coordIC.getName());
 	coordIC(0);
+
+	vector<BlockInfo> vInfo = grid->getBlocksInfo();
+	#pragma omp parallel for schedule(static)
+	for(int i=0; i<vInfo.size(); i++) {
+		FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+		for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
+			b(ix,iy).rho = 1;
+			b(ix,iy).tmp = 0;
+		}
+	}
+
+	shape->create(vInfo);
 
 	stringstream ss;
 	ss << path2file << "-IC.vti";
@@ -61,28 +72,25 @@ void Sim_FSI_Gravity::init()
 {
 	Simulation_FSI::init();
 
-	if (!bRestart)
-	{
-		// simulation settings
-		nu = parser("-nu").asDouble(1e-2);
-		minRho = min((Real)1.,shape->getMinRhoS());
+	// simulation settings
+	nu = parser("-nu").asDouble(1e-2);
+	minRho = min((Real)1.,shape->getMinRhoS());
 
-		gravity[1] = -parser("-g").asDouble(9.8);
-		uinfx = parser("-uinfx").asDouble(0);
-		uinfy = parser("-uinfy").asDouble(0);
+	gravity[1] = -parser("-g").asDouble(9.8);
+	uinfx = parser("-uinfx").asDouble(0);
+	uinfy = parser("-uinfy").asDouble(0);
 
-		const Real aspectRatio = (Real)bpdx/(Real)bpdy;
-		Real center[2] = {
-				parser("-xpos").asDouble(.5*aspectRatio),
-				parser("-ypos").asDouble(.85)
-		};
-		shape->setCentroid(center);
-		_ic();
-	}
+	const Real aspectRatio = (Real)bpdx/(Real)bpdy;
+	Real center[2] = {
+			parser("-xpos").asDouble(.5*aspectRatio),
+			parser("-ypos").asDouble(.85)
+	};
+	shape->setCentroid(center);
+	_ic();
 
+	shape->time_ptr = &time;
 	#ifdef RL_MPI_CLIENT
 	shape->communicator = communicator;
-	shape->time_ptr = &time;
 	#endif
 
 	pipeline.clear();
@@ -92,13 +100,13 @@ void Sim_FSI_Gravity::init()
 	);
 
 	#ifndef _MULTIPHASE_
-	pipeline.push_back(
-		new CoordinatorAdvection<Lab>(&uBody[0], &uBody[1], grid)
-	);
+		pipeline.push_back(
+			new CoordinatorAdvection<Lab>(&uBody[0], &uBody[1], grid)
+		);
 	#else
-	pipeline.push_back(
-		new CoordinatorAdvection<Lab>(&uBody[0], &uBody[1], grid, 1)
-	);
+		pipeline.push_back(
+			new CoordinatorAdvection<Lab>(&uBody[0], &uBody[1], grid, 1)
+		);
 	#endif
 
 	pipeline.push_back(
@@ -196,9 +204,7 @@ void Sim_FSI_Gravity::simulate()
 		time += dt;
 		step++;
 
-		//if (step<100)
-		{
-			// this still needs to be corrected to the frame of reference!
+		if(0) {
 			// this test only works for constant density disks as it is written now
 			const double accMy = (uBody[1]-vOld)/dt;
 			const double accMx = (uBody[0]-uOld)/dt;
@@ -225,6 +231,7 @@ void Sim_FSI_Gravity::simulate()
 
 		//dump some time steps every now and then
 		profiler.push_start("Dump");
+		shape->characteristic_function(grid->getBlocksInfo());
 		_dump(nextDumpTime);
 		profiler.pop_stop();
 

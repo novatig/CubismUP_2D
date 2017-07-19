@@ -15,7 +15,7 @@
 #define CubismUP_2D_Simulation_FSI_h
 
 #include "Simulation_Fluid.h"
-#include "Shape.h"
+#include "ShapesSimple.h"
 #include "Blowfish.h"
 
 class Simulation_FSI : public Simulation_Fluid
@@ -60,7 +60,7 @@ class Simulation_FSI : public Simulation_Fluid
 			Real angle = parser("-angle").asDouble(0.0);
 			shape = new DiskVarDensity(centerOfMass, radius, angle, rhoTop, rhoS);
 		}
-		else if (shapeType=="Blowfish")
+		else if (shapeType=="blowfish")
 		{
 			Real angle = parser("-angle").asDouble(0.0);
 			Real radius = parser("-radius").asDouble(0.1);
