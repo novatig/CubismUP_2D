@@ -183,10 +183,11 @@ class Ellipse : public Shape
 		{
 			const Real w = *omegaBody, u = *uBody, v = *vBody;
 			const Real cosAng = cos(orientation), sinAng = sin(orientation);
+			const Real angle = atan2(sinAng,cosAng);
 			const Real a=max(semiAxis[0],semiAxis[1]), b=min(semiAxis[0],semiAxis[1]);
 			//Characteristic scales:
-			const Real lengthscale = a, timescale = a/velscale;
 			const Real velscale = std::sqrt((rhoS/1.-1)*9.8*b);
+			const Real lengthscale = a, timescale = a/velscale;
 			//const Real torquescale = M_PI/8*pow((a*a-b*b)*velscale,2)*a/b;
 			const Real torquescale = M_PI*lengthscale*lengthscale*velscale*velscale;
 			//Nondimensionalization:
