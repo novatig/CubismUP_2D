@@ -1,6 +1,7 @@
 CC=g++-7
 LD=g++-7
 
+SMARTIESDIR = /Users/novatig/code/smarties/source/
 CPPFLAGS += -D_VTK62_
 CPPFLAGS+= -I/usr/local/Cellar/vtk/7.1.1_1/include/vtk-7.1/
 

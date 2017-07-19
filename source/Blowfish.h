@@ -76,8 +76,7 @@ class Blowfish : public Shape
 				const Real u = (*uBody)/velscale, v = (*vBody)/velscale;
 				const Real cosAng = cos(angle), sinAng = sin(angle);
 				const Real U = u*cosAng + v*sinAng, V = v*cosAng - u*sinAng;
-				const Real WR = flapVel_R*timescale;
-				const Real WL = flapVel_L*timescale;
+				const Real WR = flapVel_R*timescale, WL = flapVel_L*timescale;
 
 				const bool ended = (angle>M_PI || angle<-M_PI);
 				const Real reward = ended ? -10 : cosAng -sqrt(u*u+v*v);
@@ -86,11 +85,11 @@ class Blowfish : public Shape
 					info = _AGENT_LASTCOMM;
 				}
 
-				vector<double> state ={U, V, w, angle, flapAng_R, flapAng_L, WR, WL};
+				vector<double> states = {U, V, w, angle, flapAng_R, flapAng_L, WR, WL};
 				vector<double> action = {0, 0};
 
 		    printf("(%u) Sending (%lu) [%f %f %f %f %f %f %f %f]\n",
-					iter++, state.size(), U, V, w, angle, flapAng_R, flapAng_L, WR, WL);
+					iter++, states.size(), U, V, w, angle, flapAng_R, flapAng_L, WR, WL);
 
 				communicator->sendState(0, info, state, reward);
 
@@ -109,7 +108,7 @@ class Blowfish : public Shape
 			*omegaBody = 0;
 			const Real omega = 2*M_PI/timescale;
 			const Real amp = omega*omega*M_PI/8;
-			printf("V:%f, L:%f, Flap amp %f, omega %f\n",velscale,lengthscale,amp,omega);
+			printf("V:%f, L:%f, Flap amp %f, omega %f\n", velscale, lengthscale, amp, omega);
 			//accelation is a sine, therefore angvel is cosine and angle is sine
 			flapAcc_R =  amp*std::sin(omega*(*time_ptr));
 			flapAcc_L = -amp*std::sin(omega*(*time_ptr));
