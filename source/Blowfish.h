@@ -81,17 +81,20 @@ class Blowfish : public Shape
 
 				const bool ended = (angle>M_PI || angle<-M_PI);
 				const Real reward = ended ? -10 : cosAng -sqrt(u*u+v*v);
-				if (ended) info = _AGENT_LASTCOMM;
+				if (ended) {
+					printf("End of episode due to angle: %f\n", orientation);
+					info = _AGENT_LASTCOMM;
+				}
 
 				vector<double> state ={U, V, w, angle, flapAng_R, flapAng_L, WR, WL};
 				vector<double> action = {0, 0};
 
-		    printf("Sending (%lu) [%f %f %f %f %f %f %f %f]\n",
-					state.size(), U, V, w, angle, flapAng_R, flapAng_L, WR, WL);
+		    printf("(%u) Sending (%lu) [%f %f %f %f %f %f %f %f]\n",
+					iter++, state.size(), U, V, w, angle, flapAng_R, flapAng_L, WR, WL);
 
 				communicator->sendState(0, info, state, reward);
 
-				if(info == _AGENT_LASTCOMM) throw 66;
+				if(info == _AGENT_LASTCOMM) throw iter;
 				else info = _AGENT_NORMALCOMM;
 
 				communicator->recvAction(action);

@@ -36,19 +36,29 @@ int main(int argc, const char **argv)
 		const int socket  = parser("-Socket").asInt(-1);
 		const int nStates = parser("-nStates").asInt(-1);
 		const int nAction = parser("-nAction").asInt(-1);
-      const bool bRL = socket>0 && nStates>0 && nAction>0;
+    const bool bRL = socket>0 && nStates>0 && nAction>0;
 		Communicator* const communicator = bRL ? new Communicator(socket,nStates,nAction) : nullptr;
       if(bRL){
 		   printf("Starting communication with RL over socket %d\n",socket); fflush(0);
       }
 
-		Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(communicator, argc, argv);
+		while(true)
+		{
+			Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(communicator, argc, argv);
+			sim->init();
+			try sim->simulate();
+	    catch (int count)
+				printf("Episode finished after %d transitions\n", count);
+			delete sim;
+		}
+
+
 	#else
 		Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(argc, argv);
+		sim->init();
+		sim->simulate();
 	#endif
 
-	sim->init();
-	sim->simulate();
 
 	return 0;
 }

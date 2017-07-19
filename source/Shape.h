@@ -58,7 +58,11 @@ class Shape
  public:
 	Shape(Real C[2], Real ang, const Real rho) : center{C[0],C[1]}, centerOfMass{C[0],C[1]}, d_gm{0,0}, orientation(ang), rhoS(rho) {	}
 
-	virtual ~Shape() {}
+	virtual ~Shape()
+	{
+		for(auto & entry : obstacleBlocks) delete entry.second;
+    obstacleBlocks.clear();
+	}
 
 	virtual Real getCharLength() const = 0;
 	virtual void create(const vector<BlockInfo>& vInfo) = 0;

@@ -17,6 +17,7 @@
 #include "Simulation_Fluid.h"
 #include "ShapesSimple.h"
 #include "Blowfish.h"
+#include <random>
 
 class Simulation_FSI : public Simulation_Fluid
 {
@@ -62,7 +63,13 @@ class Simulation_FSI : public Simulation_Fluid
 		}
 		else if (shapeType=="blowfish")
 		{
-			Real angle = parser("-angle").asDouble(0.0);
+			#ifdef RL_MPI_CLIENT
+				Real angle = parser("-angle").asDouble(0.0);
+			#else
+			  mt19937 gen(parser("-Socket").asInt(0));
+				uniform_real_distribution<Real> dis(-.1,.1);
+				Real angle = dis(gen);
+			#endif
 			Real radius = parser("-radius").asDouble(0.1);
 			shape = new Blowfish(centerOfMass, angle, radius);
 		}
