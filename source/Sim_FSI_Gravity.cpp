@@ -86,12 +86,14 @@ void Sim_FSI_Gravity::init()
 			parser("-ypos").asDouble(.85)
 	};
 	shape->setCentroid(center);
-	_ic();
-
 	shape->time_ptr = &time;
+	shape->grid_ptr = grid;
 	#ifdef RL_MPI_CLIENT
 	shape->communicator = communicator;
 	#endif
+
+	_ic();
+
 
 	pipeline.clear();
 
@@ -100,13 +102,13 @@ void Sim_FSI_Gravity::init()
 	);
 
 	#ifndef _MULTIPHASE_
-		pipeline.push_back(
-			new CoordinatorAdvection<Lab>(&uBody[0], &uBody[1], grid)
-		);
+	pipeline.push_back(
+		new CoordinatorAdvection<Lab>(&uBody[0], &uBody[1], grid)
+	);
 	#else
-		pipeline.push_back(
-			new CoordinatorAdvection<Lab>(&uBody[0], &uBody[1], grid, 1)
-		);
+	pipeline.push_back(
+		new CoordinatorAdvection<Lab>(&uBody[0], &uBody[1], grid, 1)
+	);
 	#endif
 
 	pipeline.push_back(
@@ -231,7 +233,7 @@ void Sim_FSI_Gravity::simulate()
 
 		//dump some time steps every now and then
 		profiler.push_start("Dump");
-		shape->characteristic_function(grid->getBlocksInfo());
+		//shape->characteristic_function(grid->getBlocksInfo());
 		_dump(nextDumpTime);
 		profiler.pop_stop();
 

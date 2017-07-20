@@ -40,21 +40,20 @@ struct FluidElement
   Real rho, u, v, p, pOld;
 	Real tmpU, tmpV, tmp;
 
-    FluidElement() :
-    rho(0), u(0), v(0), p(0), pOld(0), tmpU(0), tmpV(0), tmp(0)//, divU(0), x(0), y(0)
-    {}
+  FluidElement() :
+  rho(0), u(0), v(0), p(0), pOld(0), tmpU(0), tmpV(0), tmp(0)//, divU(0), x(0), y(0)
+  {}
 
-    void clear()
-    {
-        rho = u = v = p = pOld = tmpU = tmpV = tmp = 0;
-    }
+  void clear()
+  {
+      rho = u = v = p = pOld = tmpU = tmpV = tmp = 0;
+  }
 };
 
 
 struct FluidVTKStreamer
 {
-	//static const int channels = 6;
-	static const int channels = 5;
+	static const int channels = 4;
 
 	void operate(FluidElement input, Real output[channels])
 	{
@@ -62,8 +61,7 @@ struct FluidVTKStreamer
 		output[1] = input.u;
 		output[2] = input.v;
 		output[3] = input.p;
-		//output[k++] = input.chi;
-		output[4] = input.tmp;
+		//output[4] = input.tmp;
 	}
 };
 

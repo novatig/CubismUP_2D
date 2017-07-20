@@ -50,7 +50,8 @@ CPPFLAGS+= -D_BS_=$(bs)
 ifeq "$(config)" "production"
 	CPPFLAGS += -DNDEBUG -O3 -fstrict-aliasing -march=native -mtune=native -ffast-math -falign-functions=32
 else
-	CPPFLAGS += -g
+	CPPFLAGS += -g #-fsanitize=address
+	#LIBS += -fsanitize=address
 endif
 
 ifeq "$(poisson)" "split-fftw"
@@ -128,7 +129,7 @@ ifeq "$(smarties)" "true"
 SMARTIESDIR ?= ../../smarties/source/
 CPPFLAGS += -DRL_MPI_CLIENT -I$(SMARTIESDIR)
 OBJECTS += Communicator.o
-VPATH := $(SRC_DIR) $(CUBISM_DIR) $(SMARTIESDIR) 
+VPATH := $(SRC_DIR) $(CUBISM_DIR) $(SMARTIESDIR)
 else
 VPATH := $(SRC_DIR) $(CUBISM_DIR)
 endif

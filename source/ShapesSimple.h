@@ -49,12 +49,10 @@ class Disk : public Shape
 
 		FillBlocks_Cylinder kernel(radius, h, center, rhoS);
     for(int i=0; i<vInfo.size(); i++) {
-    	BlockInfo info = vInfo[i];
-      //const auto pos = obstacleBlocks.find(info.blockID);
-  		if(kernel._is_touching(info)) { //position of sphere + radius + 2*h safety
-  			assert(obstacleBlocks.find(info.blockID) == obstacleBlocks.end());
-  			obstacleBlocks[info.blockID] = new ObstacleBlock;
-  			obstacleBlocks[info.blockID]->clear(); //memset 0
+  		if(kernel._is_touching(vInfo[i])) { //position of sphere + radius + 2*h safety
+  			assert(obstacleBlocks.find(vInfo[i].blockID) == obstacleBlocks.end());
+  			obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
+  			obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
   		}
     }
 
@@ -64,11 +62,10 @@ class Disk : public Shape
 
 	    #pragma omp for schedule(dynamic)
 			for(int i=0; i<vInfo.size(); i++) {
-				BlockInfo info = vInfo[i];
-				const auto pos = obstacleBlocks.find(info.blockID);
+				const auto pos = obstacleBlocks.find(vInfo[i].blockID);
 				if(pos == obstacleBlocks.end()) continue;
-				FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-				kernel(info, b, pos->second);
+				FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+				kernel(vInfo[i], b, pos->second);
 			}
 		}
 	}
@@ -106,12 +103,10 @@ class DiskVarDensity : public Shape
 
 		FillBlocks_Cylinder kernel(radius, h, center, rhoS);
     for(int i=0; i<vInfo.size(); i++) {
-    	BlockInfo info = vInfo[i];
-      //const auto pos = obstacleBlocks.find(info.blockID);
-  		if(kernel._is_touching(info)) { //position of sphere + radius + 2*h safety
-  			assert(obstacleBlocks.find(info.blockID) == obstacleBlocks.end());
-  			obstacleBlocks[info.blockID] = new ObstacleBlock;
-  			obstacleBlocks[info.blockID]->clear(); //memset 0
+  		if(kernel._is_touching(vInfo[i])) {
+  			assert(obstacleBlocks.find(vInfo[i].blockID) == obstacleBlocks.end());
+  			obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
+  			obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
   		}
     }
 
@@ -147,16 +142,21 @@ class DiskVarDensity : public Shape
 class Ellipse : public Shape
 {
  protected:
-	Real semiAxis[2] = {0,0};
+	const Real semiAxis[2];
+	//Characteristic scales:
+	const Real a=max(semiAxis[0],semiAxis[1]), b=min(semiAxis[0],semiAxis[1]);
+	const Real velscale = std::sqrt((rhoS/1.-1)*9.8*b);
+	const Real lengthscale = a, timescale = a/velscale;
+	//const Real torquescale = M_PI/8*pow((a*a-b*b)*velscale,2)*a/b;
+	const Real torquescale = M_PI*lengthscale*lengthscale*velscale*velscale;
+
 	Real Torque = 0, old_Torque = 0, old_Dist = 100;
 	Real powerOutput = 0, old_powerOutput = 0;
 
  public:
 	Ellipse(Real C[2], Real SA[2], Real ang, const Real rho) :
-    Shape(C, ang, rho)
+    Shape(C, ang, rho), semiAxis{SA[0],SA[1]}
   {
-		semiAxis[0] = SA[0];
-		semiAxis[1] = SA[1];
 		printf("Created ellipse %f %f %f\n", semiAxis[0], semiAxis[1],rhoS); fflush(0);
   }
 
@@ -184,12 +184,7 @@ class Ellipse : public Shape
 			const Real w = *omegaBody, u = *uBody, v = *vBody;
 			const Real cosAng = cos(orientation), sinAng = sin(orientation);
 			const Real angle = atan2(sinAng,cosAng);
-			const Real a=max(semiAxis[0],semiAxis[1]), b=min(semiAxis[0],semiAxis[1]);
-			//Characteristic scales:
-			const Real velscale = std::sqrt((rhoS/1.-1)*9.8*b);
-			const Real lengthscale = a, timescale = a/velscale;
-			//const Real torquescale = M_PI/8*pow((a*a-b*b)*velscale,2)*a/b;
-			const Real torquescale = M_PI*lengthscale*lengthscale*velscale*velscale;
+
 			//Nondimensionalization:
 			const Real xdot = u/velscale, ydot = v/velscale;
 			const Real X = labCenterOfMass[0]/a, Y = labCenterOfMass[1]/a;
@@ -244,12 +239,11 @@ class Ellipse : public Shape
 
 		FillBlocks_Ellipse kernel(semiAxis[0], semiAxis[1], h, center, orientation, rhoS);
     for(int i=0; i<vInfo.size(); i++) {
-    	BlockInfo info = vInfo[i];
       //const auto pos = obstacleBlocks.find(info.blockID);
-  		if(kernel._is_touching(info)) { //position of sphere + radius + 2*h safety
-  			assert(obstacleBlocks.find(info.blockID) == obstacleBlocks.end());
-  			obstacleBlocks[info.blockID] = new ObstacleBlock;
-  			obstacleBlocks[info.blockID]->clear(); //memset 0
+  		if(kernel._is_touching(vInfo[i])) { //position of sphere + radius + 2*h safety
+  			assert(obstacleBlocks.find(vInfo[i].blockID)==obstacleBlocks.end());
+  			obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
+  			obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
   		}
     }
 
@@ -259,13 +253,15 @@ class Ellipse : public Shape
 
 	    #pragma omp for schedule(dynamic)
 			for(int i=0; i<vInfo.size(); i++) {
-				BlockInfo info = vInfo[i];
-				const auto pos = obstacleBlocks.find(info.blockID);
+				const auto pos = obstacleBlocks.find(vInfo[i].blockID);
 				if(pos == obstacleBlocks.end()) continue;
-				FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-				kernel(info, b, pos->second);
+				FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+				kernel(vInfo[i], b, pos->second);
 			}
 		}
+
+		const FillBlocks_EllipseFinalize finalize(h, rhoS);
+		compute(finalize, vInfo);
 	}
 };
 

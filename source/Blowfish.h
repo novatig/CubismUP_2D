@@ -91,7 +91,7 @@ class Blowfish : public Shape
 		    printf("(%u) Sending (%lu) [%f %f %f %f %f %f %f %f]\n",
 					iter++, states.size(), U, V, w, angle, flapAng_R, flapAng_L, WR, WL);
 
-				communicator->sendState(0, info, state, reward);
+				communicator->sendState(0, info, states, reward);
 
 				if(info == _AGENT_LASTCOMM) throw iter;
 				else info = _AGENT_NORMALCOMM;

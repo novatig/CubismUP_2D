@@ -18,9 +18,10 @@ class Shape
 {
 	public:
 	Real* time_ptr = nullptr;
- #ifdef RL_MPI_CLIENT
-			Communicator* communicator = nullptr;
- #endif
+	FluidGrid * grid_ptr = nullptr;
+	#ifdef RL_MPI_CLIENT
+		Communicator* communicator = nullptr;
+	#endif
 
  protected:
 	// general quantities
@@ -221,14 +222,13 @@ class Shape
     #pragma omp parallel for schedule(dynamic)
     for(int i=0; i<vInfo.size(); i++)
 		{
-      BlockInfo info = vInfo[i];
-      const auto pos = obstacleBlocks.find(info.blockID);
+      const auto pos = obstacleBlocks.find(vInfo[i].blockID);
       if(pos == obstacleBlocks.end()) continue;
 
       for(int iy=0; iy<FluidBlock::sizeY; ++iy)
       for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
           Real p[2];
-          info.pos(p, ix, iy);
+          vInfo[i].pos(p, ix, iy);
           p[0] -= centerOfMass[0];
           p[1] -= centerOfMass[1];
           pos->second->udef[iy][ix][0] -= I.u -I.a*p[1];
@@ -250,9 +250,8 @@ class Shape
 		Real _M = 0, _J = 0, um = 0, vm = 0, am = 0; //linear momenta
     #pragma omp parallel for schedule(dynamic) reduction(+:_M,_J,um,vm,am)
     for(int i=0; i<vInfo.size(); i++) {
-        const BlockInfo info = vInfo[i];
-        FluidBlock & b = *(FluidBlock*)info.ptrBlock;
-        const auto pos = obstacleBlocks.find(info.blockID);
+        FluidBlock & b = *(FluidBlock*)vInfo[i].ptrBlock;
+        const auto pos = obstacleBlocks.find(vInfo[i].blockID);
         if(pos == obstacleBlocks.end()) continue;
 
         for(int iy=0; iy<FluidBlock::sizeY; ++iy)
@@ -260,7 +259,7 @@ class Shape
             const Real chi = pos->second->chi[iy][ix];
 		  			if (chi == 0) continue;
 						Real p[2];
-		  			info.pos(p, ix, iy);
+		  			vInfo[i].pos(p, ix, iy);
 		  			p[0] -= centerOfMass[0];
 		  			p[1] -= centerOfMass[1];
 
@@ -373,6 +372,26 @@ class Shape
       for(int ix=0; ix<FluidBlock::sizeX; ++ix)
 				b(ix,iy).tmp = pos->second->chi[iy][ix];
     }
+	}
+
+	template <typename Kernel>
+	void compute(const Kernel& kernel, const vector<BlockInfo>& vInfo)
+	{
+		assert(grid_ptr not_eq nullptr);
+		#pragma omp parallel
+		{
+      Lab mylab;
+			mylab.prepare(*grid_ptr, kernel.stencil_start, kernel.stencil_end, false);
+
+      #pragma omp for schedule(dynamic)
+			for (int i=0; i<vInfo.size(); i++) {
+				const auto pos = obstacleBlocks.find(vInfo[i].blockID);
+	      if(pos == obstacleBlocks.end()) continue;
+				mylab.load(vInfo[i], 0);
+				FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+				kernel(mylab, vInfo[i], b, pos->second);
+			}
+		}
 	}
 };
 

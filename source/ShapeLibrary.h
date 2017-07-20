@@ -255,10 +255,8 @@ struct FillBlocks_Ellipse
 {
 	static inline Real DistancePointEllipseSpecial (const Real e[2], const Real y[2], Real x[2])
 	{
-		if (y[1] > (Real)0)
-		{
-			if (y[0] > (Real)0)
-			{
+		if (y[1] > (Real)0) {
+			if (y[0] > (Real)0) {
 				// Bisect to compute the root of F(t) for t >= -e1*e1.
 				const Real esqr[2] = { e[0]*e[0], e[1]*e[1] };
 				const Real ey[2] = { e[0]*y[0], e[1]*y[1] };
@@ -266,48 +264,30 @@ struct FillBlocks_Ellipse
 				Real t1 = -esqr[1] + sqrt(ey[0]*ey[0] + ey[1]*ey[1]);
 				Real t = t0;
 				const int imax = 2*std::numeric_limits<Real>::max_exponent;
-				for (int i = 0; i < imax; ++i)
-				{
+				for (int i = 0; i < imax; ++i) {
 					t = ((Real)0.5)*(t0 + t1);
-					if ( fabs(t-t0)<2.2e-16 || fabs(t-t1)<2.2e-16 )
-					{
-						break;
-					}
+					if ( fabs(t-t0)<2.2e-16 || fabs(t-t1)<2.2e-16 ) break;
 
 					const Real r[2] = { ey[0]/(t + esqr[0]), ey[1]/(t + esqr[1]) };
 					const Real f = r[0]*r[0] + r[1]*r[1] - (Real)1;
-					if (f > (Real)0)
-					{
-						t0 = t;
-					}
-					else if (f < (Real)0)
-					{
-						t1 = t;
-					}
-					else
-					{
-						break;
-					}
+					if (f > (Real)0) t0 = t;
+					else if (f < (Real)0) t1 = t;
+					else break;
 				}
 
 				x[0] = esqr[0]*y[0]/(t + esqr[0]);
 				x[1] = esqr[1]*y[1]/(t + esqr[1]);
 				const Real d[2] = { x[0] - y[0], x[1] - y[1] };
 				return sqrt(d[0]*d[0] + d[1]*d[1]);
-			}
-			else  // y0 == 0
-			{
+			} else { // y0 == 0
 				x[0] = (Real)0;
 				x[1] = e[1];
 				return fabs(y[1] - e[1]);
 			}
-		}
-		else  // y1 == 0
-		{
+		} else { // y1 == 0
 			const Real denom0 = e[0]*e[0] - e[1]*e[1];
 			const Real e0y0 = e[0]*y[0];
-			if (e0y0 < denom0)
-			{
+			if (e0y0 < denom0) {
 				// y0 is inside the subinterval.
 				const Real x0de0 = e0y0/denom0;
 				const Real x0de0sqr = x0de0*x0de0;
@@ -315,9 +295,7 @@ struct FillBlocks_Ellipse
 				x[1] = e[1]*sqrt(fabs((Real)1 - x0de0sqr));
 				const Real d0 = x[0] - y[0];
 				return sqrt(d0*d0 + x[1]*x[1]);
-			}
-			else
-			{
+			} else {
 				// y0 is outside the subinterval.  The closest ellipse point has
 				// x1 == 0 and is on the domain-boundary interval (x0/e0)^2 = 1.
 				x[0] = e[0];
@@ -347,8 +325,7 @@ struct FillBlocks_Ellipse
 		for (int i = 0; i < 2; ++i) invpermute[permute[i]] = i;
 
 		Real locE[2], locY[2];
-		for (int i = 0; i < 2; ++i)
-		{
+		for (int i = 0; i < 2; ++i) {
 			const int j = permute[i];
 			locE[i] = e[j];
 			locY[i] = y[j];
@@ -359,8 +336,7 @@ struct FillBlocks_Ellipse
 		const Real distance = DistancePointEllipseSpecial(locE, locY, locX);
 
 		// Restore the axis order and reflections.
-		for (int i = 0; i < 2; ++i)
-		{
+		for (int i = 0; i < 2; ++i) {
 			const int j = invpermute[i];
 			if (reflect[j]) locX[j] = -locX[j];
 			x[i] = locX[j];
@@ -422,58 +398,66 @@ struct FillBlocks_Ellipse
 
   inline void operator()(const BlockInfo& info, FluidBlock& block, ObstacleBlock * const obstblock) const
   {
-    const Real Rmatrix[2][2] = {
-        {cosang, -sinang},
-        {sinang,  cosang}
-    };
 		const Real e[2] = {e0,e1};
-		const Real sqMinSemiAx = e[0]>e[1]  ? e[1]*e[1] : e[0]*e[0];
+		const Real sqMinSemiAx = e[0]>e[1] ? e[1]*e[1] : e[0]*e[0];
 
     if(_is_touching(info))
 		{
 	    for(int iy=0; iy<FluidBlock::sizeY; iy++)
       for(int ix=0; ix<FluidBlock::sizeX; ix++)
       {
-        Real p[2];
+        Real p[2], xs[2];
         info.pos(p, ix, iy);
+				p[0] -= position[0]; p[1] -= position[1];
+				const Real t[2] = {cosang*p[0]-sinang*p[1], sinang*p[0]+cosang*p[1]};
+        const Real sqDist = p[0]*p[0] + p[1]*p[1];
 
-        // translate
-        p[0] -= position[0];
-        p[1] -= position[1];
-
-        // rotate
-        const Real t[2] = {
-            Rmatrix[0][0]*p[0] + Rmatrix[0][1]*p[1],
-            Rmatrix[1][0]*p[0] + Rmatrix[1][1]*p[1]
-        };
-				const Real sqDist = t[0]*t[0] + t[1]*t[1];
-
-				if (fabs(t[0]) > e[0]+safety*.5 || fabs(t[1]) > e[1]+safety*.5)
-				{
-					continue; //is outside
-				}
-				else
-				{
-					Real rho, chi;
-			    if (sqDist < sqMinSemiAx)
-					{
-						rho = rhoS;
-						chi = 1;
-					}
-					else
-					{
-						Real xs[2];
-		        const Real dist = DistancePointEllipse (e, t, xs);
-		        const int sign = sqDist > (xs[0]*xs[0]+xs[1]*xs[1]) ? 1 : -1;
-		        chi = mollified_heaviside(sign*dist);
-						rho = rhoS*chi + block(ix, iy).rho*(1-chi);
-					}
-
-					obstblock->chi[iy][ix] = chi;
-					obstblock->rho[iy][ix] = rho;
-	        block(ix, iy).rho = rho;
+				if (fabs(t[0]) > e[0]+safety || fabs(t[1]) > e[1]+safety )
+					block(ix, iy).tmp = -1; //is outside
+				else if (sqDist + safety*safety < sqMinSemiAx)
+					block(ix, iy).tmp =  1; //is inside
+				else {
+	        const Real dist = DistancePointEllipse (e, t, xs);
+	        const int sign = sqDist > (xs[0]*xs[0]+xs[1]*xs[1]) ? -1 : 1;
+					block(ix, iy).tmp = sign*dist;
 				}
       }
+		}
+  }
+};
+
+struct FillBlocks_EllipseFinalize
+{
+  const Real h, rhoS;
+	const int stencil_start[3] = {-1, -1, 0}, stencil_end[3] = {2, 2, 1};
+
+  FillBlocks_EllipseFinalize(const Real h, Real rho): h(h), rhoS(rho) {   }
+
+	inline void operator()(Lab& l, const BlockInfo&i, FluidBlock&b, ObstacleBlock*const o) const
+  {
+    for(int iy=0; iy<FluidBlock::sizeY; iy++)
+    for(int ix=0; ix<FluidBlock::sizeX; ix++) {
+			const Real dist = l(ix,iy).tmp;
+			Real chi, rho;
+			if (dist > h) {
+				chi = 1;
+				rho = rhoS;
+			} else if (dist < -h) {
+				chi = 0;
+				rho = b(ix, iy).rho;
+			} else {
+				const Real distPx = l(ix+1,iy).tmp, distMx = l(ix-1,iy).tmp;
+				const Real distPy = l(ix,iy+1).tmp, distMy = l(ix,iy-1).tmp;
+				const Real IplusX =distPx<0? 0 : distPx, IminuX =distMx<0? 0 : distMx;
+				const Real IplusY =distPy<0? 0 : distPy, IminuY =distMy<0? 0 : distMy;
+				const Real gradUX =.5/h*(distPx-distMx), gradUY =.5/h*(distPy-distMy);
+				const Real gradIX =.5/h*(IplusX-IminuX), gradIY =.5/h*(IplusY-IminuY);
+				const Real gradUS = gradUX*gradUX + gradUY*gradUY + 2.2e-16;
+				const Real numH   = gradIX*gradUX + gradIY*gradUY;
+				chi = numH/gradUS;
+				rho = rhoS*chi + b(ix, iy).rho*(1-chi);
+			}
+			o->chi[iy][ix] = chi; o->rho[iy][ix] = rho; b(ix, iy).rho = rho;
 		}
   }
 };

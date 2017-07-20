@@ -29,32 +29,31 @@ class Simulation_Fluid
 	Profiler profiler;
 
 	// Serialization
-	bool bPing; // needed for ping-pong scheme
+	bool bPing=false, bRestart=false; // needed for ping-pong scheme
 	string path4serialization;
-	bool bRestart;
 
 	// MPI stuff - required for Hypre
-	int rank, nprocs;
+	int rank=0, nprocs=1;
 
 	vector<GenericCoordinator *> pipeline;
 
 	// grid
 	int bpdx, bpdy;
-	FluidGrid * grid;
+	FluidGrid * grid = nullptr;
 
 	// simulation status
-	int step, nsteps;
-	double dt, time, endTime;
+	int step=0, nsteps;
+	double dt=0, time=0, endTime;
 
 	// simulation settings
 	double CFL, LCFL;
 
 	// verbose
-	bool verbose;
+	bool verbose=false;
 
 	// output
 	int dumpFreq;
-	double dumpTime;
+	double dumpTime=0;
 	string path2file;
 	SerializerIO_ImageVTK<FluidGrid, FluidVTKStreamer> dumper;
 
@@ -76,30 +75,24 @@ class Simulation_Fluid
 				FluidBlock& b = *(FluidBlock*)info.ptrBlock;
 
 				for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-					for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-					{
-						if (std::isnan(b(ix,iy).rho) ||
-							std::isnan(b(ix,iy).u) ||
-							std::isnan(b(ix,iy).v) ||
-							std::isnan(b(ix,iy).chi) ||
-							std::isnan(b(ix,iy).p) ||
-							std::isnan(b(ix,iy).pOld))
-							cout << "dump" << endl;
+				for(int ix=0; ix<FluidBlock::sizeX; ++ix)
+				{
+					if(std::isnan(b(ix,iy).rho)||std::isnan(b(ix,iy).u)||
+						std::isnan(b(ix,iy).v)||std::isnan(b(ix,iy).p)) cout<<"dump"<<endl;
 
-						if (b(ix,iy).rho <= 0)
-							cout << "dump " << b(ix,iy).rho << "\t" << info.index[0] << " " << info.index[1] << " " << ix << " " << iy << endl;
+					if (b(ix,iy).rho <= 0)
+						cout << "dump " << b(ix,iy).rho << "\t" << info.index[0] << " " << info.index[1] << " " << ix << " " << iy << endl;
 
-						assert(b(ix,iy).rho > 0);
-						assert(!std::isnan(b(ix,iy).rho));
-						assert(!std::isnan(b(ix,iy).u));
-						assert(!std::isnan(b(ix,iy).v));
-						assert(!std::isnan(b(ix,iy).chi));
-						assert(!std::isnan(b(ix,iy).p));
-						assert(!std::isnan(b(ix,iy).pOld));
-						assert(!std::isnan(b(ix,iy).tmpU));
-						assert(!std::isnan(b(ix,iy).tmpV));
-						assert(!std::isnan(b(ix,iy).tmp));
-					}
+					assert(b(ix,iy).rho > 0);
+					assert(!std::isnan(b(ix,iy).rho));
+					assert(!std::isnan(b(ix,iy).u));
+					assert(!std::isnan(b(ix,iy).v));
+					assert(!std::isnan(b(ix,iy).p));
+					assert(!std::isnan(b(ix,iy).pOld));
+					assert(!std::isnan(b(ix,iy).tmpU));
+					assert(!std::isnan(b(ix,iy).tmpV));
+					assert(!std::isnan(b(ix,iy).tmp));
+				}
 			}
 		}
 		#endif
@@ -172,17 +165,12 @@ class Simulation_Fluid
 	}
 
  public:
-	Simulation_Fluid(const int argc, const char ** argv) :
-		parser(argc,argv), step(0), time(0), dt(0), rank(0), nprocs(1), bPing(false)
-	{
-	}
+	Simulation_Fluid(const int argc, const char ** argv) : parser(argc,argv) { }
 
 	virtual ~Simulation_Fluid()
 	{
 		delete grid;
-
-		while(!pipeline.empty())
-		{
+		while(!pipeline.empty()) {
 			GenericCoordinator * g = pipeline.back();
 			pipeline.pop_back();
 			delete g;
