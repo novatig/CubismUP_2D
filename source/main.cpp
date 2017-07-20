@@ -33,18 +33,34 @@ int main(int argc, const char **argv)
 	parser.set_strict_mode();
 
 	#ifdef RL_MPI_CLIENT
-		const int socket = parser("-Socket").asInt(-1);
-		printf("Starting communication with RL over socket %d\n",socket); fflush(0);
-		//HARDCODED FOR GLIDER ENVIRONMENT
-		Communicator* const communicator = socket>=0 ?
-				new Communicator(socket,10,1) : nullptr;
-		Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(communicator, argc, argv);
+		const int socket  = parser("-Socket").asInt(-1);
+		const int nStates = parser("-nStates").asInt(-1);
+		const int nAction = parser("-nAction").asInt(-1);
+    const bool bRL = socket>0 && nStates>0 && nAction>0;
+		Communicator* const communicator = bRL ? new Communicator(socket,nStates,nAction) : nullptr;
+      if(bRL){
+		   printf("Starting communication with RL over socket %d\n",socket); fflush(0);
+      }
+
+		while(true)
+		{
+			Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(communicator, argc, argv);
+			sim->init();
+			try {
+            sim->simulate();
+	      } catch (unsigned int count) {
+				printf("Episode finished after %u transitions\n", count);
+			}
+         delete sim;
+		}
+
+
 	#else
 		Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(argc, argv);
+		sim->init();
+		sim->simulate();
 	#endif
 
-	sim->init();
-	sim->simulate();
 
 	return 0;
 }

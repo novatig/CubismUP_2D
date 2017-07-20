@@ -34,11 +34,7 @@ class OperatorIC : public GenericOperator
 
 				block(ix,iy).u = uinfx;
 				block(ix,iy).v = uinfy;
-        const Real chi = shape->chi(p, info.h_gridpoint);
-				block(ix,iy).chi = chi;
-
-				// assume fluid with density 1
-				block(ix,iy).rho = shape->rho(p, info.h_gridpoint, chi);
+				block(ix,iy).rho = 1;
 
 				block(ix,iy).p = 0;
 				block(ix,iy).pOld = 0;
@@ -92,14 +88,14 @@ class OperatorFadeOut : public GenericOperator
 
    inline bool _is_touching(const BlockInfo& i, const Real h) const
 	{
-  		Real min_pos[2], max_pos[2];
-      i.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1);
+		Real min_pos[2], max_pos[2];
+    i.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1);
 		i.pos(min_pos, 0, 0);
-      const bool touchN = max_pos[1] > extent[1]-(2+buffer)*h;
-      const bool touchE = max_pos[0] > extent[0]-(2+buffer)*h;
-      const bool touchS = min_pos[1] < 0 +(2+buffer)*h;
-      const bool touchW = min_pos[0] < 0 +(2+buffer)*h;
-      return touchN || touchE || touchS || touchW;
+    const bool touchN = max_pos[1] > extent[1]-(2+buffer)*h;
+    const bool touchE = max_pos[0] > extent[0]-(2+buffer)*h;
+    const bool touchS = min_pos[1] < 0 +(2+buffer)*h;
+    const bool touchW = min_pos[0] < 0 +(2+buffer)*h;
+    return touchN || touchE || touchS || touchW;
 	}
 
  public:

@@ -18,30 +18,41 @@
 #define _BS_ 32
 #endif // _BS_
 
+struct ObstacleBlock
+{
+  static const int sizeX = _BS_;
+  static const int sizeY = _BS_;
+  Real chi[sizeX][sizeY];
+  Real rho[sizeX][sizeY];
+  Real udef[sizeX][sizeY][2];
+
+  void clear()
+  {
+    memset(chi,  0, sizeof(Real)*sizeX*sizeY);
+    memset(udef, 0, sizeof(Real)*sizeX*sizeY*2);
+		Real*const p = &rho[0][0];
+		for(int i=0; i<sizeX*sizeY; i++) p[i] = 1;
+  }
+};
+
 struct FluidElement
 {
-  Real rho, u, v, chi, p, pOld;
+  Real rho, u, v, p, pOld;
 	Real tmpU, tmpV, tmp;
-	//Real divU;
-	//Real x, y;
 
-    FluidElement() :
-    rho(0), u(0), v(0), chi(0), p(0), pOld(0), tmpU(0), tmpV(0), tmp(0)//, divU(0), x(0), y(0)
-    {}
+  FluidElement() :
+  rho(0), u(0), v(0), p(0), pOld(0), tmpU(0), tmpV(0), tmp(0)//, divU(0), x(0), y(0)
+  {}
 
-    void clear()
-    {
-        rho = u = v = chi = p = pOld = 0;
-		tmpU = tmpV = tmp = 0;
-		//divU = 0;
-		//x = y = 0;
-    }
+  void clear()
+  {
+      rho = u = v = p = pOld = tmpU = tmpV = tmp = 0;
+  }
 };
 
 
 struct FluidVTKStreamer
 {
-	//static const int channels = 6;
 	static const int channels = 4;
 
 	void operate(FluidElement input, Real output[channels])
@@ -50,8 +61,7 @@ struct FluidVTKStreamer
 		output[1] = input.u;
 		output[2] = input.v;
 		output[3] = input.p;
-		//output[k++] = input.chi;
-		//output[k++] = input.tmp;
+		//output[4] = input.tmp;
 	}
 };
 
@@ -66,12 +76,11 @@ struct StreamerGridPoint
 		output[0] = input.rho;
 		output[1] = input.u;
 		output[2] = input.v;
-		output[3] = input.chi;
-		output[4] = input.p;
-		output[5] = input.pOld;
-		output[6] = input.tmpU;
-		output[7] = input.tmpV;
-		output[8] = input.tmp;
+		output[3] = input.p;
+		output[4] = input.pOld;
+		output[5] = input.tmpU;
+		output[6] = input.tmpV;
+		output[7] = input.tmp;
 	}
 
 	void operate(const Real input[channels], FluidElement& output) const
@@ -80,12 +89,11 @@ struct StreamerGridPoint
 		output.rho  = input[0];
 		output.u    = input[1];
 		output.v    = input[2];
-		output.chi  = input[3];
-		output.p    = input[4];
-		output.pOld = input[5];
-		output.tmpU = input[6];
-		output.tmpV = input[7];
-		output.tmp  = input[8];
+		output.p    = input[3];
+		output.pOld = input[4];
+		output.tmpU = input[5];
+		output.tmpV = input[6];
+		output.tmp  = input[7];
 	}
 };
 
@@ -93,9 +101,7 @@ struct StreamerGridPointASCII
 {
 	void operate(const FluidElement& input, ofstream& output) const
 	{
-		output << input.rho << " " << input.u << " " << input.v << " "
-          << input.chi << " " << input.p << " " << input.pOld << " "
-          << input.tmpU << " " << input.tmpV << " " << input.tmp;
+		output << input.rho << " " << input.u << " " << input.v << " " << input.p << " " << input.pOld << " " << input.tmpU << " " << input.tmpV << " " << input.tmp;
 	}
 
 	void operate(ifstream& input, FluidElement& output) const
@@ -103,7 +109,6 @@ struct StreamerGridPointASCII
 		input >> output.rho;
 		input >> output.u;
 		input >> output.v;
-		input >> output.chi;
 		input >> output.p;
 		input >> output.pOld;
 		input >> output.tmpU;
@@ -184,7 +189,7 @@ template <> inline void FluidBlock::Read<StreamerGridPoint>(ifstream& input, Str
 
 struct StreamerSerialization
 {
-	static const int NCHANNELS = 6;
+	static const int NCHANNELS = 5;
 
 	FluidBlock& ref;
 
@@ -193,13 +198,11 @@ struct StreamerSerialization
 	void operate(const int ix, const int iy, const int iz, Real output[NCHANNELS]) const
 	{
 		const FluidElement& input = ref.data[iz][iy][ix];
-
 		output[0] = input.rho;
 		output[1] = input.u;
 		output[2] = input.v;
-		output[3] = input.chi;
-		output[4] = input.p;
-		output[5] = input.pOld;
+		output[3] = input.p;
+		output[4] = input.pOld;
 		//output[6] = input.tmpU;
 		//output[7] = input.tmpV;
 		//output[8] = input.tmp;
@@ -209,13 +212,11 @@ struct StreamerSerialization
 	void operate(const Real input[NCHANNELS], const int ix, const int iy, const int iz) const
 	{
 		FluidElement& output = ref.data[iz][iy][ix];
-
 		output.rho  = input[0];
 		output.u    = input[1];
 		output.v    = input[2];
-		output.chi  = input[3];
-		output.p    = input[4];
-		output.pOld = input[5];
+		output.p    = input[3];
+		output.pOld = input[4];
 		//output.tmpU = input[6];
 		//output.tmpV = input[7];
 		//output.tmp  = input[8];
@@ -230,9 +231,8 @@ struct StreamerSerialization
 			case 0: *ovalue = input.rho; break;
 			case 1: *ovalue = input.u; break;
 			case 2: *ovalue = input.v; break;
-			case 3: *ovalue = input.chi; break;
-			case 4: *ovalue = input.p; break;
-			case 5: *ovalue = input.pOld; break;
+			case 3: *ovalue = input.p; break;
+			case 4: *ovalue = input.pOld; break;
 			//case 6: *ovalue = input.tmpU; break;
 			//case 7: *ovalue = input.tmpV; break;
 			//case 8: *ovalue = input.tmp; break;
@@ -249,9 +249,8 @@ struct StreamerSerialization
 			case 0:  output.rho  = ivalue; break;
 			case 1:  output.u    = ivalue; break;
 			case 2:  output.v    = ivalue; break;
-			case 3:  output.chi  = ivalue; break;
-			case 4:  output.p    = ivalue; break;
-			case 5:  output.pOld = ivalue; break;
+			case 3:  output.p    = ivalue; break;
+			case 4:  output.pOld = ivalue; break;
 			//case 6:  output.tmpU = ivalue; break;
 			//case 7:  output.tmpV = ivalue; break;
 			//case 8:  output.tmp  = ivalue; break;
@@ -274,7 +273,6 @@ class BlockLabBottomWall : public BlockLab<BlockType,allocator>
 	BlockLabBottomWall(): BlockLab<BlockType,allocator>()
     {
         pDirichlet.rho = 1;
-        pDirichlet.chi = 0;
         pDirichlet.u = 0;
         pDirichlet.v = 0;
         pDirichlet.p = 0;
@@ -342,7 +340,6 @@ class BlockLabOpenBox : public BlockLab<BlockType,allocator>
 	BlockLabOpenBox(): BlockLab<BlockType,allocator>()
 	{
 		pDirichlet.rho = 1;
-		pDirichlet.chi = 0;
 		pDirichlet.u = 0;
 		pDirichlet.v = 0;
 		pDirichlet.p = 0;
@@ -375,7 +372,6 @@ class BlockLabBox : public BlockLab<BlockType,allocator>
 	BlockLabBox(): BlockLab<BlockType,allocator>()
 	{
 		pDirichlet.rho = 1;
-		pDirichlet.chi = 0;
 		pDirichlet.u = 0;
 		pDirichlet.v = 0;
 		pDirichlet.p = 0;
