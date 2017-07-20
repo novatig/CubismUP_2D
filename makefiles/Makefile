@@ -1,7 +1,7 @@
 CC ?= g++
 LD ?= g++
 
-nthreads ?= 48
+nthreads ?= 24
 config ?= production
 bc ?= periodic
 precision ?= double
@@ -101,6 +101,10 @@ endif
 
 ifneq "$(findstring euler,$(shell hostname))" ""
 include make.euler
+endif
+
+ifneq "$(findstring daint,$(shell hostname))" ""
+include make.daint
 endif
 
 CPPFLAGS += -std=c++11 -fopenmp -Wall #-fpermissive
