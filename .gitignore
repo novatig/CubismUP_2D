@@ -27,7 +27,7 @@
 
 *.brf
 
-makefiles/rl
+makefiles/simulation
 deprecated/*
 
 .DS_Store

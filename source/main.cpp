@@ -23,11 +23,9 @@ using namespace std;
 
 int main(int argc, const char **argv)
 {
-	{
-		cout << "====================================================================================================================\n";
-		cout << "\t\tCubism UP 2D (velocity-pressure 2D incompressible Navier-Stokes solver)\n";
-		cout << "====================================================================================================================\n";
-	}
+	cout<<"=======================================================================================\n";
+	cout<<"\tCubismUP 2D (velocity-pressure 2D incompressible Navier-Stokes)\n";
+	cout<<"=======================================================================================\n";
 
 	ArgumentParser parser(argc,argv);
 	parser.set_strict_mode();
@@ -38,23 +36,36 @@ int main(int argc, const char **argv)
 		const int nAction = parser("-nAction").asInt(-1);
     const bool bRL = socket>0 && nStates>0 && nAction>0;
 		Communicator* const communicator = bRL ? new Communicator(socket,nStates,nAction) : nullptr;
-      if(bRL){
+		if(bRL){
 		   printf("Starting communication with RL over socket %d\n",socket); fflush(0);
-      }
+    }
+
+		char dirname[1024]; dirname[1023] = '\0';
+		unsigned iter = 0;
 
 		while(true)
 		{
+			sprintf(dirname, "run_%u/", iter);
+			printf("Starting a new sim in directory %s\n",dirname);
+			mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+			chdir(dirname);
+
 			Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(communicator, argc, argv);
+
 			sim->init();
-			try {
-            sim->simulate();
-	      } catch (unsigned int count) {
+			try
+			{
+        sim->simulate(); //when episode is over, it throws an exception
+			}
+			catch (unsigned int count)
+			{
 				printf("Episode finished after %u transitions\n", count);
 			}
-         delete sim;
+
+      delete sim;
+			chdir("../");
+			iter++;
 		}
-
-
 	#else
 		Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(argc, argv);
 		sim->init();
