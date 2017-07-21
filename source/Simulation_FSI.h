@@ -63,7 +63,7 @@ class Simulation_FSI : public Simulation_Fluid
 		}
 		else if (shapeType=="blowfish")
 		{
-			#ifdef RL_MPI_CLIENT
+			#ifndef RL_MPI_CLIENT
 				Real angle = parser("-angle").asDouble(0.0);
 			#else
 			  mt19937 gen(parser("-Socket").asInt(0));
