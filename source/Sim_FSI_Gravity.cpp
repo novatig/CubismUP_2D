@@ -54,10 +54,10 @@ double Sim_FSI_Gravity::_nonDimensionalTime()
 }
 
 #ifdef RL_MPI_CLIENT
-Sim_FSI_Gravity::Sim_FSI_Gravity(Communicator*const comm,const int argc, const char ** argv) :
+Sim_FSI_Gravity::Sim_FSI_Gravity(Communicator*const comm, int argc, char ** argv) :
 communicator(comm),
 #else
-Sim_FSI_Gravity::Sim_FSI_Gravity(const int argc, const char ** argv) :
+Sim_FSI_Gravity::Sim_FSI_Gravity(int argc, char ** argv) :
 #endif
 Simulation_FSI(argc, argv)
 {

@@ -87,9 +87,9 @@ class Sim_FSI_Gravity : public Simulation_FSI
 
 public:
 	#ifdef RL_MPI_CLIENT
-	Sim_FSI_Gravity(Communicator*const comm, const int argc, const char ** argv);
+	Sim_FSI_Gravity(Communicator*const comm, int argc, char ** argv);
 	#else
-	Sim_FSI_Gravity(const int argc, const char ** argv);
+	Sim_FSI_Gravity(int argc, char ** argv);
 	#endif
 	~Sim_FSI_Gravity();
 

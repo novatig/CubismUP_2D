@@ -20,6 +20,7 @@ class OperatorViscousDrag : public GenericLabOperator
  public:
   OperatorViscousDrag(double dt) : dt(dt), viscousDrag(0)
   {
+    stencil = StencilInfo(-1,-1,0, 2,2,1, false, 1, 5);
     stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
     stencil_end[0] = 2; stencil_end[1] = 2; stencil_end[2] = 1;
   }
@@ -57,6 +58,11 @@ class OperatorDiffusion : public GenericLabOperator
  public:
   OperatorDiffusion(double dt, double mu) : mu(mu), dt(dt)
   {
+    #ifndef _MULTIPHASE_
+    stencil = StencilInfo(-1,-1,0, 2,2,1, false, 2, 0,1);
+    #else
+    stencil = StencilInfo(-1,-1,0, 2,2,1, false, 3, 0,1,4);
+    #endif
     stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
     stencil_end[0] = 2; stencil_end[1] = 2; stencil_end[2] = 1;
   }

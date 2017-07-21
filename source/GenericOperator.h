@@ -18,9 +18,10 @@ public:
 class GenericLabOperator
 {
 public:
+  StencilInfo stencil;
 	int stencil_start[3];
 	int stencil_end[3];
-	
+
 	// cannot put the templated operator here!
 };
 

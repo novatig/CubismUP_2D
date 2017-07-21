@@ -36,5 +36,6 @@ typedef float Real;
 #include <BlockLab.h>
 #include <Profiler.h>
 #include "Timer.h"
+#include "StencilInfo.h"
 
 #endif

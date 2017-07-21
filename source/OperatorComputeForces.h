@@ -2,12 +2,16 @@
 #define CubismUP_2D_OperatorComputeForces_h
 #include "ObstacleBlock.h"
 
-struct OperatorComputeForces : public GenericLabOperator
+struct OperatorComputeForces
 {
   const int stencil_start[3] = {-1, -1, 0}, stencil_end[3] = {2, 2, 1};
+	StencilInfo stencil;
   const Real NU, *vel_unit, *Uinf, *CM;
 
-  OperatorComputeForces(const Real nu, const Real* vunit, const Real* cm) : NU(nu), vel_unit(vunit), CM(cm) { }
+  OperatorComputeForces(const Real nu, const Real* vunit, const Real* cm) : NU(nu), vel_unit(vunit), CM(cm)
+  {
+    stencil = StencilInfo(-1,-1,0, 2,2,1, false, 2, 0,1);
+  }
 
   inline void operator()(Lab& l, const BlockInfo&info, FluidBlock&b, ObstacleBlock*const o) const
   {

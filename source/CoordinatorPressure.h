@@ -26,6 +26,7 @@ class OperatorDivergenceSplit : public GenericLabOperator
  public:
   OperatorDivergenceSplit(double dt, double rho0, int step) : rho0(rho0), dt(dt), step(step)
   {
+    stencil = StencilInfo(-1,-1,0, 2,2,1, false, 5, 0,1,4,6,7);
     stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
     stencil_end[0] = 2; stencil_end[1] = 2; stencil_end[2] = 1;
   }
@@ -75,6 +76,8 @@ class OperatorGradPSplit : public GenericLabOperator
  public:
   OperatorGradPSplit(double dt, double rho0, int step) : rho0(rho0), dt(dt), step(step)
   {
+
+      stencil = StencilInfo(-1,-1,0, 2,2,1, false, 3, 5,6,7);
     stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
     stencil_end[0] = 2; stencil_end[1] = 2; stencil_end[2] = 1;
   }
@@ -121,6 +124,7 @@ class OperatorPressureDrag : public GenericLabOperator
  public:
   OperatorPressureDrag(double dt) : dt(dt), pressureDrag{0,0}
   {
+    stencil = StencilInfo(-1,-1,0, 2,2,1, false, 1, 6);
     stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
     stencil_end[0] = 2; stencil_end[1] = 2; stencil_end[2] = 1;
   }

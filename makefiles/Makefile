@@ -107,7 +107,7 @@ ifneq "$(findstring daint,$(shell hostname))" ""
 include make.daint
 endif
 
-CPPFLAGS += -std=c++11 -fopenmp -Wall #-fpermissive
+CPPFLAGS += -std=c++11 -fopenmp -Wall -D_ALIGNBYTES_=32 #-fpermissive
 CPPFLAGS += -DNTHREADS=$(nthreads)
 CPPFLAGS += -I../source/ -I../Cubism/ #-I$(vtk-inc) -I$(fftw-inc)
 CPPFLAGS += -D_USE_FPZIP_  -I../tools/fpzip/inc

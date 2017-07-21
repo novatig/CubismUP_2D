@@ -416,8 +416,12 @@ struct FillBlocks_EllipseFinalize
 {
   const Real h, rhoS;
   const int stencil_start[3] = {-1, -1, 0}, stencil_end[3] = {2, 2, 1};
+	StencilInfo stencil;
 
-  FillBlocks_EllipseFinalize(const Real h, Real rho): h(h), rhoS(rho) {   }
+  FillBlocks_EllipseFinalize(const Real h, Real rho): h(h), rhoS(rho)
+  {
+    stencil = StencilInfo(-1,-1,0, 2,2,1, false, 1, 5);
+  }
 
   inline void operator()(Lab& l, const BlockInfo&i, FluidBlock&b, ObstacleBlock*const o) const
   {

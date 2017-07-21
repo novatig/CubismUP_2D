@@ -139,7 +139,7 @@ class Simulation_Fluid
 
 		stringstream serializedGrid;
 		serializedGrid << "SerializedGrid-" << bPing << ".grid";
-		DumpZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
+		//DumpZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
 
 		bPing = !bPing;
 	}
@@ -165,7 +165,7 @@ class Simulation_Fluid
 	}
 
  public:
-	Simulation_Fluid(const int argc, const char ** argv) : parser(argc,argv) { }
+	Simulation_Fluid(const int argc, char ** argv) : parser(argc,argv) { }
 
 	virtual ~Simulation_Fluid()
 	{

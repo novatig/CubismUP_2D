@@ -21,7 +21,7 @@ using namespace std;
 //#include "Sim_Bubble.h"
 //#include "Sim_Jet.h"
 
-int main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
 	cout<<"=======================================================================================\n";
 	cout<<"\tCubismUP 2D (velocity-pressure 2D incompressible Navier-Stokes)\n";

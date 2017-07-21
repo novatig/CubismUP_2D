@@ -23,6 +23,11 @@ class OperatorAdvectionFD : public GenericLabOperator
   OperatorAdvectionFD(double dt, const Real*const uBody, const Real*const vBody)
   : dt(dt), uBody(uBody), vBody(vBody)
   {
+    #ifndef _MULTIPHASE_
+    stencil = StencilInfo(-1,-1,0, 2,2,1, false, 2, 0,1);
+    #else
+    stencil = StencilInfo(-1,-1,0, 2,2,1, false, 3, 0,1,4);
+    #endif
     stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
     stencil_end[0] = 2; stencil_end[1] = 2; stencil_end[2] = 1;
   }
@@ -73,6 +78,11 @@ class OperatorAdvectionUpwind3rdOrder : public GenericLabOperator
     OperatorAdvectionUpwind3rdOrder(double dt, const Real* const uBody, const Real* const vBody)
   : dt(dt), uBody(uBody), vBody(vBody)
     {
+      #ifndef _MULTIPHASE_
+      stencil = StencilInfo(-2,-2,0, 3,3,1, false, 2, 0,1);
+      #else
+      stencil = StencilInfo(-2,-2,0, 3,3,1, false, 3, 0,1,4);
+      #endif
         stencil_start[0] = -2;
         stencil_start[1] = -2;
         stencil_start[2] = 0;

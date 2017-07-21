@@ -30,7 +30,7 @@ class Simulation_FSI : public Simulation_Fluid
 	Shape* shape;
 
  public:
-	Simulation_FSI(const int argc, const char ** argv) : Simulation_Fluid(argc,argv) { }
+	Simulation_FSI(const int argc, char ** argv) : Simulation_Fluid(argc,argv) { }
 
 	virtual void init()
 	{

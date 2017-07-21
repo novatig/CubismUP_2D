@@ -414,7 +414,7 @@ class Shape
         const auto pos = obstacleBlocks.find(vInfo[i].blockID);
         if(pos == obstacleBlocks.end()) continue; //obstacle is not in the block
         assert(pos->second->filled);
-        if(!pos->second->n_surfPoints) continue;//does not contain surf points
+        if(!pos->second->n_surfPoints) continue; //does not contain surf points
 
         mylab.load(vInfo[i], 0);
         FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
@@ -463,7 +463,7 @@ class Shape
 
     if (bDump) {
       char buf[500];
-      sprintf(buf, "surface_0_%07d.txt", stepID);
+      sprintf(buf, "surface_0_%07d.raw", stepID);
       FILE * pFile = fopen (buf, "wb");
       for(auto & block : obstacleBlocks) block.second->print(pFile);
       fflush(pFile);

@@ -40,15 +40,17 @@ class ProfileAgent
 	int m_nMeasurements;
 	int m_nMoney;
 
-	inline static void _getTime(ClockTime& time)
-	{
-		gettimeofday(&time, NULL);
-	}
+	static void _getTime(ClockTime& time)
+  {
+  	//time = tick_count::now();
+  	gettimeofday(&time, NULL);
+  }
 
 	static double _getElapsedTime(const ClockTime& tS, const ClockTime& tE)
-	{
-		return (tE.tv_sec - tS.tv_sec) + 1e-6 * (tE.tv_usec - tS.tv_usec);
-	}
+  {
+  	return (tE.tv_sec - tS.tv_sec) + 1e-6 * (tE.tv_usec - tS.tv_usec);
+  	//return (tE - tS).seconds();
+  }
 
 	void _reset()
 	{
@@ -59,7 +61,7 @@ class ProfileAgent
 		m_nMoney = 0;
 		m_state = ProfileAgentState_Created;
 	}
-
+  
 public:
 
 	ProfileAgent():m_tStart(), m_tEnd(), m_state(ProfileAgentState_Created),
@@ -163,12 +165,13 @@ public:
 
 		for(vector<ProfileSummaryItem>::const_iterator it = v.begin(); it!= v.end(); it++)
 		dTotalTime2 += it->dTime - it->nSamples*1.30e-6;
+    std::ofstream savestream("profiler.dat", ios::out | ios::app);
 
 		for(vector<ProfileSummaryItem>::const_iterator it = v.begin(); it!= v.end(); it++)
 		{
 			const ProfileSummaryItem& item = *it;
 			const double avgTime = item.dAverageTime;
-
+			savestream<<avgTime<<"\t";
 			printf("[%15s]: \t%02.0f-%02.0f%%\t%03.3e (%03.3e) s\t%03.3f (%03.3f) s\t(%d samples)\n",
 				   item.sName.data(), 100*item.dTime/dTotalTime, 100*(item.dTime- item.nSamples*1.3e-6)/dTotalTime2, avgTime,avgTime-1.30e-6,  item.dTime, item.dTime- item.nSamples*1.30e-6, item.nSamples);
 			if (outFile) fprintf(outFile,"[%15s]: \t%02.2f%%\t%03.3f s\t(%d samples)\n",
@@ -180,6 +183,8 @@ public:
 		if (outFile) fprintf(outFile,"[Total time]: \t%f\n", dTotalTime);
 		if (outFile) fflush(outFile);
 		if (outFile) fclose(outFile);
+		savestream<<dTotalTime<<std::endl;
+    savestream.close();
 	}
 
 	vector<ProfileSummaryItem> createSummary(bool bSkipIrrelevantEntries=true) const
