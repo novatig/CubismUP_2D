@@ -466,6 +466,8 @@ class Shape
       sprintf(buf, "surface_0_%07d.txt", stepID);
       FILE * pFile = fopen (buf, "wb");
       for(auto & block : obstacleBlocks) block.second->print(pFile);
+      fflush(pFile);
+      fclose(pFile);
     }
 
     {

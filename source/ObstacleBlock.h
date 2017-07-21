@@ -75,6 +75,7 @@ struct ObstacleBlock
 
   inline void write(const int ix, const int iy, const Real _udef, const Real _vdef, const Real _rho, const Real _chi, const Real delta, const Real gradUX, const Real gradUY, const Real h)
   {
+    if(_chi<chi[iy][ix]) return;
     assert(!filled);
     udef[iy][ix][0] = _udef; udef[iy][ix][1] = _vdef;
     rho[iy][ix] = _rho; chi[iy][ix] = _chi;
@@ -92,6 +93,7 @@ struct ObstacleBlock
   //same without udef
   inline void write(const int ix, const int iy, const Real _rho, const Real _chi, const Real delta, const Real gradUX, const Real gradUY, const Real h)
   {
+    if(_chi<chi[iy][ix]) return;
     assert(!filled);
     udef[iy][ix][0] = 0; udef[iy][ix][1] = 0;
     rho[iy][ix] = _rho; chi[iy][ix] = _chi;
@@ -123,6 +125,7 @@ struct ObstacleBlock
     for(size_t i=0; i<n_surfPoints; i++) {
       float buf[]={pX[i],pY[i],P[i],fX[i],fY[i],vx[i],vy[i],vxDef[i],vyDef[i]};
       fwrite (buf, sizeof(float), 9, pFile);
+      fflush(pFile);
     }
   }
 };

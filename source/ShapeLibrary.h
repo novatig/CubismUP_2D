@@ -48,91 +48,91 @@ static inline void towersDeltaAndStep(const Real distPx, const Real distMx, cons
 
 struct FillBlocks_Cylinder
 {
-    const Real radius, safe_radius, rhoS;
-    const double cylinder_position[2];
-    Real cylinder_box[2][2];
+  const Real radius, safe_radius, rhoS;
+  const double cylinder_position[2];
+  Real cylinder_box[2][2];
 
-    void _find_cylinder_box()
+  void _find_cylinder_box()
+  {
+    cylinder_box[0][0] = cylinder_position[0] - safe_radius;
+    cylinder_box[0][1] = cylinder_position[0] + safe_radius;
+    cylinder_box[1][0] = cylinder_position[1] - safe_radius;
+    cylinder_box[1][1] = cylinder_position[1] + safe_radius;
+  }
+
+  FillBlocks_Cylinder(Real rad, Real h, double pos[2], Real rho):
+  radius(rad),safe_radius(rad+4*h),rhoS(rho),cylinder_position{pos[0],pos[1]}
+  {
+      _find_cylinder_box();
+  }
+
+  bool _is_touching(const Real min_pos[2], const Real max_pos[2]) const
+  {
+    Real intersection[2][2] =
     {
-      cylinder_box[0][0] = cylinder_position[0] - safe_radius;
-      cylinder_box[0][1] = cylinder_position[0] + safe_radius;
-      cylinder_box[1][0] = cylinder_position[1] - safe_radius;
-      cylinder_box[1][1] = cylinder_position[1] + safe_radius;
+        max(min_pos[0], cylinder_box[0][0]), min(max_pos[0], cylinder_box[0][1]),
+        max(min_pos[1], cylinder_box[1][0]), min(max_pos[1], cylinder_box[1][1])
+    };
+
+    return
+    intersection[0][1]-intersection[0][0]>0 &&
+    intersection[1][1]-intersection[1][0]>0;
+  }
+
+  bool _is_touching(const BlockInfo& info, const int buffer_dx = 0) const
+  {
+    Real min_pos[2], max_pos[2];
+
+    info.pos(min_pos, 0,0);
+    info.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1);
+    for(int i=0;i<2;++i)
+    {
+        min_pos[i]-=buffer_dx*info.h_gridpoint;
+        max_pos[i]+=buffer_dx*info.h_gridpoint;
     }
+    return _is_touching(min_pos,max_pos);
+  }
 
-    FillBlocks_Cylinder(Real rad, Real h, double pos[2], Real rho):
-    radius(rad),safe_radius(rad+4*h),rhoS(rho),cylinder_position{pos[0],pos[1]}
+  inline Real distanceTocylinder(const Real x, const Real y) const
+  {
+      return radius - std::sqrt(x*x+y*y); // pos inside, neg outside
+  }
+
+  inline void operator()(const BlockInfo& info, FluidBlock& block, ObstacleBlock * const obstblock) const
+  {
+    const Real h = info.h_gridpoint;
+    if(_is_touching(info))
+    for(int iy=0; iy<FluidBlock::sizeY; iy++)
+    for(int ix=0; ix<FluidBlock::sizeX; ix++)
     {
-        _find_cylinder_box();
-    }
+      Real p[2], H=0, Delta=0, gradUX=0, gradUY=0;
+      info.pos(p, ix, iy);
+      p[0] -= cylinder_position[0];
+      p[1] -= cylinder_position[1];
 
-    bool _is_touching(const Real min_pos[2], const Real max_pos[2]) const
-    {
-      Real intersection[2][2] =
-      {
-          max(min_pos[0], cylinder_box[0][0]), min(max_pos[0], cylinder_box[0][1]),
-          max(min_pos[1], cylinder_box[1][0]), min(max_pos[1], cylinder_box[1][1])
-      };
-
-      return
-      intersection[0][1]-intersection[0][0]>0 &&
-      intersection[1][1]-intersection[1][0]>0;
-    }
-
-    bool _is_touching(const BlockInfo& info, const int buffer_dx = 0) const
-    {
-      Real min_pos[2], max_pos[2];
-
-      info.pos(min_pos, 0,0);
-      info.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1);
-      for(int i=0;i<2;++i)
-      {
-          min_pos[i]-=buffer_dx*info.h_gridpoint;
-          max_pos[i]+=buffer_dx*info.h_gridpoint;
+      const Real dist = distanceTocylinder(p[0],p[1]);
+      if(dist > 2*h || dist < -2*h) { //2 should be safe
+        H = dist > 0 ? 1.0 : 0.0;
+      } else {
+        const Real distPx = distanceTocylinder(p[0]+h,p[1]);
+        const Real distMx = distanceTocylinder(p[0]-h,p[1]);
+        const Real distPy = distanceTocylinder(p[0],p[1]+h);
+        const Real distMy = distanceTocylinder(p[0],p[1]-h);
+        towersDeltaAndStep(distPx,distMx,distPy,distMy,H,Delta,gradUX,gradUY);
       }
-      return _is_touching(min_pos,max_pos);
-    }
 
-    inline Real distanceTocylinder(const Real x, const Real y) const
-    {
-        return radius - std::sqrt(x*x+y*y); // pos inside, neg outside
-    }
-
-    inline void operator()(const BlockInfo& info, FluidBlock& block, ObstacleBlock * const obstblock) const
-    {
-      const Real h = info.h_gridpoint;
-      if(_is_touching(info))
-      for(int iy=0; iy<FluidBlock::sizeY; iy++)
-      for(int ix=0; ix<FluidBlock::sizeX; ix++)
-      {
-        Real p[2], H=0, Delta=0, gradUX=0, gradUY=0;
-        info.pos(p, ix, iy);
-        p[0] -= cylinder_position[0];
-        p[1] -= cylinder_position[1];
-
-        const Real dist = distanceTocylinder(p[0],p[1]);
-        if(dist > 2*h || dist < -2*h) { //2 should be safe
-          H = dist > 0 ? 1.0 : 0.0;
-        } else {
-          const Real distPx = distanceTocylinder(p[0]+h,p[1]);
-          const Real distMx = distanceTocylinder(p[0]-h,p[1]);
-          const Real distPy = distanceTocylinder(p[0],p[1]+h);
-          const Real distMy = distanceTocylinder(p[0],p[1]-h);
-          towersDeltaAndStep(distPx,distMx,distPy,distMy,H,Delta,gradUX,gradUY);
-        }
-
-        #ifndef NDEBUG
-        if (H < o->chi[iy][ix]) {
-          printf("FillBlocks_Cylinder: Error is obstblock->chi \n");
-          abort();
-        }
-        #endif
-
-        const Real rho = rhoS*H + block(ix, iy).rho*(1-H);
-        obstblock->write(ix, iy, rho, H, Delta, gradUX, gradUY, h);
-        block(ix,iy).rho = rho;
+      #ifndef NDEBUG
+      if (H < o->chi[iy][ix]) {
+        printf("FillBlocks_Cylinder: Error is obstblock->chi \n");
+        abort();
       }
+      #endif
+
+      const Real rho = rhoS*H + block(ix, iy).rho*(1-H);
+      obstblock->write(ix, iy, rho, H, Delta, gradUX, gradUY, h);
+      block(ix,iy).rho = rho;
     }
+  }
 };
 
 struct FillBlocks_HalfCylinder
@@ -626,7 +626,7 @@ struct FillBlocks_VarRhoCylinder
       }
 
       #ifndef NDEBUG
-      if (H < o->chi[iy][ix]) {
+      if (H > 0 && < o->chi[iy][ix]) {
         printf("FillBlocks_Cylinder: Error is obstblock->chi \n");
         abort();
       }

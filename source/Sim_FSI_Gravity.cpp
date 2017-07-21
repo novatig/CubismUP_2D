@@ -181,13 +181,14 @@ void Sim_FSI_Gravity::simulate()
     assert(!std::isnan(uBody[1]));
 
     lambda = 10./dt;
-    
+
     cout << "time, dt (Fourier, CFL, body): "
       <<time<<" "<<dt<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody<<endl;
     profiler.pop_stop();
 
 
     assert(dt>2.2e-16);
+    bDump = dumpTime>0. && time+dt>nextDumpTime;
 
     for (int c=0; c<pipeline.size(); c++)
     {
@@ -232,8 +233,7 @@ void Sim_FSI_Gravity::simulate()
 
     //dump some time steps every now and then
     profiler.push_start("Dump");
-    if(dumpTime>0. && _nonDimensionalTime()>nextDumpTime)
-      shape->characteristic_function(grid->getBlocksInfo());
+    if(bDump) shape->characteristic_function(grid->getBlocksInfo());
     _dump(nextDumpTime);
     profiler.pop_stop();
 
