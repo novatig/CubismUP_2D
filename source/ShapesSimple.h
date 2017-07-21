@@ -68,6 +68,8 @@ class Disk : public Shape
 				kernel(vInfo[i], b, pos->second);
 			}
 		}
+
+    for (auto & block : obstacleBlocks) block.second->allocate_surface();
 	}
 };
 
@@ -126,6 +128,8 @@ class DiskVarDensity : public Shape
 				kernelH(info, b, pos->second);
 			}
 		}
+
+    for (auto & block : obstacleBlocks) block.second->allocate_surface();
 	}
 
 	void outputSettings(ostream &outStream)
@@ -262,6 +266,8 @@ class Ellipse : public Shape
 
 		const FillBlocks_EllipseFinalize finalize(h, rhoS);
 		compute(finalize, vInfo);
+
+    for (auto & block : obstacleBlocks) block.second->allocate_surface();
 	}
 };
 

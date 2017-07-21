@@ -110,4 +110,32 @@ class CoordinatorPenalization : public GenericCoordinator
 		return "Penalization";
 	}
 };
+
+class CoordinatorComputeForces : public GenericCoordinator
+{
+ protected:
+  const Real* const uBody;
+  const Real* const vBody;
+  const Real* const omegaBody;
+  const Real* const time;
+  const Real* const NU;
+  const  int* const stepID;
+  const bool* const bDump;
+	Shape* const shape;
+
+ public:
+	CoordinatorComputeForces(const Real*const uBody, const Real*const vBody, const Real*const omegaBody, Shape*const shape, const Real*const time, const Real*const NU, const int*const stepID, const bool*const dump, FluidGrid*grid) : GenericCoordinator(grid), uBody(uBody), vBody(vBody), omegaBody(omegaBody), shape(shape), time(time), NU(NU), stepID(stepID), bDump(dump) { }
+
+	void operator()(const double dt)
+	{
+		check("forces - start");
+		shape->computeForces(*stepID, *time, dt, *NU, *uBody, *vBody, *omegaBody, *bDump, vInfo);
+		check("forces - end");
+	}
+
+	string getName()
+	{
+		return "Forces";
+	}
+};
 #endif

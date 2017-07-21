@@ -130,6 +130,10 @@ void Sim_FSI_Gravity::init()
     new CoordinatorPressure<Lab>(minRho, gravity, &uBody[0], &uBody[1], &dragP[0], &dragP[1], &step, grid)
   );
 
+  pipeline.push_back(
+    new CoordinatorComputeForces(&uBody[0], &uBody[1], &omegaBody, shape, &time, &nu, &step, &bDump, grid)
+  );
+
   //#ifdef _MOVING_FRAME_
   pipeline.push_back(
     new CoordinatorFadeOut(&uBody[0], &uBody[1], uinfx, uinfy, grid)
@@ -166,10 +170,10 @@ void Sim_FSI_Gravity::simulate()
     dtCFL  = maxU < 2.2e-16 ? 1 : CFL*vInfo[0].h_gridpoint/abs(maxU);
     dt = min(dtCFL,dtFourier);
 
-                #ifndef _MOVING_FRAME_
-    dtBody = maxUbody < 2.2e-16 ? 1 : CFL*vInfo[0].h_gridpoint/maxUbody;
-    dt = min(min(dtCFL,dtFourier),dtBody);
-                #endif
+    #ifndef _MOVING_FRAME_
+      dtBody = maxUbody < 2.2e-16 ? 1 : CFL*vInfo[0].h_gridpoint/maxUbody;
+      dt = min(min(dtCFL,dtFourier),dtBody);
+    #endif
 
     assert(!std::isnan(maxU));
     assert(!std::isnan(maxA));
@@ -177,12 +181,7 @@ void Sim_FSI_Gravity::simulate()
     assert(!std::isnan(uBody[1]));
 
     lambda = 10./dt;
-
-    //if (dumpTime>0)
-    //  dt = min(dt,nextDumpTime-_nonDimensionalTime());
-    //if (endTime>0)
-    //  dt = min(dt,endTime-_nonDimensionalTime());
-    //if (verbose)
+    
     cout << "time, dt (Fourier, CFL, body): "
       <<time<<" "<<dt<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody<<endl;
     profiler.pop_stop();

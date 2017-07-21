@@ -13,6 +13,7 @@
 
 #ifndef CubismUP_2D_Shape_h
 #define CubismUP_2D_Shape_h
+#include "OperatorComputeForces.h"
 
 class Shape
 {
@@ -387,13 +388,105 @@ class Shape
       mylab.prepare(*grid_ptr, kernel.stencil_start, kernel.stencil_end, false);
 
       #pragma omp for schedule(dynamic)
-      for (int i=0; i<vInfo.size(); i++) {
+      for (int i=0; i<vInfo.size(); i++)
+      {
         const auto pos = obstacleBlocks.find(vInfo[i].blockID);
         if(pos == obstacleBlocks.end()) continue;
         mylab.load(vInfo[i], 0);
         FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
         kernel(mylab, vInfo[i], b, pos->second);
       }
+    }
+  }
+
+  template <typename Kernel>
+  void compute_surface(const Kernel& kernel, const vector<BlockInfo>& vInfo)
+  {
+    assert(grid_ptr not_eq nullptr);
+    #pragma omp parallel
+    {
+      Lab mylab;
+      mylab.prepare(*grid_ptr, kernel.stencil_start, kernel.stencil_end, false);
+
+      #pragma omp for schedule(dynamic)
+      for (int i=0; i<vInfo.size(); i++)
+      {
+        const auto pos = obstacleBlocks.find(vInfo[i].blockID);
+        if(pos == obstacleBlocks.end()) continue; //obstacle is not in the block
+        assert(pos->second->filled);
+        if(!pos->second->n_surfPoints) continue;//does not contain surf points
+
+        mylab.load(vInfo[i], 0);
+        FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+        kernel(mylab, vInfo[i], b, pos->second);
+      }
+    }
+  }
+
+  void computeForces(const int stepID, const Real time, const Real dt, const Real NU, const Real uBody, const Real vBody, const Real omegaBody, const bool bDump, const vector<BlockInfo>& vInfo)
+  {
+    Real vel_unit[2] = {0., 0.};
+    const Real vel_norm = std::sqrt(uBody*uBody + vBody*vBody);
+    if(vel_norm>1e-9) { vel_unit[0]=uBody/vel_norm; vel_unit[1]=vBody/vel_norm; }
+
+    OperatorComputeForces finalize(NU, vel_unit, centerOfMass);
+    compute_surface(finalize, vInfo);
+
+    //additive quantities:
+    Real perimeter = 0, forcex = 0, forcey = 0, forcex_P = 0, forcey_P = 0, forcex_V = 0, forcey_V = 0, torque = 0, torque_P = 0, torque_V = 0, drag = 0, thrust = 0, Pout = 0, PoutBnd = 0, defPower = 0, defPowerBnd = 0;
+
+    for (auto & block : obstacleBlocks)
+    {
+      perimeter   += block.second->perimeter;
+      forcex      += block.second->forcex;
+      forcey      += block.second->forcey;
+      forcex_P    += block.second->forcex_P;
+      forcey_P    += block.second->forcey_P;
+      forcex_V    += block.second->forcex_V;
+      forcey_V    += block.second->forcey_V;
+      torque      += block.second->torque;
+      torque_P    += block.second->torque_P;
+      torque_V    += block.second->torque_V;
+      drag        += block.second->drag;
+      thrust      += block.second->thrust;
+      Pout        += block.second->Pout;
+      PoutBnd     += block.second->PoutBnd;
+      defPower    += block.second->defPower;
+      defPowerBnd += block.second->defPowerBnd;
+    }
+
+    //derived quantities:
+    Real Pthrust    = thrust*vel_norm;
+    Real Pdrag      =   drag*vel_norm;
+    Real EffPDef    = Pthrust/(Pthrust-min(defPower,(Real)0.)+1e-16);
+    Real EffPDefBnd = Pthrust/(Pthrust-    defPowerBnd+1e-16);
+
+    if (bDump) {
+      char buf[500];
+      sprintf(buf, "surface_0_%07d.txt", stepID);
+      FILE * pFile = fopen (buf, "wb");
+      for(auto & block : obstacleBlocks) block.second->print(pFile);
+    }
+
+    {
+      ofstream fileForce;
+      ofstream filePower;
+    	stringstream ssF, ssP;
+    	ssF<<"forceValues_0.dat";
+    	ssP<<"powerValues_0.dat"; //obstacleID
+
+      fileForce.open(ssF.str().c_str(), ios::app);
+      if(stepID==0)
+        fileForce<<"time Fx Fy FxPres FyPres FxVisc FyVisc tau tauPres tauVisc drag thrust perimeter"<<std::endl;
+
+      fileForce<<time<<" "<<forcex<<" "<<forcey<<" "<<forcex_P<<" "<<forcey_P<<" "<<forcex_V <<" "<<forcey_V<<" "<<torque <<" "<<torque_P<<" "<<torque_V<<" "<<drag<<" "<<thrust<<" "<<perimeter<<endl;
+      fileForce.close();
+
+      filePower.open(ssP.str().c_str(), ios::app);
+      if(stepID==0)
+        filePower<<"time Pthrust Pdrag PoutBnd Pout defPowerBnd defPower EffPDefBnd EffPDef"<<std::endl;
+      filePower<<time<<" "<<Pthrust<<" "<<Pdrag<<" "<<PoutBnd<<" "<<Pout<<" "<<defPowerBnd<<" "<<defPower<<" "<<EffPDefBnd<<" "<<EffPDef<<endl;
+      filePower.close();
     }
   }
 };

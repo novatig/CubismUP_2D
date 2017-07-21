@@ -214,34 +214,9 @@ class Blowfish : public Shape
 				kernelF2(info, b, pos->second);
 			}
 		}
-		/*
-		{
-			// Update center of mass
-			const Real Mfin = finLength*finWidth*rhoFin;
-			const Real Mtot = halfarea*(rhoTop+rhoBot)+Mfin*2;
-			//angles from frame of reference of obstacle (remove 'orientation')
-			const Real cosF1 = cos(-finAngle0+flapAng_R);
-			const Real sinF1 = sin(-finAngle0+flapAng_R);
-			const Real cosF2 = cos(M_PI+finAngle0+flapAng_L);
-			const Real sinF2 = sin(M_PI+finAngle0+flapAng_L);
-			const Real cosA1 = cos(-finAngle0), sinA1 = sin(-finAngle0);
-			const Real cosA2 = cos(M_PI+finAngle0), sinA2 = sin(M_PI+finAngle0);
-
-			const Real CMxF1 = cosA1*attachDist + cosF1*(finLength/2);
-			const Real CMxF2 = cosA2*attachDist + cosF2*(finLength/2);
-			const Real CMyF1 = sinA1*attachDist + sinF1*(finLength/2);
-			const Real CMyF2 = sinA2*attachDist + sinF2*(finLength/2);
-
-			d_gm[0]= -(CMxF1*Mfin + CMxF2*Mfin)/Mtot;
-			d_gm[1]= -(distHalfCM*halfarea*(rhoTop-rhoBot)+(CMyF1+CMyF2)*Mfin)/Mtot;
-
-			const Real cosAng = cos(orientation), sinAng = sin(orientation);
-			centerOfMass[0] = center[0] -cosAng*d_gm[0] +sinAng*d_gm[1];
-			centerOfMass[1] = center[1] -sinAng*d_gm[0] -cosAng*d_gm[1];
-		}
-		*/
 
 		removeMoments(vInfo);
+    for (auto & block : obstacleBlocks) block.second->allocate_surface();
 	}
 
 	Real getCharLength() const  override

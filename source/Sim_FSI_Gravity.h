@@ -75,7 +75,7 @@ class Sim_FSI_Gravity : public Simulation_FSI
 	double dtCFL=0, dtLCFL=0, dtFourier=0, dtBody=0;
 	double re=0, nu=0, uinfx=0, uinfy=0;
 	double minRho=0;
-
+  bool bDump = false;
 	Real gravity[2] = {0,-9.81};
 
 	void _diagnostics();

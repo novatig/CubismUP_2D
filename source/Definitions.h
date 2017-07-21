@@ -18,27 +18,10 @@
 #define _BS_ 32
 #endif // _BS_
 
-struct ObstacleBlock
-{
-  static const int sizeX = _BS_;
-  static const int sizeY = _BS_;
-  Real chi[sizeX][sizeY];
-  Real rho[sizeX][sizeY];
-  Real udef[sizeX][sizeY][2];
-
-  void clear()
-  {
-    memset(chi,  0, sizeof(Real)*sizeX*sizeY);
-    memset(udef, 0, sizeof(Real)*sizeX*sizeY*2);
-		Real*const p = &rho[0][0];
-		for(int i=0; i<sizeX*sizeY; i++) p[i] = 1;
-  }
-};
-
 struct FluidElement
 {
-  Real rho, u, v, p, pOld;
-	Real tmpU, tmpV, tmp;
+  Real u, v, tmpU, tmpV; //used by advection and diffusion
+	Real rho, tmp, p, pOld; //used by pressure
 
   FluidElement() :
   rho(0), u(0), v(0), p(0), pOld(0), tmpU(0), tmpV(0), tmp(0)//, divU(0), x(0), y(0)
