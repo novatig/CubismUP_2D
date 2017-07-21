@@ -36,7 +36,7 @@ struct FluidElement
 
 struct FluidVTKStreamer
 {
-	static const int channels = 4;
+	static const int channels = 5;
 
 	void operate(FluidElement input, Real output[channels])
 	{
@@ -44,7 +44,7 @@ struct FluidVTKStreamer
 		output[1] = input.u;
 		output[2] = input.v;
 		output[3] = input.p;
-		//output[4] = input.tmp;
+		output[4] = input.tmp;
 	}
 };
 
