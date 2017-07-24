@@ -245,9 +245,6 @@ class Shape
 
   void computeVelocities(Real*const uBody, Real*const vBody, Real*const omegaBody, const vector<BlockInfo>& vInfo)
   {
-    const Real h  = vInfo[0].h_gridpoint;
-    const Real dv = std::pow(vInfo[0].h_gridpoint,2);
-
     Real _M = 0, _J = 0, um = 0, vm = 0, am = 0; //linear momenta
     #pragma omp parallel for schedule(dynamic) reduction(+:_M,_J,um,vm,am)
     for(int i=0; i<vInfo.size(); i++) {
@@ -276,8 +273,9 @@ class Shape
     *uBody       = um / (_M+2.2e-16);
     *vBody       = vm / (_M+2.2e-16);
     *omegaBody  = am / (_J+2.2e-16);
-    J = _M / dv;
-    M = _J / dv;
+    J = _J * std::pow(vInfo[0].h_gridpoint,2);
+    M = _M * std::pow(vInfo[0].h_gridpoint,2);
+    printf("CM:[%f %f] u:%f v:%f omega:%f M:%f J:%f\n", centerOfMass[0], centerOfMass[1], *uBody, *vBody, *omegaBody, M, J);
   }
 
   void penalize(const Real u, const Real v, const Real omega, const Real dt, const Real lambda, const vector<BlockInfo>& vInfo)

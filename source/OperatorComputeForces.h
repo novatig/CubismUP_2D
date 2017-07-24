@@ -6,7 +6,7 @@ struct OperatorComputeForces
 {
   const int stencil_start[3] = {-1, -1, 0}, stencil_end[3] = {2, 2, 1};
 	StencilInfo stencil;
-  const Real NU, *vel_unit, *Uinf, *CM;
+  const Real NU, *vel_unit, *CM;
 
   OperatorComputeForces(const Real nu, const Real* vunit, const Real* cm) : NU(nu), vel_unit(vunit), CM(cm)
   {
@@ -35,7 +35,7 @@ struct OperatorComputeForces
       // penalty-accel and surf-force match up if resolution is high enough (200 points per fish)
       const Real P = b(ix,iy).p;
       const Real normX = o->surface[i]->dchidx;
-      const Real normY = o->surface[i]->dchidy; //*h^3 (premultiplied in dchidy)
+      const Real normY = o->surface[i]->dchidy; //*h^2 (premultiplied in dchidy)
       const Real fXV = D11 * normX + D12 * normY;
       const Real fYV = D12 * normX + D22 * normY;
       const Real fXP = -P * normX, fYP = -P * normY;

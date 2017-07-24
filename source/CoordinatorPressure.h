@@ -306,7 +306,7 @@ public:
     computeSplit<OperatorGradPSplit>(dt);
     updatePressure();
 
-    drag();
+    //drag();
 
     check("pressure - end");
   }

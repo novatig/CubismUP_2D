@@ -151,8 +151,8 @@ class Ellipse : public Shape
 	const Real a=max(semiAxis[0],semiAxis[1]), b=min(semiAxis[0],semiAxis[1]);
 	const Real velscale = std::sqrt((rhoS/1.-1)*9.8*b);
 	const Real lengthscale = a, timescale = a/velscale;
-	//const Real torquescale = M_PI/8*pow((a*a-b*b)*velscale,2)*a/b;
-	const Real torquescale = M_PI*lengthscale*lengthscale*velscale*velscale;
+	//const Real torquescale = M_PI/8*pow((a*a-b*b)*velscale,2)/a/b;
+	const Real torquescale = M_PI*a*b*velscale*velscale;
 
 	Real Torque = 0, old_Torque = 0, old_Dist = 100;
 	Real powerOutput = 0, old_powerOutput = 0;
@@ -161,7 +161,7 @@ class Ellipse : public Shape
 	Ellipse(Real C[2], Real SA[2], Real ang, const Real rho) :
     Shape(C, ang, rho), semiAxis{SA[0],SA[1]}
   {
-		printf("Created ellipse %f %f %f\n", semiAxis[0], semiAxis[1],rhoS); fflush(0);
+		printf("Created ellipse semiAxis:[%f %f] rhoS:%f a:%f b:%f velscale:%f lengthscale:%f timescale:%f torquescale:%f\n", semiAxis[0], semiAxis[1], rhoS, a, b, velscale, lengthscale, timescale, torquescale); fflush(0);
   }
 
 	Real getCharLength() const  override

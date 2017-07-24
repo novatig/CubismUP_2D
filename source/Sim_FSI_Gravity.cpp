@@ -116,7 +116,12 @@ void Sim_FSI_Gravity::init()
   );
 
   pipeline.push_back(
-    new CoordinatorGravity(gravity, grid));
+    new CoordinatorGravity(gravity, grid)
+  );
+
+  pipeline.push_back(
+    new CoordinatorPressure<Lab>(minRho, gravity, &uBody[0], &uBody[1], &dragP[0], &dragP[1], &step, grid)
+  );
 
   pipeline.push_back(
     new CoordinatorBodyVelocities(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid)
@@ -124,10 +129,6 @@ void Sim_FSI_Gravity::init()
 
   pipeline.push_back(
     new CoordinatorPenalization(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid)
-  );
-
-  pipeline.push_back(
-    new CoordinatorPressure<Lab>(minRho, gravity, &uBody[0], &uBody[1], &dragP[0], &dragP[1], &step, grid)
   );
 
   pipeline.push_back(
@@ -180,8 +181,12 @@ void Sim_FSI_Gravity::simulate()
     assert(!std::isnan(uBody[0]));
     assert(!std::isnan(uBody[1]));
 
-    lambda = 10./dt;
-
+    lambda = 1./dt;
+    if(dt<1e-7) {
+      stringstream ss;
+      ss << path2file << "killed.vti";
+      _dump(ss);
+    }
     cout << "time, dt (Fourier, CFL, body): "
       <<time<<" "<<dt<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody<<endl;
     profiler.pop_stop();
