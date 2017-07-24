@@ -77,11 +77,11 @@ class OperatorDiffusion : public GenericLabOperator
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix)
     {
-      FluidElement& phi  = lab(ix,iy);
-      FluidElement& phiN = lab(ix,iy+1);
-      FluidElement& phiS = lab(ix,iy-1);
-      FluidElement& phiE = lab(ix+1,iy);
-      FluidElement& phiW = lab(ix-1,iy);
+      const FluidElement& phi  = lab(ix,iy);
+      const FluidElement& phiN = lab(ix,iy+1);
+      const FluidElement& phiS = lab(ix,iy-1);
+      const FluidElement& phiE = lab(ix+1,iy);
+      const FluidElement& phiW = lab(ix-1,iy);
       const Real fac = prefactor/phi.rho;
       o(ix,iy).tmpU = phi.u + fac * (phiN.u + phiS.u + phiE.u + phiW.u - phi.u*4.);
       o(ix,iy).tmpV = phi.v + fac * (phiN.v + phiS.v + phiE.v + phiW.v - phi.v*4.);

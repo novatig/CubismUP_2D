@@ -129,7 +129,7 @@ struct FillBlocks_Cylinder
       #endif
 
       const Real rho = rhoS*H + block(ix, iy).rho*(1-H);
-      obstblock->write(ix, iy, rho, H, Delta, gradUX, gradUY, h);
+      obstblock->write(ix, iy, rhoS, H, Delta, gradUX, gradUY, h);
       block(ix,iy).rho = rho;
     }
   }
@@ -237,7 +237,7 @@ struct FillBlocks_HalfCylinder
       #endif
 
       const Real rho = rhoS*H + block(ix, iy).rho*(1-H);
-      obstblock->write(ix, iy, rho, H, Delta, gradUX, gradUY, h);
+      obstblock->write(ix, iy, rhoS, H, Delta, gradUX, gradUY, h);
       block(ix,iy).rho = rho;
     }
   }
@@ -448,7 +448,7 @@ struct FillBlocks_EllipseFinalize
       #endif
 
       const Real rho = H*rhoS + (1-H)*b(ix, iy).rho;
-      o->write(ix, iy, rho, H, Delta, gradUX, gradUY, h);
+      o->write(ix, iy, rhoS, H, Delta, gradUX, gradUY, h);
       b(ix,iy).rho = rho;
     }
   }
@@ -536,7 +536,7 @@ struct FillBlocks_Plate
       const Real rho = H*rhoS + (1-H)*block(ix, iy).rho;
       const Real udef = -p[1]*angvel;
       const Real vdef =  p[0]*angvel;
-      obstblock->write(ix, iy, udef, vdef, rho, H, Delta, gradUX, gradUY, h);
+      obstblock->write(ix, iy, udef, vdef, rhoS, H, Delta, gradUX, gradUY, h);
       block(ix,iy).rho = rho;
     }
   }
@@ -641,7 +641,7 @@ struct FillBlocks_VarRhoCylinder
       const Real rhoS = (1-moll)*rhoTop + moll*rhoBot;
       const Real rho = rhoS*H + block(ix, iy).rho*(1-H);
 
-      obstblock->write(ix, iy, rho, H, Delta, gradUX, gradUY, h);
+      obstblock->write(ix, iy, rhoS, H, Delta, gradUX, gradUY, h);
       block(ix,iy).rho = rho;
     }
   }
@@ -700,7 +700,7 @@ struct FillBlocks_VarRhoEllipseFinalize
       const Real moll = Y>1 ? 0 : (Y<-1 ? 1 : mollified_heaviside(Y));
       const Real rhoS = (1-moll)*rhoTop + moll*rhoBot;
       const Real rho = rhoS*H + b(ix, iy).rho*(1-H);
-      o->write(ix, iy, rho, H, Delta, gradUX, gradUY, h);
+      o->write(ix, iy, rhoS, H, Delta, gradUX, gradUY, h);
       b(ix,iy).rho = rho;
     }
   }

@@ -29,216 +29,216 @@ using namespace std;
 
 class FFTWBase
 {
-	static int registered_objects;
-	static bool initialized; //a la singleton
+  static int registered_objects;
+  static bool initialized; //a la singleton
 
-	static void _setup(const int desired_threads)
-	{
-		if (!initialized)
-		{
-			initialized = true;
+  static void _setup(const int desired_threads)
+  {
+    if (!initialized)
+    {
+      initialized = true;
 
-#ifndef _SP_COMP_
-			const int retval = fftw_init_threads();
-#else // _SP_COMP_
-			const int retval = fftwf_init_threads();
-#endif // _SP_COMP_
-			if(retval==0)
-			{
-				cout << "FFTWBase::setup(): Oops the call to fftw_init_threads() returned zero. Aborting\n";
-				abort();
-			}
-			else
-#ifndef _SP_COMP_
-				fftw_plan_with_nthreads(desired_threads);
-#else // _SP_COMP_
-                fftwf_plan_with_nthreads(desired_threads);
-#endif // _SP_COMP_
-		}
+      #ifndef _SP_COMP_
+      const int retval = fftw_init_threads();
+      #else // _SP_COMP_
+      const int retval = fftwf_init_threads();
+      #endif // _SP_COMP_
+      if(retval==0)
+      {
+        cout << "FFTWBase::setup(): Oops the call to fftw_init_threads() returned zero. Aborting\n";
+        abort();
+      }
+      else
+      #ifndef _SP_COMP_
+      fftw_plan_with_nthreads(desired_threads);
+      #else // _SP_COMP_
+      fftwf_plan_with_nthreads(desired_threads);
+      #endif // _SP_COMP_
+    }
 
-		registered_objects++;
-	}
+    registered_objects++;
+  }
 
 public:
 
-	FFTWBase(const int desired_threads) { _setup(desired_threads); }
+  FFTWBase(const int desired_threads) { _setup(desired_threads); }
 
-	static void dispose()
-	{
-		registered_objects--;
+  static void dispose()
+  {
+    registered_objects--;
 
-		if (registered_objects == 0)
-		{
-#ifndef _SP_COMP_
-			fftw_cleanup_threads();
-#else // _SP_COMP_
-			fftwf_cleanup_threads();
-#endif // _SP_COMP_
-		}
-	}
+    if (registered_objects == 0)
+    {
+      #ifndef _SP_COMP_
+      fftw_cleanup_threads();
+      #else // _SP_COMP_
+      fftwf_cleanup_threads();
+      #endif // _SP_COMP_
+    }
+  }
 };
 
 template<typename TGrid, typename TStreamer>
 class PoissonSolverScalarFFTW : FFTWBase
 {
-	Profiler profiler;
+  Profiler profiler;
 
 protected:
-	typedef typename TGrid::BlockType BlockType;
+  typedef typename TGrid::BlockType BlockType;
 
-	bool initialized;
+  bool initialized;
 
-	myplan fwd, bwd;
-	Real * data; // rhs in _setup, out in cub2fftw and fftw2cub
+  myplan fwd, bwd;
+  Real * data; // rhs in _setup, out in cub2fftw and fftw2cub
 
 protected:
 
-	virtual void _setup(Real *& rhs, const size_t nx, const size_t ny)
-	{
-		if (!initialized)
-		{
-			initialized = true;
-#ifndef _SP_COMP_
-			rhs = fftw_alloc_real(2*nx*(ny/2+1)); // comes out of r2c/c2r (Section 2.3 of fftw3.pdf)
+  virtual void _setup(Real *& rhs, const size_t nx, const size_t ny)
+  {
+    if (!initialized)
+    {
+      initialized = true;
+      #ifndef _SP_COMP_
+      rhs = fftw_alloc_real(2*nx*(ny/2+1)); // comes out of r2c/c2r (Section 2.3 of fftw3.pdf)
 
-			fwd = fftw_plan_dft_r2c_2d(nx, ny, rhs, (mycomplex *)rhs, FFTW_MEASURE);
-			bwd = fftw_plan_dft_c2r_2d(nx, ny, (mycomplex *)rhs, rhs, FFTW_MEASURE);
-#else // _SP_COMP_
-			rhs = fftwf_alloc_real(2*nx*(ny/2+1)); // comes out of r2c/c2r (Section 2.3 of fftw3.pdf)
+      fwd = fftw_plan_dft_r2c_2d(nx, ny, rhs, (mycomplex *)rhs, FFTW_MEASURE);
+      bwd = fftw_plan_dft_c2r_2d(nx, ny, (mycomplex *)rhs, rhs, FFTW_MEASURE);
+      #else // _SP_COMP_
+      rhs = fftwf_alloc_real(2*nx*(ny/2+1)); // comes out of r2c/c2r (Section 2.3 of fftw3.pdf)
 
-			fwd = fftwf_plan_dft_r2c_2d(nx, ny, rhs, (mycomplex *)rhs, FFTW_MEASURE);
-			bwd = fftwf_plan_dft_c2r_2d(nx, ny, (mycomplex *)rhs, rhs, FFTW_MEASURE);
-#endif // _SP_COMP_
-		}
-	}
+      fwd = fftwf_plan_dft_r2c_2d(nx, ny, rhs, (mycomplex *)rhs, FFTW_MEASURE);
+      bwd = fftwf_plan_dft_c2r_2d(nx, ny, (mycomplex *)rhs, rhs, FFTW_MEASURE);
+      #endif // _SP_COMP_
+    }
+  }
 
-	void _cub2fftw(TGrid& grid, Real * out, const size_t nx, const size_t ny, const size_t ny_hat) const
-	{
-		vector<BlockInfo> infos = grid.getBlocksInfo();
+  void _cub2fftw(TGrid& grid, Real * out, const size_t nx, const size_t ny, const size_t ny_hat) const
+  {
+    vector<BlockInfo> infos = grid.getBlocksInfo();
 
-		const size_t N = infos.size();
+    const size_t N = infos.size();
 
-#pragma omp parallel for
-		for(int i=0; i<N; ++i)
-		{
-			const BlockInfo info = infos[i];
-			BlockType& b = *(BlockType*)infos[i].ptrBlock;
+    #pragma omp parallel for
+    for(int i=0; i<N; ++i)
+    {
+      const BlockInfo info = infos[i];
+      BlockType& b = *(BlockType*)infos[i].ptrBlock;
 
-			// indexing for fftw - [x][y] (y is the fastest running index), block part of the index
-			const size_t offset = BlockType::sizeY*info.index[1] + (ny/2+1)*2*BlockType::sizeX*info.index[0];
+      // indexing for fftw - [x][y] (y is the fastest running index), block part of the index
+      const size_t offset = BlockType::sizeY*info.index[1] + (ny/2+1)*2*BlockType::sizeX*info.index[0];
 
-			for(int iy=0; iy<BlockType::sizeY; iy++)
-				for(int ix=0; ix<BlockType::sizeX; ix++)
-				{
-					// indexing for fftw - [x][y] (y is the fastest running index), local part of the index
-					const size_t dest_index = TStreamer::channels*(offset + iy + 2*(ny/2+1)*ix);
+      for(int iy=0; iy<BlockType::sizeY; iy++)
+      for(int ix=0; ix<BlockType::sizeX; ix++)
+      {
+        // indexing for fftw - [x][y] (y is the fastest running index), local part of the index
+        const size_t dest_index = TStreamer::channels*(offset + iy + 2*(ny/2+1)*ix);
 
-					assert(dest_index>=0 && dest_index<nx*ny_hat*2); // linking error with openmp: http://lists.apple.com/archives/xcode-users/2011/Oct/msg00252.html
-					TStreamer::operate(b(ix,iy), &out[dest_index]);
-				}
-		}
-	}
+        assert(dest_index>=0 && dest_index<nx*ny_hat*2); // linking error with openmp: http://lists.apple.com/archives/xcode-users/2011/Oct/msg00252.html
+        TStreamer::operate(b(ix,iy), &out[dest_index]);
+      }
+    }
+  }
 
-	virtual void _solve(mycomplex * in_out, const size_t nx, const size_t ny, const size_t ny_hat, const Real norm_factor, const Real h)
-	{
-		if (TStreamer::channels != 1)
-		{
-			cout << "PoissonSolverScalar::PoissonSolverScalar(): Error: TStreamer::channels is " << TStreamer::channels << " and it should be 1. Aborting\n";
-			abort();
-		}
+  virtual void _solve(mycomplex * in_out, const size_t nx, const size_t ny, const size_t ny_hat, const Real norm_factor, const Real h)
+  {
+    if (TStreamer::channels != 1)
+    {
+      cout << "PoissonSolverScalar::PoissonSolverScalar(): Error: TStreamer::channels is " << TStreamer::channels << " and it should be 1. Aborting\n";
+      abort();
+    }
 
-		const Real h2 = h*h;
-		const Real factor = h2*norm_factor;
+    const Real h2 = h*h;
+    const Real factor = h2*norm_factor;
 
-#pragma omp parallel for
-		for(int i=0; i<nx; ++i)
-			for(int j = 0; j<ny_hat; ++j)
-			{
-				const int linidx = i*ny_hat+j;
-				assert(linidx >=0 && linidx<nx*ny_hat); // linking error with openmp
+    #pragma omp parallel for
+    for(int i=0; i<nx; ++i)
+      for(int j = 0; j<ny_hat; ++j)
+      {
+        const int linidx = i*ny_hat+j;
+        assert(linidx >=0 && linidx<nx*ny_hat); // linking error with openmp
 
-				// based on the 5 point stencil in 1D (h^4 error)
-				const Real denom = 32.*(cos(2.*M_PI*i/nx) + cos(2.*M_PI*j/ny)) - 2.*(cos(4.*M_PI*i/nx) + cos(4.*M_PI*j/ny)) - 60.;
-				const Real inv_denom = (denom==0)? 0.:1./denom;
-				const Real fatfactor = 12. * inv_denom * factor;
+        // based on the 5 point stencil in 1D (h^4 error)
+        const Real denom = 32.*(cos(2.*M_PI*i/nx) + cos(2.*M_PI*j/ny)) - 2.*(cos(4.*M_PI*i/nx) + cos(4.*M_PI*j/ny)) - 60.;
+        const Real inv_denom = (denom==0)? 0.:1./denom;
+        const Real fatfactor = 12. * inv_denom * factor;
 
-				// based on the 3 point stencil in 1D (h^2 error)
-				//const Real denom = 2.*(cos(2.*M_PI*i/nx) + cos(2.*M_PI*j/ny)) - 4.;
-				//const Real inv_denom = (denom==0)? 0.:1./denom;
-				//const Real fatfactor = inv_denom * factor;
+        // based on the 3 point stencil in 1D (h^2 error)
+        //const Real denom = 2.*(cos(2.*M_PI*i/nx) + cos(2.*M_PI*j/ny)) - 4.;
+        //const Real inv_denom = (denom==0)? 0.:1./denom;
+        //const Real fatfactor = inv_denom * factor;
 
-				// this is to check the transform only
-				//const Real fatfactor = norm_factor;
+        // this is to check the transform only
+        //const Real fatfactor = norm_factor;
 
-				in_out[linidx][0] *= fatfactor;
-				in_out[linidx][1] *= fatfactor;
-			}
+        in_out[linidx][0] *= fatfactor;
+        in_out[linidx][1] *= fatfactor;
+      }
 
-		//this is sparta!
-		in_out[0][0] = in_out[0][1] = 0;
-	}
+    //this is sparta!
+    in_out[0][0] = in_out[0][1] = 0;
+  }
 
-	virtual void _solveSpectral(mycomplex * in_out, const size_t nx, const size_t ny, const size_t ny_hat, const Real norm_factor, const Real h)
-	{
-		if (TStreamer::channels != 1)
-		{
-			cout << "PoissonSolverScalar::PoissonSolverScalar(): Error: TStreamer::channels is " << TStreamer::channels << " and it should be 1. Aborting\n";
-			abort();
-		}
+  virtual void _solveSpectral(mycomplex * in_out, const size_t nx, const size_t ny, const size_t ny_hat, const Real norm_factor, const Real h)
+  {
+    if (TStreamer::channels != 1)
+    {
+      cout << "PoissonSolverScalar::PoissonSolverScalar(): Error: TStreamer::channels is " << TStreamer::channels << " and it should be 1. Aborting\n";
+      abort();
+    }
 
-		const Real waveFactX = 2.0*M_PI/(nx*h);
-		const Real waveFactY = 2.0*M_PI/(ny*h);
-#pragma omp parallel for
-		for(int i=0; i<nx; ++i)
-			for(int j = 0; j<ny_hat; ++j)
-			{
-				const int linidx = i*ny_hat+j;
-				assert(linidx >=0 && linidx<nx*ny_hat); // linking error with openmp
+    const Real waveFactX = 2.0*M_PI/(nx*h);
+    const Real waveFactY = 2.0*M_PI/(ny*h);
+    #pragma omp parallel for
+    for(int i=0; i<nx; ++i)
+      for(int j = 0; j<ny_hat; ++j)
+      {
+        const int linidx = i*ny_hat+j;
+        assert(linidx >=0 && linidx<nx*ny_hat); // linking error with openmp
 
-				// wave number
-				const int kx = (i <= nx/2) ? i : -(nx-i);
-				const int ky = (j <= ny/2) ? j : -(ny-j);
-				const Real rkx = kx*waveFactX;
-				const Real rky = ky*waveFactY;
-				const Real kinv = (kx==0 && ky==0) ? 0.0 : -1.0/(rkx*rkx+rky*rky);
-				in_out[linidx][0] *= kinv*norm_factor;
-				in_out[linidx][1] *= kinv*norm_factor;
-			}
+        // wave number
+        const int kx = (i <= nx/2) ? i : -(nx-i);
+        const int ky = (j <= ny/2) ? j : -(ny-j);
+        const Real rkx = kx*waveFactX;
+        const Real rky = ky*waveFactY;
+        const Real kinv = (kx==0 && ky==0) ? 0.0 : -1.0/(rkx*rkx+rky*rky);
+        in_out[linidx][0] *= kinv*norm_factor;
+        in_out[linidx][1] *= kinv*norm_factor;
+      }
 
-		//this is sparta!
-		in_out[0][0] = in_out[0][1] = 0;
-	}
+    //this is sparta!
+    in_out[0][0] = in_out[0][1] = 0;
+  }
 
-	void _fftw2cub(Real * out, TGrid& grid, const size_t nx, const size_t ny, const size_t ny_hat) const
-	{
-		vector<BlockInfo> infos = grid.getBlocksInfo();
+  void _fftw2cub(Real * out, TGrid& grid, const size_t nx, const size_t ny, const size_t ny_hat) const
+  {
+    vector<BlockInfo> infos = grid.getBlocksInfo();
 
-		const size_t N = infos.size();
+    const size_t N = infos.size();
 
-		const size_t mybpd[2] = {grid.getBlocksPerDimension(0), grid.getBlocksPerDimension(1)};
+    const size_t mybpd[2] = {grid.getBlocksPerDimension(0), grid.getBlocksPerDimension(1)};
 
-#pragma omp parallel for
-		for(int i=0; i<N; ++i)
-		{
-			const BlockInfo info = infos[i];
-			BlockType& b = *(BlockType*)infos[i].ptrBlock;
+    #pragma omp parallel for
+    for(int i=0; i<N; ++i)
+    {
+      const BlockInfo info = infos[i];
+      BlockType& b = *(BlockType*)infos[i].ptrBlock;
 
-			const size_t offset = BlockType::sizeY*info.index[1] + (ny/2+1)*2*BlockType::sizeX*info.index[0];
+      const size_t offset = BlockType::sizeY*info.index[1] + (ny/2+1)*2*BlockType::sizeX*info.index[0];
 
-			for(int iy=0; iy<BlockType::sizeY; iy++)
-				for(int ix=0; ix<BlockType::sizeX; ix++)
-				{
-					const size_t src_index = TStreamer::channels*(offset + iy + 2*(ny/2+1)*ix);
+      for(int iy=0; iy<BlockType::sizeY; iy++)
+        for(int ix=0; ix<BlockType::sizeX; ix++)
+        {
+          const size_t src_index = TStreamer::channels*(offset + iy + 2*(ny/2+1)*ix);
 
-					assert(src_index>=0 && src_index<nx*ny_hat*2); // linking error with openmp
-					TStreamer::operate(&out[src_index], b(ix,iy));
-				}
-		}
-	}
+          assert(src_index>=0 && src_index<nx*ny_hat*2); // linking error with openmp
+          TStreamer::operate(&out[src_index], b(ix,iy));
+        }
+    }
+  }
 
 public:
 
-	PoissonSolverScalarFFTW(const int desired_threads, TGrid& grid): FFTWBase(desired_threads), initialized(false)
+  PoissonSolverScalarFFTW(const int desired_threads, TGrid& grid): FFTWBase(desired_threads), initialized(false)
     {
         const int bs[2] = {BlockType::sizeX, BlockType::sizeY};
         const size_t gsize[2] = {grid.getBlocksPerDimension(0)*bs[0], grid.getBlocksPerDimension(1)*bs[1]};
@@ -248,69 +248,69 @@ public:
         profiler.pop_stop();
     }
 
-	void solve(TGrid& grid, const bool spectral=false)
-	{
-		const int bs[2] = {BlockType::sizeX, BlockType::sizeY};
-		const size_t gsize[2] = {grid.getBlocksPerDimension(0)*bs[0], grid.getBlocksPerDimension(1)*bs[1]};
-		profiler.push_start("CUB2FFTW");
-		_cub2fftw(grid, data, gsize[0], gsize[1], gsize[1]/2+1);
-		profiler.pop_stop();
+  void solve(TGrid& grid, const bool spectral=false)
+  {
+    const int bs[2] = {BlockType::sizeX, BlockType::sizeY};
+    const size_t gsize[2] = {grid.getBlocksPerDimension(0)*bs[0], grid.getBlocksPerDimension(1)*bs[1]};
+    profiler.push_start("CUB2FFTW");
+    _cub2fftw(grid, data, gsize[0], gsize[1], gsize[1]/2+1);
+    profiler.pop_stop();
 
-		profiler.push_start("FFTW FORWARD");
-#ifndef _SP_COMP_
-		fftw_execute(fwd);
-#else // _SP_COMP_
-		fftwf_execute(fwd);
-#endif // _SP_COMP_
-		profiler.pop_stop();
+    profiler.push_start("FFTW FORWARD");
+    #ifndef _SP_COMP_
+    fftw_execute(fwd);
+    #else // _SP_COMP_
+    fftwf_execute(fwd);
+    #endif // _SP_COMP_
+    profiler.pop_stop();
 
-		const Real norm_factor = 1./(gsize[0]*gsize[1]);
-		const Real h = grid.getBlocksInfo().front().h_gridpoint;
-		//assert((1./gsize[0]-h) < 2.2e-16);
+    const Real norm_factor = 1./(gsize[0]*gsize[1]);
+    const Real h = grid.getBlocksInfo().front().h_gridpoint;
+    //assert((1./gsize[0]-h) < 2.2e-16);
 
-		profiler.push_start("SOLVE");
-		if(spectral)
-			_solveSpectral((mycomplex *)data, gsize[0], gsize[1], gsize[1]/2+1, norm_factor, h);
-		else
-			_solve((mycomplex *)data, gsize[0], gsize[1], gsize[1]/2+1, norm_factor, h);
+    profiler.push_start("SOLVE");
+    if(spectral)
+      _solveSpectral((mycomplex *)data, gsize[0], gsize[1], gsize[1]/2+1, norm_factor, h);
+    else
+      _solve((mycomplex *)data, gsize[0], gsize[1], gsize[1]/2+1, norm_factor, h);
 
-		profiler.pop_stop();
+    profiler.pop_stop();
 
-		profiler.push_start("FFTW INVERSE");
-#ifndef _SP_COMP_
-		fftw_execute(bwd);
-#else // _SP_COMP_
-		fftwf_execute(bwd);
-#endif // _SP_COMP_
-		profiler.pop_stop();
+    profiler.push_start("FFTW INVERSE");
+    #ifndef _SP_COMP_
+    fftw_execute(bwd);
+    #else // _SP_COMP_
+    fftwf_execute(bwd);
+    #endif // _SP_COMP_
+    profiler.pop_stop();
 
-		profiler.push_start("FFTW2CUB");
-		_fftw2cub(data, grid, gsize[0], gsize[1], gsize[1]/2+1);
-		profiler.pop_stop();
+    profiler.push_start("FFTW2CUB");
+    _fftw2cub(data, grid, gsize[0], gsize[1], gsize[1]/2+1);
+    profiler.pop_stop();
 
-		//profiler.printSummary();
-	}
+    //profiler.printSummary();
+  }
 
-	void dispose()
-	{
-		if (initialized)
-		{
-			initialized = false;
+  void dispose()
+  {
+    if (initialized)
+    {
+      initialized = false;
 
-#ifndef _SP_COMP_
-			fftw_destroy_plan(fwd);
-			fftw_destroy_plan(bwd);
+      #ifndef _SP_COMP_
+      fftw_destroy_plan(fwd);
+      fftw_destroy_plan(bwd);
 
-			fftw_free(data);
-#else // _SP_COMP_
-			fftwf_destroy_plan(fwd);
-			fftwf_destroy_plan(bwd);
+      fftw_free(data);
+      #else // _SP_COMP_
+      fftwf_destroy_plan(fwd);
+      fftwf_destroy_plan(bwd);
 
-			fftwf_free(data);
-#endif // _SP_COMP_
-			FFTWBase::dispose();
-		}
-	}
+      fftwf_free(data);
+      #endif // _SP_COMP_
+      FFTWBase::dispose();
+    }
+  }
 };
 
 /*
@@ -585,278 +585,278 @@ protected:
 
 protected:
 
-    virtual void _setup(Real *& rhs, const size_t nx, const size_t ny)
+  virtual void _setup(Real *& rhs, const size_t nx, const size_t ny)
+  {
+    if (initialized) return;
+
+    initialized = true;
+
+    //  Forward X:  FFT
+    //  Backward X: FFT
+    //  Forward Y:  DST-III
+    //  Backward Y: DST-II
+    #ifndef _SP_COMP_
+    rhs = fftw_alloc_real(nx*ny);
+
+    #ifdef _MIXED_
+      fwd = fftw_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_R2HC, FFTW_REDFT11, FFTW_MEASURE);
+      bwd = fftw_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_HC2R, FFTW_REDFT11, FFTW_MEASURE);
+    #endif
+    #ifdef _OPENBOX_
+      fwd = fftw_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_REDFT10, FFTW_REDFT11, FFTW_MEASURE);
+      bwd = fftw_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_REDFT01, FFTW_REDFT11, FFTW_MEASURE);
+    #endif
+    #ifdef _BOX_
+      fwd = fftw_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_REDFT10, FFTW_REDFT10, FFTW_MEASURE);
+      bwd = fftw_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_REDFT01, FFTW_REDFT01, FFTW_MEASURE);
+    #endif
+    //fwd = fftw_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_R2HC, FFTW_REDFT01, FFTW_MEASURE);
+    //bwd = fftw_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_HC2R, FFTW_REDFT10, FFTW_MEASURE); // is the inverse correct? taken from http://www.manpagez.com/info/fftw3/fftw3-3.1.2/fftw3_35.php#SEC42
+    #else // _SP_COMP_
+    rhs = fftwf_alloc_real(nx*ny);
+
+    //fwd = fftwf_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_R2HC, FFTW_REDFT01, FFTW_MEASURE);
+    //bwd = fftwf_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_HC2R, FFTW_REDFT10, FFTW_MEASURE);
+    #ifdef _MIXED_
+      fwd = fftwf_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_R2HC, FFTW_REDFT11, FFTW_MEASURE);
+      bwd = fftwf_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_HC2R, FFTW_REDFT11, FFTW_MEASURE);
+    #endif
+    #ifdef _OPENBOX_
+      fwd = fftwf_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_REDFT10, FFTW_REDFT11, FFTW_MEASURE);
+      bwd = fftwf_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_REDFT01, FFTW_REDFT11, FFTW_MEASURE);
+    #endif
+    #ifdef _BOX_
+      fwd = fftwf_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_REDFT10, FFTW_REDFT10, FFTW_MEASURE);
+      bwd = fftwf_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_REDFT01, FFTW_REDFT01, FFTW_MEASURE);
+    #endif
+    #endif // _SP_COMP_
+  }
+
+  void _cub2fftw(TGrid& grid, Real * out, const size_t nx, const size_t ny) const
+  {
+    vector<BlockInfo> infos = grid.getBlocksInfo();
+
+    const size_t N = infos.size();
+
+    #pragma omp parallel for
+    for(int i=0; i<N; ++i)
     {
-        if (!initialized)
-        {
-            initialized = true;
+      const BlockInfo info = infos[i];
+      BlockType& b = *(BlockType*)infos[i].ptrBlock;
 
-            //  Forward X:  FFT
-            //  Backward X: FFT
-            //  Forward Y:  DST-III
-            //  Backward Y: DST-II
-#ifndef _SP_COMP_
-            rhs = fftw_alloc_real(nx*ny);
+      // indexing for fftw - [x][y] (y is the fastest running index), block part of the index
+      const size_t offset = BlockType::sizeY*info.index[1] + ny*BlockType::sizeX*info.index[0];
 
-#ifdef _MIXED_
-            fwd = fftw_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_R2HC, FFTW_REDFT11, FFTW_MEASURE);
-            bwd = fftw_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_HC2R, FFTW_REDFT11, FFTW_MEASURE);
-#endif
-#ifdef _OPENBOX_
-			fwd = fftw_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_REDFT10, FFTW_REDFT11, FFTW_MEASURE);
-			bwd = fftw_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_REDFT01, FFTW_REDFT11, FFTW_MEASURE);
-#endif
-#ifdef _BOX_
-			fwd = fftw_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_REDFT10, FFTW_REDFT10, FFTW_MEASURE);
-			bwd = fftw_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_REDFT01, FFTW_REDFT01, FFTW_MEASURE);
-#endif
-            //fwd = fftw_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_R2HC, FFTW_REDFT01, FFTW_MEASURE);
-            //bwd = fftw_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_HC2R, FFTW_REDFT10, FFTW_MEASURE); // is the inverse correct? taken from http://www.manpagez.com/info/fftw3/fftw3-3.1.2/fftw3_35.php#SEC42
-#else // _SP_COMP_
-            rhs = fftwf_alloc_real(nx*ny);
+      for(int iy=0; iy<BlockType::sizeY; iy++)
+      for(int ix=0; ix<BlockType::sizeX; ix++)
+      {
+        // indexing for fftw - [x][y] (y is the fastest running index), local part of the index
+        const size_t dest_index = TStreamer::channels*(offset + iy + ny*ix);
 
-            //fwd = fftwf_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_R2HC, FFTW_REDFT01, FFTW_MEASURE);
-            //bwd = fftwf_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_HC2R, FFTW_REDFT10, FFTW_MEASURE);
-#ifdef _MIXED_
-            fwd = fftwf_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_R2HC, FFTW_REDFT11, FFTW_MEASURE);
-            bwd = fftwf_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_HC2R, FFTW_REDFT11, FFTW_MEASURE);
-#endif
-#ifdef _OPENBOX_
-			fwd = fftwf_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_REDFT10, FFTW_REDFT11, FFTW_MEASURE);
-			bwd = fftwf_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_REDFT01, FFTW_REDFT11, FFTW_MEASURE);
-#endif
-#ifdef _BOX_
-			fwd = fftwf_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_REDFT10, FFTW_REDFT10, FFTW_MEASURE);
-			bwd = fftwf_plan_r2r_2d(nx, ny, rhs, rhs, FFTW_REDFT01, FFTW_REDFT01, FFTW_MEASURE);
-#endif
-#endif // _SP_COMP_
-        }
+        assert(dest_index>=0 && dest_index<nx*ny); // linking error with openmp: http://lists.apple.com/archives/xcode-users/2011/Oct/msg00252.html
+        TStreamer::operate(b(ix,iy), &out[dest_index]);
+      }
+    }
+  }
+
+  virtual void _solve(Real * in_out, const size_t nx, const size_t ny, const Real norm_factor, const Real h)
+  {
+    if (TStreamer::channels != 1)
+    {
+      cout << "PoissonSolverScalar::PoissonSolverScalar(): Error: TStreamer::channels is " << TStreamer::channels << " and it should be 1. Aborting\n";
+      abort();
     }
 
-    void _cub2fftw(TGrid& grid, Real * out, const size_t nx, const size_t ny) const
+    const Real h2 = h*h;
+    const Real factor = h2*norm_factor;
+
+    #pragma omp parallel for
+    for(int i=0; i<nx; ++i)
+    for(int j = 0; j<ny; ++j)
     {
-        vector<BlockInfo> infos = grid.getBlocksInfo();
+      const int linidx = i*ny+j;
+      assert(linidx >=0 && linidx<nx*ny); // linking error with openmp
 
-        const size_t N = infos.size();
+      // based on the 5 point stencil in 1D (h^4 error)
+      //const Real denomY = 32.*cos(1.5*M_PI*(j+.5)/ny) - 2.*cos(2.5*M_PI*(j+.5)/ny) - 30.;
+      #ifdef _MIXED_
+        const Real denomY = 32.*cos(M_PI*(j+.5)/ny) - 2.*cos(2*M_PI*(j+.5)/ny) - 30.;
+        const Real denomX = 32.*cos(2.*M_PI*i/nx)   - 2.*cos(4.*M_PI*i/nx)     - 30.;
+      #endif
+      #ifdef _OPENBOX_
+        const Real denomY = 32.*cos(M_PI*(j+.5)/ny) - 2.*cos(2*M_PI*(j+.5)/ny) - 30.;
+        const Real denomX = 32.*cos(M_PI*i/nx) - 2.*cos(2*M_PI*i/nx) - 30.;
+      #endif
+      #ifdef _BOX_
+        const Real denomY = 32.*cos(M_PI*j/ny) - 2.*cos(2*M_PI*j/ny) - 30.;
+        const Real denomX = 32.*cos(M_PI*i/nx) - 2.*cos(2*M_PI*i/nx) - 30.;
+      #endif
 
-#pragma omp parallel for
-        for(int i=0; i<N; ++i)
-        {
-            const BlockInfo info = infos[i];
-            BlockType& b = *(BlockType*)infos[i].ptrBlock;
+      const Real denom = denomX + denomY;
+      const Real inv_denom = (denom==0)? 0.:1./denom;
+      const Real fatfactor = 12. * inv_denom * factor;
 
-            // indexing for fftw - [x][y] (y is the fastest running index), block part of the index
-            const size_t offset = BlockType::sizeY*info.index[1] + ny*BlockType::sizeX*info.index[0];
+      // based on the 3 point stencil in 1D (h^2 error)
+      //const Real denom = 2.*(cos(2.*M_PI*i/nx) + cos(2.*M_PI*j/ny)) - 4.;
+      //const Real inv_denom = (denom==0)? 0.:1./denom;
+      //const Real fatfactor = inv_denom * factor;
 
-            for(int iy=0; iy<BlockType::sizeY; iy++)
-                for(int ix=0; ix<BlockType::sizeX; ix++)
-                {
-                    // indexing for fftw - [x][y] (y is the fastest running index), local part of the index
-                    const size_t dest_index = TStreamer::channels*(offset + iy + ny*ix);
-
-                    assert(dest_index>=0 && dest_index<nx*ny); // linking error with openmp: http://lists.apple.com/archives/xcode-users/2011/Oct/msg00252.html
-                    TStreamer::operate(b(ix,iy), &out[dest_index]);
-                }
-        }
+      // this is to check the transform only
+      //const Real fatfactor = norm_factor;
+      in_out[linidx] *= fatfactor;
     }
 
-    virtual void _solve(Real * in_out, const size_t nx, const size_t ny, const Real norm_factor, const Real h)
+    //this is sparta!
+    //in_out[0] = 0; // WTF? this prevents correct fw/bw if not transformations happen, but has no influence on the 2nd derivative
+    // this element should be removed for the FFT but not for the DCT! how to solve this issue?
+  }
+
+  virtual void _solveSpectral(Real * in_out, const size_t nx, const size_t ny, const Real norm_factor, const Real h)
+  {
+    abort();
+    if (TStreamer::channels != 1)
     {
-        if (TStreamer::channels != 1)
-        {
-            cout << "PoissonSolverScalar::PoissonSolverScalar(): Error: TStreamer::channels is " << TStreamer::channels << " and it should be 1. Aborting\n";
-            abort();
-        }
-
-        const Real h2 = h*h;
-        const Real factor = h2*norm_factor;
-
-#pragma omp parallel for
-        for(int i=0; i<nx; ++i)
-            for(int j = 0; j<ny; ++j)
-            {
-                const int linidx = i*ny+j;
-                assert(linidx >=0 && linidx<nx*ny); // linking error with openmp
-
-                // based on the 5 point stencil in 1D (h^4 error)
-                //const Real denomY = 32.*cos(1.5*M_PI*(j+.5)/ny) - 2.*cos(2.5*M_PI*(j+.5)/ny) - 30.;
-#ifdef _MIXED_
-                const Real denomY = 32.*cos(M_PI*(j+.5)/ny) - 2.*cos(2*M_PI*(j+.5)/ny) - 30.;
-                const Real denomX = 32.*cos(2.*M_PI*i/nx)   - 2.*cos(4.*M_PI*i/nx)     - 30.;
-#endif
-#ifdef _OPENBOX_
-				const Real denomY = 32.*cos(M_PI*(j+.5)/ny) - 2.*cos(2*M_PI*(j+.5)/ny) - 30.;
-				const Real denomX = 32.*cos(M_PI*i/nx) - 2.*cos(2*M_PI*i/nx) - 30.;
-#endif
-#ifdef _BOX_
-				const Real denomY = 32.*cos(M_PI*j/ny) - 2.*cos(2*M_PI*j/ny) - 30.;
-				const Real denomX = 32.*cos(M_PI*i/nx) - 2.*cos(2*M_PI*i/nx) - 30.;
-#endif
-                const Real denom = denomX + denomY;
-                const Real inv_denom = (denom==0)? 0.:1./denom;
-                const Real fatfactor = 12. * inv_denom * factor;
-
-                // based on the 3 point stencil in 1D (h^2 error)
-                //const Real denom = 2.*(cos(2.*M_PI*i/nx) + cos(2.*M_PI*j/ny)) - 4.;
-                //const Real inv_denom = (denom==0)? 0.:1./denom;
-                //const Real fatfactor = inv_denom * factor;
-
-                // this is to check the transform only
-                //const Real fatfactor = norm_factor;
-                in_out[linidx] *= fatfactor;
-            }
-
-        //this is sparta!
-        //in_out[0] = 0; // WTF? this prevents correct fw/bw if not transformations happen, but has no influence on the 2nd derivative
-        // this element should be removed for the FFT but not for the DCT! how to solve this issue?
+      cout << "PoissonSolverScalar::PoissonSolverScalar(): Error: TStreamer::channels is " << TStreamer::channels << " and it should be 1. Aborting\n";
+      abort();
     }
 
-    virtual void _solveSpectral(Real * in_out, const size_t nx, const size_t ny, const Real norm_factor, const Real h)
+    const Real waveFactX = 2.0*M_PI/(nx*h);
+    const Real waveFactY = 2.0*M_PI/(ny*h);
+    #pragma omp parallel for
+    for(int i=0; i<nx; ++i)
+    for(int j = 0; j<ny; ++j)
     {
-        abort();
-        if (TStreamer::channels != 1)
-        {
-            cout << "PoissonSolverScalar::PoissonSolverScalar(): Error: TStreamer::channels is " << TStreamer::channels << " and it should be 1. Aborting\n";
-            abort();
-        }
+      const int linidx = i*ny+j;
+      assert(linidx >=0 && linidx<nx*ny); // linking error with openmp
 
-        const Real waveFactX = 2.0*M_PI/(nx*h);
-        const Real waveFactY = 2.0*M_PI/(ny*h);
-#pragma omp parallel for
-        for(int i=0; i<nx; ++i)
-            for(int j = 0; j<ny; ++j)
-            {
-                const int linidx = i*ny+j;
-                assert(linidx >=0 && linidx<nx*ny); // linking error with openmp
-
-                // wave number
-                const int kx = (i <= nx/2) ? i : -(nx-i);
-                const int ky = (j <= ny/2) ? j : -(ny-j);
-                const Real rkx = kx*waveFactX;
-                const Real rky = ky*waveFactY;
-                const Real kinv = (kx==0 && ky==0) ? 0.0 : -1.0/(rkx*rkx+rky*rky);
-                in_out[linidx] *= kinv*norm_factor;
-            }
-
-        //this is sparta!
-        in_out[0] = 0;
+      // wave number
+      const int kx = (i <= nx/2) ? i : -(nx-i);
+      const int ky = (j <= ny/2) ? j : -(ny-j);
+      const Real rkx = kx*waveFactX;
+      const Real rky = ky*waveFactY;
+      const Real kinv = (kx==0 && ky==0) ? 0.0 : -1.0/(rkx*rkx+rky*rky);
+      in_out[linidx] *= kinv*norm_factor;
     }
 
-    void _fftw2cub(Real * out, TGrid& grid, const size_t nx, const size_t ny) const
+    //this is sparta!
+    in_out[0] = 0;
+  }
+
+  void _fftw2cub(Real * out, TGrid& grid, const size_t nx, const size_t ny) const
+  {
+    vector<BlockInfo> infos = grid.getBlocksInfo();
+
+    const size_t N = infos.size();
+
+    const size_t mybpd[2] = {grid.getBlocksPerDimension(0), grid.getBlocksPerDimension(1)};
+
+    #pragma omp parallel for
+    for(int i=0; i<N; ++i)
     {
-        vector<BlockInfo> infos = grid.getBlocksInfo();
+      const BlockInfo info = infos[i];
+      BlockType& b = *(BlockType*)infos[i].ptrBlock;
 
-        const size_t N = infos.size();
+      const size_t offset = BlockType::sizeY*info.index[1] + ny*BlockType::sizeX*info.index[0];
 
-        const size_t mybpd[2] = {grid.getBlocksPerDimension(0), grid.getBlocksPerDimension(1)};
+      for(int iy=0; iy<BlockType::sizeY; iy++)
+      for(int ix=0; ix<BlockType::sizeX; ix++)
+      {
+        const size_t src_index = TStreamer::channels*(offset + iy + ny*ix);
 
-#pragma omp parallel for
-        for(int i=0; i<N; ++i)
-        {
-            const BlockInfo info = infos[i];
-            BlockType& b = *(BlockType*)infos[i].ptrBlock;
-
-            const size_t offset = BlockType::sizeY*info.index[1] + ny*BlockType::sizeX*info.index[0];
-
-            for(int iy=0; iy<BlockType::sizeY; iy++)
-                for(int ix=0; ix<BlockType::sizeX; ix++)
-                {
-                    const size_t src_index = TStreamer::channels*(offset + iy + ny*ix);
-
-                    assert(src_index>=0 && src_index<nx*ny); // linking error with openmp
-                    TStreamer::operate(&out[src_index], b(ix,iy));
-                }
-        }
+        assert(src_index>=0 && src_index<nx*ny); // linking error with openmp
+        TStreamer::operate(&out[src_index], b(ix,iy));
+      }
     }
+  }
 
 public:
 
-    PoissonSolverScalarFFTW_DCT(const int desired_threads, TGrid& grid): FFTWBase(desired_threads), initialized(false)
+  PoissonSolverScalarFFTW_DCT(const int desired_threads, TGrid& grid): FFTWBase(desired_threads), initialized(false)
+  {
+      // dimensions of blocks and whole grid
+      const int bs[2] = {BlockType::sizeX, BlockType::sizeY};
+      const size_t gsize[2] = {grid.getBlocksPerDimension(0)*bs[0], grid.getBlocksPerDimension(1)*bs[1]};
+
+      profiler.push_start("SETUP");
+      _setup(data, gsize[0], gsize[1]);
+      profiler.pop_stop();
+  }
+
+  void solve(TGrid& grid, const bool spectral=false)
+  {
+    // dimensions of blocks and whole grid
+    const int bs[2] = {BlockType::sizeX, BlockType::sizeY};
+    const size_t gsize[2] = {grid.getBlocksPerDimension(0)*bs[0], grid.getBlocksPerDimension(1)*bs[1]};
+
+    profiler.push_start("CUB2FFTW");
+    _cub2fftw(grid, data, gsize[0], gsize[1]);
+    profiler.pop_stop();
+
+    profiler.push_start("FFTW FORWARD");
+    #ifndef _SP_COMP_
+    fftw_execute(fwd);
+    #else // _SP_COMP_
+    fftwf_execute(fwd);
+    #endif // _SP_COMP_
+    profiler.pop_stop();
+
+    #ifdef _MIXED_
+    const Real norm_factor = .5/(gsize[0]*gsize[1]);
+    #endif
+    #ifdef _OPENBOX_
+    const Real norm_factor = .25/(gsize[0]*gsize[1]);
+    #endif
+    #ifdef _BOX_
+    const Real norm_factor = .25/(gsize[0]*gsize[1]);
+    #endif
+    const Real h = grid.getBlocksInfo().front().h_gridpoint;
+    //cout << (int)(1+1./h) << " " << max(gsize[0],gsize[1]) << endl;
+    // why sometimes +1 and sometimes not?
+    assert(max(gsize[0],gsize[1])==(int)(1+1./h));
+
+    profiler.push_start("SOLVE");
+    if(spectral)
+        _solveSpectral(data, gsize[0], gsize[1], norm_factor, h);
+    else
+        _solve(data, gsize[0], gsize[1], norm_factor, h);
+
+    profiler.pop_stop();
+
+    profiler.push_start("FFTW INVERSE");
+    #ifndef _SP_COMP_
+    fftw_execute(bwd);
+    #else // _SP_COMP_
+    fftwf_execute(bwd);
+    #endif // _SP_COMP_
+    profiler.pop_stop();
+
+    profiler.push_start("FFTW2CUB");
+    _fftw2cub(data, grid, gsize[0], gsize[1]);
+    profiler.pop_stop();
+
+    //profiler.printSummary();
+  }
+
+  void dispose()
+  {
+    if (initialized)
     {
-        // dimensions of blocks and whole grid
-        const int bs[2] = {BlockType::sizeX, BlockType::sizeY};
-        const size_t gsize[2] = {grid.getBlocksPerDimension(0)*bs[0], grid.getBlocksPerDimension(1)*bs[1]};
+      initialized = false;
 
-        profiler.push_start("SETUP");
-        _setup(data, gsize[0], gsize[1]);
-        profiler.pop_stop();
+      #ifndef _SP_COMP_
+      fftw_destroy_plan(fwd);
+      fftw_destroy_plan(bwd);
+
+      fftw_free(data);
+      #else // _SP_COMP_
+      fftwf_destroy_plan(fwd);
+      fftwf_destroy_plan(bwd);
+
+      fftwf_free(data);
+      #endif // _SP_COMP_
+      FFTWBase::dispose();
     }
-
-    void solve(TGrid& grid, const bool spectral=false)
-    {
-        // dimensions of blocks and whole grid
-        const int bs[2] = {BlockType::sizeX, BlockType::sizeY};
-        const size_t gsize[2] = {grid.getBlocksPerDimension(0)*bs[0], grid.getBlocksPerDimension(1)*bs[1]};
-
-        profiler.push_start("CUB2FFTW");
-        _cub2fftw(grid, data, gsize[0], gsize[1]);
-        profiler.pop_stop();
-
-        profiler.push_start("FFTW FORWARD");
-#ifndef _SP_COMP_
-        fftw_execute(fwd);
-#else // _SP_COMP_
-        fftwf_execute(fwd);
-#endif // _SP_COMP_
-        profiler.pop_stop();
-
-#ifdef _MIXED_
-        const Real norm_factor = .5/(gsize[0]*gsize[1]);
-#endif
-#ifdef _OPENBOX_
-		const Real norm_factor = .25/(gsize[0]*gsize[1]);
-#endif
-#ifdef _BOX_
-		const Real norm_factor = .25/(gsize[0]*gsize[1]);
-#endif
-        const Real h = grid.getBlocksInfo().front().h_gridpoint;
-		//cout << (int)(1+1./h) << " " << max(gsize[0],gsize[1]) << endl;
-		// why sometimes +1 and sometimes not?
-		assert(max(gsize[0],gsize[1])==(int)(1+1./h));
-
-        profiler.push_start("SOLVE");
-        if(spectral)
-            _solveSpectral(data, gsize[0], gsize[1], norm_factor, h);
-        else
-            _solve(data, gsize[0], gsize[1], norm_factor, h);
-
-        profiler.pop_stop();
-
-        profiler.push_start("FFTW INVERSE");
-#ifndef _SP_COMP_
-        fftw_execute(bwd);
-#else // _SP_COMP_
-        fftwf_execute(bwd);
-#endif // _SP_COMP_
-        profiler.pop_stop();
-
-        profiler.push_start("FFTW2CUB");
-        _fftw2cub(data, grid, gsize[0], gsize[1]);
-        profiler.pop_stop();
-
-        //profiler.printSummary();
-    }
-
-    void dispose()
-    {
-        if (initialized)
-        {
-            initialized = false;
-
-#ifndef _SP_COMP_
-            fftw_destroy_plan(fwd);
-            fftw_destroy_plan(bwd);
-
-            fftw_free(data);
-#else // _SP_COMP_
-            fftwf_destroy_plan(fwd);
-            fftwf_destroy_plan(bwd);
-
-            fftwf_free(data);
-#endif // _SP_COMP_
-            FFTWBase::dispose();
-        }
-    }
+  }
 };
 #endif
 //*/
@@ -1839,7 +1839,7 @@ public:
 
  public:
 
- PoissonSolverScalarFFTW_DCT(const int desired_threads): FFTWBase(desired_threads), initialized(false) {	}
+ PoissonSolverScalarFFTW_DCT(const int desired_threads): FFTWBase(desired_threads), initialized(false) {  }
 
  void solve(TGrid& grid, const bool spectral=false)
  {

@@ -261,7 +261,7 @@ class Shape
           p[0] -= centerOfMass[0];
           p[1] -= centerOfMass[1];
 
-          const double rhochi = b(ix,iy).rho * chi;
+          const double rhochi = pos->second->rho[iy][ix] * chi;
           _M += rhochi;
           um += rhochi * b(ix,iy).u;
           vm += rhochi * b(ix,iy).v;
@@ -318,7 +318,7 @@ class Shape
         double p[2] = {0,0};
         vInfo[i].pos(p, ix, iy);
         const Real chi = pos==obstacleBlocks.end()?0 : pos->second->chi[iy][ix];
-        const Real rhochi = b(ix,iy).rho * chi;
+        const Real rhochi = pos->second->rho[iy][ix] * chi;
         cmX += p[0] * rhochi; cX += p[0] * chi; fx += (b(ix,iy).u-uBody)*chi;
         cmY += p[1] * rhochi; cY += p[1] * chi; fy += (b(ix,iy).v-vBody)*chi;
         mass += rhochi; volS += chi; volF += (1-chi);

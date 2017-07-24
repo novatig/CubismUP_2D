@@ -42,11 +42,11 @@ class OperatorAdvectionFD : public GenericLabOperator
     for (int ix=0; ix<FluidBlock::sizeX; ++ix)
     {
       #ifndef _MOVING_FRAME_
-              const Real v = lab(ix,iy).v;
-              const Real u = lab(ix,iy).u;
+        const Real v = lab(ix,iy).v;
+        const Real u = lab(ix,iy).u;
       #else
-              const Real v = lab(ix,iy).v - *vBody;
-              const Real u = lab(ix,iy).u - *uBody;
+        const Real v = lab(ix,iy).v - *vBody;
+        const Real u = lab(ix,iy).u - *uBody;
       #endif
 
       const Real dudx = lab(ix+1,iy).u - lab(ix-1,iy).u;

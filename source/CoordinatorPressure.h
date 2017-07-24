@@ -139,14 +139,9 @@ class OperatorPressureDrag : public GenericLabOperator
     pressureDrag[1] = 0;
 
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-    for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-    {
-      const Real pUW = lab(ix-1,iy  ).p;
-      const Real pUE = lab(ix+1,iy  ).p;
-      const Real pUS = lab(ix  ,iy-1).p;
-      const Real pUN = lab(ix  ,iy+1).p;
-      pressureDrag[0] += prefactor * (pUE - pUW);
-      pressureDrag[1] += prefactor * (pUN - pUS);
+    for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
+      pressureDrag[0] += prefactor * (lab(ix+1,iy  ).p - lab(ix-1,iy  ).p);
+      pressureDrag[1] += prefactor * (lab(ix  ,iy+1).p - lab(ix  ,iy-1).p);
     }
   }
 
@@ -193,15 +188,10 @@ class CoordinatorPressure : public GenericCoordinator
       FluidBlock& b = *(FluidBlock*)info.ptrBlock;
 
       for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-        for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-        {
-          b(ix,iy).u -= dt*gravity[0]/b(ix,iy).rho;
-          b(ix,iy).v -= dt*gravity[1]/b(ix,iy).rho;
-
-          // doesn't help much
-          //b(ix,iy).u -= dt*minRho*gravity[0]/b(ix,iy).rho + (minRho<1 ? dt*(1-minRho)*gravity[0] : 0);
-          //b(ix,iy).v -= dt*minRho*gravity[1]/b(ix,iy).rho + (minRho<1 ? dt*(1-minRho)*gravity[1] : 0);
-        }
+      for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
+        b(ix,iy).u += dt*gravity[0]*(1-1./b(ix,iy).rho);
+        b(ix,iy).v += dt*gravity[1]*(1-1./b(ix,iy).rho);
+      }
     }
   }
 
