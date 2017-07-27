@@ -222,7 +222,7 @@ class CoordinatorPressure : public GenericCoordinator
     #pragma omp parallel
     {
       Operator kernel(dt, minRho, *step);
-
+      const int NX = getBlocksPerDimension(0), NY = getBlocksPerDimension(1);
       Lab mylab;
       #ifdef _MOVING_FRAME_
       mylab.pDirichlet.u = *uBody;
@@ -230,10 +230,11 @@ class CoordinatorPressure : public GenericCoordinator
       #endif
       mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, false);
 
-      #pragma omp for schedule(static)
+      #pragma omp for schedule(dynamic)
       for (int i=0; i<N; i++)
       {
         BlockInfo info = vInfo[i];
+        if(NX==info.index[0] || NY==info.index[1] || !NX || !NY) continue;
         mylab.load(info, 0);
         kernel(mylab, info, *(FluidBlock*)info.ptrBlock);
       }
