@@ -41,11 +41,12 @@ void Sim_FSI_Gravity::_ic()
   }
 
   shape->create(vInfo);
-
+  #ifndef RL_MPI_CLIENT
   stringstream ss;
   ss << path2file << "-IC.vti";
   dumper.Write(*grid, ss.str());
   profiler.pop_stop();
+  #endif
 }
 
 double Sim_FSI_Gravity::_nonDimensionalTime()
@@ -187,8 +188,10 @@ void Sim_FSI_Gravity::simulate()
       ss << path2file << "killed.vti";
       _dump(ss);
     }
+    #ifndef RL_MPI_CLIENT
     cout << "time, dt (Fourier, CFL, body): "
       <<time<<" "<<dt<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody<<endl;
+    #endif
     profiler.pop_stop();
 
 
@@ -229,13 +232,15 @@ void Sim_FSI_Gravity::simulate()
     }
 
     // compute diagnostics
+    #ifndef RL_MPI_CLIENT
     if (step % 10 == 0)
     {
       profiler.push_start("Diagnostics");
       _diagnostics();
       profiler.pop_stop();
     }
-
+    #endif
+    
     //dump some time steps every now and then
     profiler.push_start("Dump");
     if(bDump) shape->characteristic_function(grid->getBlocksInfo());

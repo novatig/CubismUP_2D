@@ -147,8 +147,10 @@ class Blowfish : public Shape
     flapAng_L += dt*flapVel_L + .5*dt*dt*flapAcc_L;
     flapVel_R += dt*flapAcc_R;
     flapVel_L += dt*flapAcc_L;
+    #ifndef RL_MPI_CLIENT
     printf("[ang, angvel, angacc] : right:[%f %f %f] left:[%f %f %f]\n",
      flapAng_R, flapVel_R, flapAcc_R, flapAng_L, flapVel_L, flapAcc_L);
+    #endif
   }
 
   void create(const vector<BlockInfo>& vInfo) override

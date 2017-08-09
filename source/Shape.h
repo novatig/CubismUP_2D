@@ -204,7 +204,9 @@ class Shape
   void removeMoments(const vector<BlockInfo>& vInfo)
   {
     Integrals I = integrateObstBlock(vInfo);
+    #ifndef RL_MPI_CLIENT
     printf("Correction of: lin mom [%f %f] ang mom [%f]. Error in CM=[%f %f]\n", I.u, I.v, I.a, I.x-centerOfMass[0], I.y-centerOfMass[1]);
+    #endif
     //update the center of mass, this operation should not move 'center'
     centerOfMass[0] = I.x; centerOfMass[1] = I.y;
     const Real dCx = center[0]-centerOfMass[0];
@@ -275,7 +277,9 @@ class Shape
     *omegaBody  = am / (_J+2.2e-16);
     J = _J * std::pow(vInfo[0].h_gridpoint,2);
     M = _M * std::pow(vInfo[0].h_gridpoint,2);
+    #ifndef RL_MPI_CLIENT
     printf("CM:[%f %f] u:%f v:%f omega:%f M:%f J:%f\n", centerOfMass[0], centerOfMass[1], *uBody, *vBody, *omegaBody, M, J);
+    #endif
   }
 
   void penalize(const Real u, const Real v, const Real omega, const Real dt, const Real lambda, const vector<BlockInfo>& vInfo)
@@ -458,7 +462,7 @@ class Shape
     Real Pdrag      =   drag*vel_norm;
     Real EffPDef    = Pthrust/(Pthrust-min(defPower,(Real)0.)+1e-16);
     Real EffPDefBnd = Pthrust/(Pthrust-    defPowerBnd+1e-16);
-
+    #ifndef RL_MPI_CLIENT
     if (bDump) {
       char buf[500];
       sprintf(buf, "surface_0_%07d.raw", stepID);
@@ -488,6 +492,7 @@ class Shape
       filePower<<time<<" "<<Pthrust<<" "<<Pdrag<<" "<<PoutBnd<<" "<<Pout<<" "<<defPowerBnd<<" "<<defPower<<" "<<EffPDefBnd<<" "<<EffPDef<<endl;
       filePower.close();
     }
+    #endif
   }
 };
 
