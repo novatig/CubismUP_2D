@@ -34,7 +34,8 @@ struct ObstacleBlock
   //additive quantities:
   Real perimeter = 0, forcex = 0, forcey = 0, forcex_P = 0, forcey_P = 0;
   Real forcex_V = 0, forcey_V = 0, torque = 0, torque_P = 0, torque_V = 0;
-  Real drag = 0, thrust = 0, Pout=0, PoutBnd=0, defPower=0, defPowerBnd=0;
+  Real drag = 0, thrust = 0, Pout=0, PoutBnd=0, defPower=0, defPowerBnd = 0;
+  Real circulation = 0;
 
   ObstacleBlock()
   {
@@ -49,8 +50,9 @@ struct ObstacleBlock
 
   void clear_surface()
   {
-    n_surfPoints=perimeter=forcex=forcey=forcex_P=forcey_P=forcex_V=forcey_V=0;
-    torque=torque_P=torque_V=drag=thrust=Pout=PoutBnd=defPower=defPowerBnd=0;
+    n_surfPoints = perimeter = forcex = forcey = forcex_P = forcey_P = 0;
+    forcex_V = forcey_V = torque = torque_P = torque_V = drag = thrust = 0;
+    Pout = PoutBnd = defPower = defPowerBnd = circulation = 0;
 
     for (auto & trash : surface) {
       if(trash == nullptr) continue;

@@ -66,15 +66,16 @@ protected:
   Real* const uBody;
   Real* const vBody;
   Real* const omegaBody;
+  Real* const time;
   const Real* const lambda;
   Shape* const shape;
 
 public:
-  CoordinatorBodyVelocities(Real*const u, Real*const v, Real*const w, Shape*const s, Real*const l, FluidGrid*const g) : GenericCoordinator(g),uBody(u),vBody(v),omegaBody(w),lambda(l),shape(s)  { }
+  CoordinatorBodyVelocities(Real*const u, Real*const v, Real*const w, Shape*const s, Real*const l, Real*const t, FluidGrid*const g) : GenericCoordinator(g), uBody(u), vBody(v), omegaBody(w), lambda(l), shape(s), time(t) { }
 
   void operator()(const double dt)
   {
-    shape->computeVelocities(uBody, vBody, omegaBody, vInfo);
+    shape->computeVelocities(uBody, vBody, omegaBody, time, dt, vInfo);
     //act is here as it allows modifying velocities before penalization
     shape->act(uBody, vBody, omegaBody, dt);
   }

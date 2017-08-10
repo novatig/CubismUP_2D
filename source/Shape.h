@@ -173,7 +173,7 @@ class Shape
   Integrals integrateObstBlock(const vector<BlockInfo>& vInfo)
   {
     Real _m=0, _j=0, _u=0, _v=0, _a=0, _x=0, _y=0;
-    #pragma omp parallel for schedule(dynamic) reduction(+ : _m, _j, _u, _v, _a, _x, _y)
+    #pragma omp parallel for schedule(dynamic) reduction(+:_m,_j,_u,_v,_a,_x,_y)
     for(int i=0; i<vInfo.size(); i++)
     {
       const auto pos = obstacleBlocks.find(vInfo[i].blockID);
@@ -245,7 +245,7 @@ class Shape
     #endif
   };
 
-  void computeVelocities(Real*const uBody, Real*const vBody, Real*const omegaBody, const vector<BlockInfo>& vInfo)
+  void computeVelocities(Real*const uBody, Real*const vBody, Real*const omegaBody, Real*const time, const Real dt, const vector<BlockInfo>& vInfo)
   {
     Real _M = 0, _J = 0, um = 0, vm = 0, am = 0; //linear momenta
     #pragma omp parallel for schedule(dynamic) reduction(+:_M,_J,um,vm,am)
@@ -271,14 +271,27 @@ class Shape
           am += rhochi * (p[0]*b(ix,iy).v - p[1]*b(ix,iy).u);
         }
     }
-
+    const Real oldU = *uBody, oldV = *vBody;
     *uBody       = um / (_M+2.2e-16);
     *vBody       = vm / (_M+2.2e-16);
     *omegaBody  = am / (_J+2.2e-16);
     J = _J * std::pow(vInfo[0].h_gridpoint,2);
     M = _M * std::pow(vInfo[0].h_gridpoint,2);
-    #ifndef RL_MPI_CLIENT
+
+    #ifndef RL_MPI_TRAIN
     printf("CM:[%f %f] u:%f v:%f omega:%f M:%f J:%f\n", centerOfMass[0], centerOfMass[1], *uBody, *vBody, *omegaBody, M, J);
+    {
+      ofstream fileSpeed;
+    	stringstream ssF;
+    	ssF<<"speedValues_0.dat";
+
+      fileSpeed.open(ssF.str().c_str(), ios::app);
+      if(stepID==0)
+        fileForce<<"time dt CMx CMy angle u v omega M J accx accy"<<std::endl;
+
+      fileForce<<time<<" "<<dt<<" "<<centerOfMass[0]<<" "<<centerOfMass[1]<<" "<<orientation<<" "<<*uBody <<" "<<*vBody<<" "<<*omegaBody <<" "<<M<<" "<<J<<" "<<(*uBody-oldU)/dt<<" "<<(*vBody-oldV)/dt<<endl;
+      fileForce.close();
+    }
     #endif
   }
 
@@ -435,10 +448,11 @@ class Shape
     compute_surface(finalize, vInfo);
 
     //additive quantities:
-    Real perimeter = 0, forcex = 0, forcey = 0, forcex_P = 0, forcey_P = 0, forcex_V = 0, forcey_V = 0, torque = 0, torque_P = 0, torque_V = 0, drag = 0, thrust = 0, Pout = 0, PoutBnd = 0, defPower = 0, defPowerBnd = 0;
+    Real perimeter = 0, forcex = 0, forcey = 0, forcex_P = 0, forcey_P = 0, forcex_V = 0, forcey_V = 0, torque = 0, torque_P = 0, torque_V = 0, drag = 0, thrust = 0, Pout = 0, PoutBnd = 0, defPower = 0, defPowerBnd = 0, circulation = 0;
 
     for (auto & block : obstacleBlocks)
     {
+      circulation += block.second->circulation;
       perimeter   += block.second->perimeter;
       forcex      += block.second->forcex;
       forcey      += block.second->forcey;
@@ -462,7 +476,8 @@ class Shape
     Real Pdrag      =   drag*vel_norm;
     Real EffPDef    = Pthrust/(Pthrust-min(defPower,(Real)0.)+1e-16);
     Real EffPDefBnd = Pthrust/(Pthrust-    defPowerBnd+1e-16);
-    #ifndef RL_MPI_CLIENT
+
+    #ifndef RL_MPI_TRAIN
     if (bDump) {
       char buf[500];
       sprintf(buf, "surface_0_%07d.raw", stepID);
@@ -481,9 +496,9 @@ class Shape
 
       fileForce.open(ssF.str().c_str(), ios::app);
       if(stepID==0)
-        fileForce<<"time Fx Fy FxPres FyPres FxVisc FyVisc tau tauPres tauVisc drag thrust perimeter"<<std::endl;
+        fileForce<<"time Fx Fy FxPres FyPres FxVisc FyVisc tau tauPres tauVisc drag thrust perimeter circulation"<<std::endl;
 
-      fileForce<<time<<" "<<forcex<<" "<<forcey<<" "<<forcex_P<<" "<<forcey_P<<" "<<forcex_V <<" "<<forcey_V<<" "<<torque <<" "<<torque_P<<" "<<torque_V<<" "<<drag<<" "<<thrust<<" "<<perimeter<<endl;
+      fileForce<<time<<" "<<forcex<<" "<<forcey<<" "<<forcex_P<<" "<<forcey_P<<" "<<forcex_V <<" "<<forcey_V<<" "<<torque <<" "<<torque_P<<" "<<torque_V<<" "<<drag<<" "<<thrust<<" "<<perimeter<<" "<<circulation<<endl;
       fileForce.close();
 
       filePower.open(ssP.str().c_str(), ios::app);

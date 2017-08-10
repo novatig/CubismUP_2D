@@ -188,7 +188,7 @@ void Sim_FSI_Gravity::simulate()
       ss << path2file << "killed.vti";
       _dump(ss);
     }
-    #ifndef RL_MPI_CLIENT
+    #ifndef RL_MPI_TRAIN
     cout << "time, dt (Fourier, CFL, body): "
       <<time<<" "<<dt<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody<<endl;
     #endif
@@ -232,7 +232,7 @@ void Sim_FSI_Gravity::simulate()
     }
 
     // compute diagnostics
-    #ifndef RL_MPI_CLIENT
+    #ifndef RL_MPI_TRAIN
     if (step % 10 == 0)
     {
       profiler.push_start("Diagnostics");
@@ -240,7 +240,7 @@ void Sim_FSI_Gravity::simulate()
       profiler.pop_stop();
     }
     #endif
-    
+
     //dump some time steps every now and then
     profiler.push_start("Dump");
     if(bDump) shape->characteristic_function(grid->getBlocksInfo());

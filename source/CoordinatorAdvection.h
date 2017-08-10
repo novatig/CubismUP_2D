@@ -102,60 +102,39 @@ class OperatorAdvectionUpwind3rdOrder : public GenericLabOperator
     for (int iy=0; iy<FluidBlock::sizeY; ++iy)
       for (int ix=0; ix<FluidBlock::sizeX; ++ix)
       {
+        const Real uPx = lab(ix+2,iy  ).u, vPx = lab(ix+2,iy  ).v;
+        const Real upx = lab(ix+1,iy  ).u, vpx = lab(ix+1,iy  ).v;
+        const Real uPy = lab(ix  ,iy+2).u, vPy = lab(ix  ,iy+2).v;
+        const Real upy = lab(ix  ,iy+1).u, vpy = lab(ix  ,iy+1).v;
+        const Real ucc = lab(ix  ,iy  ).u, vcc = lab(ix  ,iy  ).v;
+        const Real ulx = lab(ix-1,iy  ).u, vlx = lab(ix-1,iy  ).v;
+        const Real uLx = lab(ix-2,iy  ).u, vLx = lab(ix-2,iy  ).v;
+        const Real uly = lab(ix  ,iy-1).u, vly = lab(ix  ,iy-1).v;
+        const Real uLy = lab(ix  ,iy-2).u, vLy = lab(ix  ,iy-2).v;
         #ifndef _MOVING_FRAME_
-        const Real v = o(ix,iy).v;
-        const Real u = o(ix,iy).u;
+          const Real u = ucc, v = vcc;
         #else
-        const Real v = o(ix,iy).v - *vBody;
-        const Real u = o(ix,iy).u - *uBody;
+          const Real u = ucc - *uBody, v = vcc - *vBody;
         #endif
+        const Real dux = u>0 ? 2*upx+3*ucc-6*ulx+uLx : -uPx+6*upx-3*ucc-2*ulx;
+        const Real duy = v>0 ? 2*upy+3*ucc-6*uly+uLy : -uPy+6*upy-3*ucc-2*uly;
+        const Real dvx = u>0 ? 2*vpx+3*vcc-6*vlx+vLx : -vPx+6*vpx-3*vcc-2*vlx;
+        const Real dvy = v>0 ? 2*vpy+3*vcc-6*vly+vLy : -vPy+6*vpy-3*vcc-2*vly;
 
-        #if 0
-        const Real dudx[2] = {  2*lab(ix+1,iy  ).u + 3*lab(ix  ,iy  ).u - 6*lab(ix-1,iy  ).u +   lab(ix-2,iy  ).u,
-                     -  lab(ix+2,iy  ).u + 6*lab(ix+1,iy  ).u - 3*lab(ix  ,iy  ).u - 2*lab(ix-1,iy  ).u};
-
-        const Real dudy[2] = {  2*lab(ix  ,iy+1).u + 3*lab(ix  ,iy  ).u - 6*lab(ix  ,iy-1).u +   lab(ix  ,iy-2).u,
-                     -  lab(ix  ,iy+2).u + 6*lab(ix  ,iy+1).u - 3*lab(ix  ,iy  ).u - 2*lab(ix  ,iy-1).u};
-
-        const Real dvdx[2] = {  2*lab(ix+1,iy  ).v + 3*lab(ix  ,iy  ).v - 6*lab(ix-1,iy  ).v +   lab(ix-2,iy  ).v,
-                     -  lab(ix+2,iy  ).v + 6*lab(ix+1,iy  ).v - 3*lab(ix  ,iy  ).v - 2*lab(ix-1,iy  ).v};
-
-        const Real dvdy[2] = {  2*lab(ix  ,iy+1).v + 3*lab(ix  ,iy  ).v - 6*lab(ix  ,iy-1).v +   lab(ix  ,iy-2).v,
-                     -  lab(ix  ,iy+2).v + 6*lab(ix  ,iy+1).v - 3*lab(ix  ,iy  ).v - 2*lab(ix  ,iy-1).v};
-
-
-        o(ix,iy).tmpU = o(ix,iy).u + factor*(
-            max(u,(Real)0) * dudx[0] + min(u,(Real)0) * dudx[1] +
-            max(v,(Real)0) * dudy[0] + min(v,(Real)0) * dudy[1]);
-
-        o(ix,iy).tmpV = o(ix,iy).v + factor*(
-            max(u,(Real)0) * dvdx[0] + min(u,(Real)0) * dvdx[1] +
-            max(v,(Real)0) * dvdy[0] + min(v,(Real)0) * dvdy[1]);
+        o(ix,iy).tmpU = ucc + factor*(u*dux + v*duy);
+        o(ix,iy).tmpV = vcc + factor*(u*dvx + v*dvy);
 
         #ifdef _MULTIPHASE_
-        const Real drdx[2] = {  2*lab(ix+1,iy  ).rho + 3*lab(ix  ,iy  ).rho - 6*lab(ix-1,iy  ).rho +   lab(ix-2,iy  ).rho,
-                     -  lab(ix+2,iy  ).rho + 6*lab(ix+1,iy  ).rho - 3*lab(ix  ,iy  ).rho - 2*lab(ix-1,iy  ).rho};
+          const Real drdx[2] = {  2*lab(ix+1,iy  ).rho + 3*lab(ix  ,iy  ).rho - 6*lab(ix-1,iy  ).rho +   lab(ix-2,iy  ).rho,
+                       -  lab(ix+2,iy  ).rho + 6*lab(ix+1,iy  ).rho - 3*lab(ix  ,iy  ).rho - 2*lab(ix-1,iy  ).rho};
 
-        const Real drdy[2] = {  2*lab(ix  ,iy+1).rho + 3*lab(ix  ,iy  ).rho - 6*lab(ix  ,iy-1).rho +   lab(ix  ,iy-2).rho,
-                     -  lab(ix  ,iy+2).rho + 6*lab(ix  ,iy+1).rho - 3*lab(ix  ,iy  ).rho - 2*lab(ix  ,iy-1).rho};
+          const Real drdy[2] = {  2*lab(ix  ,iy+1).rho + 3*lab(ix  ,iy  ).rho - 6*lab(ix  ,iy-1).rho +   lab(ix  ,iy-2).rho,
+                       -  lab(ix  ,iy+2).rho + 6*lab(ix  ,iy+1).rho - 3*lab(ix  ,iy  ).rho - 2*lab(ix  ,iy-1).rho};
 
 
-        o(ix,iy).tmp  = o(ix,iy).rho + factor*(max(u,(Real)0) * drdx[0] + min(u,(Real)0) * drdx[1] +
-                       max(v,(Real)0) * drdy[0] + min(v,(Real)0) * drdy[1]);
+          o(ix,iy).tmp  = o(ix,iy).rho + factor*(max(u,(Real)0) * drdx[0] + min(u,(Real)0) * drdx[1] +
+                         max(v,(Real)0) * drdy[0] + min(v,(Real)0) * drdy[1]);
         #endif // _MULTIPHASE_
-        #else
-
-        o(ix,iy).tmpU = o(ix,iy).u + factor*((u>0 ? u*(2*lab(ix+1,iy  ).u +3*lab(ix  ,iy  ).u -6*lab(ix-1,iy  ).u +  lab(ix-2,iy  ).u)
-          : u*(- lab(ix+2,iy  ).u +6*lab(ix+1,iy  ).u -3*lab(ix  ,iy  ).u -2*lab(ix-1,iy  ).u))
-          +(v>0 ? v*(2*lab(ix  ,iy+1).u +3*lab(ix  ,iy  ).u -6*lab(ix  ,iy-1).u +  lab(ix  ,iy-2).u)
-          : v*(- lab(ix  ,iy+2).u +6*lab(ix  ,iy+1).u -3*lab(ix  ,iy  ).u -2*lab(ix  ,iy-1).u)));
-
-        o(ix,iy).tmpV = o(ix,iy).v + factor*((u>0 ? u*(2*lab(ix+1,iy  ).v +3*lab(ix  ,iy  ).v -6*lab(ix-1,iy  ).v +  lab(ix-2,iy  ).v)
-          : u*(- lab(ix+2,iy  ).v +6*lab(ix+1,iy  ).v -3*lab(ix  ,iy  ).v -2*lab(ix-1,iy  ).v))
-          +(v>0 ? v*(2*lab(ix  ,iy+1).v +3*lab(ix  ,iy  ).v -6*lab(ix  ,iy-1).v +  lab(ix  ,iy-2).v)
-          : v*(- lab(ix  ,iy+2).v +6*lab(ix  ,iy+1).v -3*lab(ix  ,iy  ).v -2*lab(ix  ,iy-1).v)));
-
-        #endif
     }
   }
 };
