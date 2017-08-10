@@ -91,10 +91,10 @@ class OperatorFadeOut : public GenericOperator
     Real min_pos[2], max_pos[2];
     i.pos(max_pos, FluidBlock::sizeX-1, FluidBlock::sizeY-1);
     i.pos(min_pos, 0, 0);
-    const bool touchN = max_pos[1] > extent[1]-(2+buffer)*h;
-    const bool touchE = max_pos[0] > extent[0]-(2+buffer)*h;
-    const bool touchS = min_pos[1] < 0 +(2+buffer)*h;
-    const bool touchW = min_pos[0] < 0 +(2+buffer)*h;
+    const bool touchN = (1+buffer)*h >= extent[1] - max_pos[1];
+    const bool touchE = (1+buffer)*h >= extent[0] - max_pos[0];
+    const bool touchS = (1+buffer)*h >= min_pos[1];
+    const bool touchW = (1+buffer)*h >= min_pos[0];
     return touchN || touchE || touchS || touchW;
   }
 
@@ -104,22 +104,20 @@ class OperatorFadeOut : public GenericOperator
 
   void operator()(const BlockInfo& i, FluidBlock& b) const
   {
-    const Real h = i.h_gridpoint;
-    const Real iWidth = 1/(buffer*h);
-    const int ax = info[0];
-    const int dir = info[1];
+    const Real h = i.h_gridpoint, iWidth = 1/(buffer*h);
+    const int ax = info[0], dir = info[1];
 
     if(_is_touching(i,h))
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
       Real p[2];
       i.pos(p, ix, iy);
-      const Real arg1= max(0.,  p[0] +(2+buffer)*h -extent[0] );
-      const Real arg2= max(0.,  p[1] +(2+buffer)*h -extent[1] );
-      const Real arg3= max(0., -p[0] +(2+buffer)*h );
-      const Real arg4= max(0., -p[1] +(2+buffer)*h );
-      const Real dist= max(max(arg1, arg2), max(arg3, arg4));
-      const Real fade= max(0., cos(.5*M_PI*dist*iWidth) );
+      const Real arg1= std::max(0., (1+buffer)*h -(extent[0]-p[0]) );
+      const Real arg2= std::max(0., (1+buffer)*h -(extent[1]-p[1]) );
+      const Real arg3= std::max(0., (1+buffer)*h -p[0] );
+      const Real arg4= std::max(0., (1+buffer)*h -p[1] );
+      const Real dist= std::max(std::max(arg1, arg2), std::max(arg3, arg4));
+      const Real fade= std::max(0., std::cos(.5*M_PI*dist*iWidth) );
       b(ix,iy).u = b(ix,iy).u*fade + (1-fade)*uinfx;
       b(ix,iy).v = b(ix,iy).v*fade + (1-fade)*uinfy;
     }
@@ -135,7 +133,7 @@ class CoordinatorFadeOut : public GenericCoordinator
   const Real * const vBody;
 
  public:
-  CoordinatorFadeOut(Real* uBody, Real* vBody, Real uinfx, Real uinfy, FluidGrid* grid, int _buffer=30)
+  CoordinatorFadeOut(Real* uBody, Real* vBody, Real uinfx, Real uinfy, FluidGrid* grid, int _buffer=16)
   : GenericCoordinator(grid), buffer(_buffer), uBody(uBody), vBody(vBody), uinfx(uinfx), uinfy(uinfy)
   { }
 
