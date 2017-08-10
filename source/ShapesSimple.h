@@ -149,10 +149,10 @@ class Ellipse : public Shape
   const Real semiAxis[2];
   //Characteristic scales:
   const Real a=max(semiAxis[0],semiAxis[1]), b=min(semiAxis[0],semiAxis[1]);
-  const Real velscale = std::sqrt((rhoS/1.-1)*9.8*a);
+  const Real velscale = std::sqrt((rhoS/1.-1)*9.8*b);
   const Real lengthscale = a, timescale = a/velscale;
   //const Real torquescale = M_PI/8*pow((a*a-b*b)*velscale,2)/a/b;
-  const Real torquescale = M_PI*a*b*velscale*velscale;
+  const Real torquescale = M_PI*a*a*velscale*velscale;
 
   Real Torque = 0, old_Torque = 0, old_Dist = 100;
   Real powerOutput = 0, old_powerOutput = 0;
