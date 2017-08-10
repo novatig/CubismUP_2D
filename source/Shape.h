@@ -286,11 +286,11 @@ class Shape
     	ssF<<"speedValues_0.dat";
 
       fileSpeed.open(ssF.str().c_str(), ios::app);
-      if(stepID==0)
-        fileForce<<"time dt CMx CMy angle u v omega M J accx accy"<<std::endl;
+      if(time==0)
+        fileSpeed<<"time dt CMx CMy angle u v omega M J accx accy"<<std::endl;
 
-      fileForce<<time<<" "<<dt<<" "<<centerOfMass[0]<<" "<<centerOfMass[1]<<" "<<orientation<<" "<<*uBody <<" "<<*vBody<<" "<<*omegaBody <<" "<<M<<" "<<J<<" "<<(*uBody-oldU)/dt<<" "<<(*vBody-oldV)/dt<<endl;
-      fileForce.close();
+      fileSpeed<<time<<" "<<dt<<" "<<centerOfMass[0]<<" "<<centerOfMass[1]<<" "<<orientation<<" "<<*uBody <<" "<<*vBody<<" "<<*omegaBody <<" "<<M<<" "<<J<<" "<<(*uBody-oldU)/dt<<" "<<(*vBody-oldV)/dt<<endl;
+      fileSpeed.close();
     }
     #endif
   }

@@ -125,7 +125,7 @@ void Sim_FSI_Gravity::init()
   );
 
   pipeline.push_back(
-    new CoordinatorBodyVelocities(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid)
+    new CoordinatorBodyVelocities(&uBody[0], &uBody[1], &omegaBody, shape, &time, &lambda, grid)
   );
 
   pipeline.push_back(
