@@ -289,7 +289,7 @@ class Shape
       if(time==0)
         fileSpeed<<"time dt CMx CMy angle u v omega M J accx accy"<<std::endl;
 
-      fileSpeed<<time<<" "<<dt<<" "<<centerOfMass[0]<<" "<<centerOfMass[1]<<" "<<orientation<<" "<<*uBody <<" "<<*vBody<<" "<<*omegaBody <<" "<<M<<" "<<J<<" "<<(*uBody-oldU)/dt<<" "<<(*vBody-oldV)/dt<<endl;
+      fileSpeed<<*time<<" "<<dt<<" "<<centerOfMass[0]<<" "<<centerOfMass[1]<<" "<<orientation<<" "<<*uBody <<" "<<*vBody<<" "<<*omegaBody <<" "<<M<<" "<<J<<" "<<(*uBody-oldU)/dt<<" "<<(*vBody-oldV)/dt<<endl;
       fileSpeed.close();
     }
     #endif
