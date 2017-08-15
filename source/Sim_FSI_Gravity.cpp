@@ -121,15 +121,15 @@ void Sim_FSI_Gravity::init()
   //);
 
   pipeline.push_back(
-    new CoordinatorPressure<Lab>(minRho, gravity, &uBody[0], &uBody[1], &dragP[0], &dragP[1], &step, grid)
-  );
-
-  pipeline.push_back(
     new CoordinatorBodyVelocities(&uBody[0], &uBody[1], &omegaBody, shape, &time, &lambda, grid)
   );
 
   pipeline.push_back(
     new CoordinatorPenalization(&uBody[0], &uBody[1], &omegaBody, shape, &lambda, grid)
+  );
+
+  pipeline.push_back(
+    new CoordinatorPressure<Lab>(minRho, gravity, &uBody[0], &uBody[1], &dragP[0], &dragP[1], &step, grid)
   );
 
   pipeline.push_back(
@@ -182,7 +182,7 @@ void Sim_FSI_Gravity::simulate()
     assert(!std::isnan(uBody[0]));
     assert(!std::isnan(uBody[1]));
 
-    lambda = 1./dt;
+    lambda = 10./dt;
     if(dt<1e-7) {
       stringstream ss;
       ss << path2file << "killed.vti";
