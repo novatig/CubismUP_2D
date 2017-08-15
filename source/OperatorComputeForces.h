@@ -47,7 +47,7 @@ struct OperatorComputeForces
       o->vyDef[i] = o->udef[iy][ix][1]; o->vy[i] = l(ix,iy).v;
 
       //perimeter:
-      o->perimeter += o->surface[i]->delta;
+      o->perimeter += sqrt(normX*normX + normY*normY);
       o->circulation += normX*o->vy[i] - normY*o->vx[i];
       //forces (total, visc, pressure):
       o->forcex   += fXT; o->forcey   += fYT;

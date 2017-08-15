@@ -222,6 +222,31 @@ class CoordinatorPressure : public GenericCoordinator
     #pragma omp parallel
     {
       Operator kernel(dt, minRho, *step);
+      Lab mylab;
+      #ifdef _MOVING_FRAME_
+      mylab.pDirichlet.u = *uBody;
+      mylab.pDirichlet.v = *vBody;
+      #endif
+      mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, false);
+
+      #pragma omp for schedule(dynamic)
+      for (int i=0; i<N; i++)
+      {
+        BlockInfo info = vInfo[i];
+        mylab.load(info, 0);
+        kernel(mylab, info, *(FluidBlock*)info.ptrBlock);
+      }
+    }
+  }
+
+  template <typename Operator>
+  void computeSplitNoBorders(const double dt)
+  {
+    const int N = vInfo.size();
+
+    #pragma omp parallel
+    {
+      Operator kernel(dt, minRho, *step);
       const int NX = grid->getBlocksPerDimension(0), NY = grid->getBlocksPerDimension(1);
       Lab mylab;
       #ifdef _MOVING_FRAME_
@@ -292,7 +317,7 @@ public:
     //abort();
     addHydrostaticPressure(dt);
     //#endif // _HYDROSTATIC_
-    computeSplit<OperatorDivergenceSplit>(dt);
+    computeSplitNoBorders<OperatorDivergenceSplit>(dt);
     pressureSolver.solve(*grid,true);
     computeSplit<OperatorGradPSplit>(dt);
     updatePressure();

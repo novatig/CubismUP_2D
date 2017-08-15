@@ -23,6 +23,9 @@ class Shape
   #ifdef RL_MPI_CLIENT
     Communicator* communicator = nullptr;
   #endif
+  const bool forced = false;
+  const Real forcedVx = 0;
+  const Real forcedVy = -0.1;
 
  protected:
   // general quantities
@@ -271,9 +274,17 @@ class Shape
           am += rhochi * (p[0]*b(ix,iy).v - p[1]*b(ix,iy).u);
         }
     }
-    const Real oldU = *uBody, oldV = *vBody;
-    *uBody       = um / (_M+2.2e-16);
-    *vBody       = vm / (_M+2.2e-16);
+    Real oldU = *uBody, oldV = *vBody;
+    if(!forced) {
+      *uBody       = um / (_M+2.2e-16);
+      *vBody       = vm / (_M+2.2e-16);
+    } else {
+      oldU = um / (_M+2.2e-16); //useless, it's for write to file in next lines
+      oldV = vm / (_M+2.2e-16);
+      *uBody       = forcedVx;
+      *vBody       = forcedVy;
+    }
+
     *omegaBody  = am / (_J+2.2e-16);
     J = _J * std::pow(vInfo[0].h_gridpoint,2);
     M = _M * std::pow(vInfo[0].h_gridpoint,2);
@@ -344,19 +355,19 @@ class Shape
       }
     }
 
-    cmX /= mass; cX /= volS; volS *= dh*dh; fx *= dh*dh*lambda;
-    cmY /= mass; cY /= volS; volF *= dh*dh; fy *= dh*dh*lambda;
+    cmX /= mass; cX /= volS; fx *= dh*dh*lambda;
+    cmY /= mass; cY /= volS; fy *= dh*dh*lambda;
     const Real rhoSAvg = mass/volS, length = getCharLength();
     const Real speed = sqrt ( uBody * uBody + vBody * vBody);
     const Real cDx = 2*fx/(speed*speed*length + 2.2e-16);
     const Real cDy = 2*fy/(speed*speed*length + 2.2e-16);
     const Real Re_uBody = getCharLength()*speed/nu;
     const Real theta = getOrientation();
+    volS *= dh*dh; volF *= dh*dh;
     Real CO[2], CM[2], labpos[2];
     getLabPosition(labpos);
     getCentroid(CO);
     getCenterOfMass(CM);
-
     stringstream ss;
     ss << "./_diagnostics.dat";
     ofstream myfile(ss.str(), fstream::app);
