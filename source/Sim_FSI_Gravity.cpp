@@ -116,9 +116,9 @@ void Sim_FSI_Gravity::init()
     new CoordinatorDiffusion<Lab>(nu, &uBody[0], &uBody[1], &dragV, grid)
   );
 
-  //pipeline.push_back(
-  //  new CoordinatorGravity(gravity, grid)
-  //);
+  pipeline.push_back(
+    new CoordinatorGravity(gravity, grid)
+  );
 
   pipeline.push_back(
     new CoordinatorBodyVelocities(&uBody[0], &uBody[1], &omegaBody, shape, &time, &lambda, grid)
