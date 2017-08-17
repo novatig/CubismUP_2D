@@ -315,7 +315,7 @@ public:
     // pressure
     //#ifdef _HYDROSTATIC_
     //abort();
-    //addHydrostaticPressure(dt);
+    addHydrostaticPressure(dt);
     //#endif // _HYDROSTATIC_
     computeSplitNoBorders<OperatorDivergenceSplit>(dt);
     pressureSolver.solve(*grid,true);
