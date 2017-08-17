@@ -294,7 +294,7 @@ class Shape
     {
       ofstream fileSpeed;
     	stringstream ssF;
-    	ssF<<"speedValues_0.dat";
+    	ssF<<"velocity_0.dat";
 
       fileSpeed.open(ssF.str().c_str(), ios::app);
       if(time==0)
@@ -369,7 +369,7 @@ class Shape
     getCentroid(CO);
     getCenterOfMass(CM);
     stringstream ss;
-    ss << "./_diagnostics.dat";
+    ss << "./diagnostics_0.dat";
     ofstream myfile(ss.str(), fstream::app);
     if (!step)
     myfile<<"step time CO[0] CO[1] CM[0] CM[1] centroidX centroidY centerMassX centerMassY labpos[0] labpos[1] theta uBody[0] uBody[1] omegaBody Re_uBody cDx cDy rhoSAvg"<<endl;
