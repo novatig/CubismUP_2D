@@ -17,34 +17,39 @@
 
 class Shape
 {
-  public:
-  Real* time_ptr = nullptr;
-  FluidGrid * grid_ptr = nullptr;
-  #ifdef RL_MPI_CLIENT
-    Communicator* communicator = nullptr;
-  #endif
-  const bool forced = false;
-  const Real forcedVx = 0;
-  const Real forcedVy = -0.1;
-
- protected:
+ protected: // data fields
+  SimulationData& sim;
   // general quantities
-  Real centerOfMass[2], orientation;
   Real center[2]; // for single density, this corresponds to centerOfMass
+  Real centerOfMass[2];
   Real d_gm[2]; // distance of center of geometry to center of mass
   Real labCenterOfMass[2] = {0,0};
+  Real orientation;
   Real M = 0;
   Real J = 0;
-
-  const Real rhoS;
+  Real u = 0; // in lab frame, not sim frame
+  Real v = 0; // in lab frame, not sim frame
+  Real omega = 0;
+  Real computedu = 0;
+  Real computedv = 0;
+  Real computedo = 0;
   std::map<int,ObstacleBlock*> obstacleBlocks;
 
-  #ifdef RL_MPI_CLIENT
-    _AGENT_STATUS info = _AGENT_FIRSTCOMM;
-    unsigned iter = 0;
-    bool initialized_time_next_comm = false;
-    Real time_next_comm = 0;
-  #endif
+ public: // data fields
+  Real dragP[2] = {0,0};
+  Real dragV = 0;
+  const Real rhoS;
+  const bool bForced;
+  const bool bFixed;
+  const bool bForcedx;
+  const bool bForcedy;
+  const bool bBlockang;
+  const bool bFixedx;
+  const bool bFixedy;
+  const Real forcedu;
+  const Real forcedv;
+
+ protected:
 
   Real smoothHeaviside(Real rR, Real radius, Real eps) const
   {
@@ -61,10 +66,22 @@ class Shape
   }
 
  public:
-  Shape(Real C[2], Real ang, const Real rho) : center{C[0],C[1]}, centerOfMass{C[0],C[1]}, d_gm{0,0}, orientation(ang), rhoS(rho) {  }
+  Shape( SimulationData& s, ArgumentParser& p, Real C[2] ) :
+  sim(s), center{C[0],C[1]}, centerOfMass{C[0],C[1]}, d_gm{0,0},
+  orientation( p("-angle").asDouble(0) ),
+  rhoS( p("-rhoS").asDouble(1) ),
+  bForced( p("-bForced").asBool(0) ),
+  bFixed( p("-bFixed").asBool(0) ),
+  bForcedx(p("-bForcedx").asBool(bForced)),
+  bForcedy(p("-bForcedy").asBool(bForced)),
+  bBlockang( p("-bBlockAng").asBool(bForcedx || bForcedy) ),
+  bFixedx(p("-bFixedx" ).asBool(bFixed) ),
+  bFixedy(p("-bFixedy" ).asBool(bFixed) ),
+  forcedu( - p("-xvel").asDouble(0) ),
+  forcedv( - p("-yvel").asDouble(0) )
+  {  }
 
-  virtual ~Shape()
-  {
+  virtual ~Shape() {
     for(auto & entry : obstacleBlocks) delete entry.second;
     obstacleBlocks.clear();
   }
@@ -72,24 +89,21 @@ class Shape
   virtual Real getCharLength() const = 0;
   virtual void create(const vector<BlockInfo>& vInfo) = 0;
 
-  virtual void act(Real*const uBody, Real*const vBody, Real*const omegaBody, const Real dt) {}
-
-  virtual void updatePosition(const Real u[2], Real omega, Real dt)
+  virtual void updatePosition(double dt)
   {
     // update centerOfMass - this is the reference point from which we compute the center
-    #ifndef _MOVING_FRAME_
-    centerOfMass[0] += dt*u[0];
-    centerOfMass[1] += dt*u[1];
-    #endif
-
-    labCenterOfMass[0] += dt*u[0];
-    labCenterOfMass[1] += dt*u[1];
+    // Remember, uinf is -ubox, therefore we sum it to u body to get
+    // velocity of shapre relative to the sim box
+    centerOfMass[0] += dt*( u + sim.uinfx );
+    centerOfMass[1] += dt*( v + sim.uinfy );
+    labCenterOfMass[0] += dt*u;
+    labCenterOfMass[1] += dt*v;
 
     orientation += dt*omega;
     orientation = orientation>2*M_PI ? orientation-2*M_PI : (orientation<0 ? orientation+2*M_PI : orientation);
 
-    center[0] = centerOfMass[0] + cos(orientation)*d_gm[0] - sin(orientation)*d_gm[1];
-    center[1] = centerOfMass[1] + sin(orientation)*d_gm[0] + cos(orientation)*d_gm[1];
+    center[0] = centerOfMass[0] + std::cos(orientation)*d_gm[0] - std::sin(orientation)*d_gm[1];
+    center[1] = centerOfMass[1] + std::sin(orientation)*d_gm[0] + std::cos(orientation)*d_gm[1];
   }
 
   void setCentroid(Real centroid[2])
@@ -97,8 +111,8 @@ class Shape
     center[0] = centroid[0];
     center[1] = centroid[1];
 
-    centerOfMass[0] = center[0] - cos(orientation)*d_gm[0] + sin(orientation)*d_gm[1];
-    centerOfMass[1] = center[1] - sin(orientation)*d_gm[0] - cos(orientation)*d_gm[1];
+    centerOfMass[0] = center[0] - std::cos(orientation)*d_gm[0] + std::sin(orientation)*d_gm[1];
+    centerOfMass[1] = center[1] - std::sin(orientation)*d_gm[0] - std::cos(orientation)*d_gm[1];
   }
 
   void setCenterOfMass(Real com[2])
@@ -106,8 +120,8 @@ class Shape
     centerOfMass[0] = com[0];
     centerOfMass[1] = com[1];
 
-    center[0] = centerOfMass[0] + cos(orientation)*d_gm[0] - sin(orientation)*d_gm[1];
-    center[1] = centerOfMass[1] + sin(orientation)*d_gm[0] + cos(orientation)*d_gm[1];
+    center[0] = centerOfMass[0] + std::cos(orientation)*d_gm[0] - std::sin(orientation)*d_gm[1];
+    center[1] = centerOfMass[1] + std::sin(orientation)*d_gm[0] + std::cos(orientation)*d_gm[1];
   }
 
   void getCentroid(Real centroid[2]) const
@@ -128,9 +142,17 @@ class Shape
     com[1] = labCenterOfMass[1];
   }
 
+  Real getU() const { return u; }
+  Real getV() const { return v; }
+  Real getW() const { return omega; }
+
   Real getOrientation() const
   {
     return orientation;
+  }
+  void setOrientation(const Real angle)
+  {
+    orientation = angle;
   }
 
   virtual inline Real getMinRhoS() const
@@ -159,7 +181,7 @@ class Shape
 
     void dimensionalize(const Real h, const Real cmx, const Real cmy)
     {
-      const Real eps = std::numeric_limits<Real>::epsilon();
+      //const Real eps = std::numeric_limits<Real>::epsilon();
       //first compute the center of mass:
       x /= m; y /= m;
       //update the angular moment and moment of inertia:
@@ -177,7 +199,7 @@ class Shape
   {
     Real _m=0, _j=0, _u=0, _v=0, _a=0, _x=0, _y=0;
     #pragma omp parallel for schedule(dynamic) reduction(+:_m,_j,_u,_v,_a,_x,_y)
-    for(int i=0; i<vInfo.size(); i++)
+    for(size_t i=0; i<vInfo.size(); i++)
     {
       const auto pos = obstacleBlocks.find(vInfo[i].blockID);
       if(pos == obstacleBlocks.end()) continue;
@@ -207,8 +229,8 @@ class Shape
   void removeMoments(const vector<BlockInfo>& vInfo)
   {
     Integrals I = integrateObstBlock(vInfo);
-    #ifndef RL_MPI_CLIENT
-    printf("Correction of: lin mom [%f %f] ang mom [%f]. Error in CM=[%f %f]\n", I.u, I.v, I.a, I.x-centerOfMass[0], I.y-centerOfMass[1]);
+    #ifndef RL_TRAIN
+      printf("Correction of: lin mom [%f %f] ang mom [%f]. Error in CM=[%f %f]\n", I.u, I.v, I.a, I.x-centerOfMass[0], I.y-centerOfMass[1]);
     #endif
     //update the center of mass, this operation should not move 'center'
     centerOfMass[0] = I.x; centerOfMass[1] = I.y;
@@ -226,7 +248,7 @@ class Shape
     #endif
 
     #pragma omp parallel for schedule(dynamic)
-    for(int i=0; i<vInfo.size(); i++)
+    for(size_t i=0; i<vInfo.size(); i++)
     {
       const auto pos = obstacleBlocks.find(vInfo[i].blockID);
       if(pos == obstacleBlocks.end()) continue;
@@ -248,11 +270,12 @@ class Shape
     #endif
   };
 
-  void computeVelocities(Real*const uBody, Real*const vBody, Real*const omegaBody, Real*const time, const Real dt, const vector<BlockInfo>& vInfo)
+  void computeVelocities()
   {
+  	const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
     Real _M = 0, _J = 0, um = 0, vm = 0, am = 0; //linear momenta
     #pragma omp parallel for schedule(dynamic) reduction(+:_M,_J,um,vm,am)
-    for(int i=0; i<vInfo.size(); i++) {
+    for(size_t i=0; i<vInfo.size(); i++) {
         FluidBlock & b = *(FluidBlock*)vInfo[i].ptrBlock;
         const auto pos = obstacleBlocks.find(vInfo[i].blockID);
         if(pos == obstacleBlocks.end()) continue;
@@ -266,7 +289,7 @@ class Shape
           p[0] -= centerOfMass[0];
           p[1] -= centerOfMass[1];
 
-          const double rhochi = pos->second->rho[iy][ix] * chi;
+          const Real rhochi = pos->second->rho[iy][ix] * chi;
           _M += rhochi;
           um += rhochi * b(ix,iy).u;
           vm += rhochi * b(ix,iy).v;
@@ -274,42 +297,51 @@ class Shape
           am += rhochi * (p[0]*b(ix,iy).v - p[1]*b(ix,iy).u);
         }
     }
-    Real oldU = *uBody, oldV = *vBody;
-    if(!forced) {
-      *uBody       = um / (_M+2.2e-16);
-      *vBody       = vm / (_M+2.2e-16);
-    } else {
-      oldU = um / (_M+2.2e-16); //useless, it's for write to file in next lines
-      oldV = vm / (_M+2.2e-16);
-      *uBody       = forcedVx;
-      *vBody       = forcedVy;
-    }
 
-    *omegaBody  = am / (_J+2.2e-16);
+    computedu = um / (_M+2.2e-16);
+    computedv = vm / (_M+2.2e-16);
+    computedo = am / (_J+2.2e-16);
+    if(bForcedx) u = forcedu;
+    else         u = computedu;
+
+    if(bForcedy) v = forcedv;
+    else         v = computedv;
+
+    if(not bBlockang) omega = computedo;
+
     J = _J * std::pow(vInfo[0].h_gridpoint,2);
     M = _M * std::pow(vInfo[0].h_gridpoint,2);
 
-    #ifndef RL_MPI_TRAIN
-    printf("CM:[%f %f] u:%f v:%f omega:%f M:%f J:%f\n", centerOfMass[0], centerOfMass[1], *uBody, *vBody, *omegaBody, M, J);
-    {
-      ofstream fileSpeed;
-    	stringstream ssF;
-    	ssF<<"velocity_0.dat";
+    #ifndef RL_TRAIN
+      printf("CM:[%f %f] u:%f v:%f omega:%f M:%f J:%f\n",
+        centerOfMass[0], centerOfMass[1], u, v, omega, M, J);
+      {
+        ofstream fileSpeed;
+      	stringstream ssF;
+      	ssF<<"velocity_0.dat";
 
-      fileSpeed.open(ssF.str().c_str(), ios::app);
-      if(time==0)
-        fileSpeed<<"time dt CMx CMy angle u v omega M J accx accy"<<std::endl;
+        fileSpeed.open(ssF.str().c_str(), ios::app);
+        if(sim.step==0)
+          fileSpeed<<"time dt CMx CMy angle u v omega M J accx accy"<<std::endl;
 
-      fileSpeed<<*time<<" "<<dt<<" "<<centerOfMass[0]<<" "<<centerOfMass[1]<<" "<<orientation<<" "<<*uBody <<" "<<*vBody<<" "<<*omegaBody <<" "<<M<<" "<<J<<" "<<(*uBody-oldU)/dt<<" "<<(*vBody-oldV)/dt<<endl;
-      fileSpeed.close();
-    }
+        fileSpeed<<sim.time<<" "<<sim.dt<<" "<<centerOfMass[0]<<" "<<centerOfMass[1]<<" "<<orientation<<" "<<u <<" "<<v<<" "<<omega <<" "<<M<<" "<<J<<endl;
+        fileSpeed.close();
+      }
     #endif
   }
 
-  void penalize(const Real u, const Real v, const Real omega, const Real dt, const Real lambda, const vector<BlockInfo>& vInfo)
+  void updateLabVelocity( int nSum[2], double uSum[2] )
   {
+    if(bFixedx) { (nSum[0])++; uSum[0] -= u; }
+    if(bFixedy) { (nSum[1])++; uSum[1] -= v; }
+  }
+
+  void penalize()
+  {
+  	const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
+    const Real lamdt = sim.dt * sim.lambda;
     #pragma omp parallel for schedule(dynamic)
-    for(int i=0; i<vInfo.size(); i++) {
+    for(size_t i=0; i<vInfo.size(); i++) {
       FluidBlock & b = *(FluidBlock*)vInfo[i].ptrBlock;
       const auto pos = obstacleBlocks.find(vInfo[i].blockID);
       if(pos == obstacleBlocks.end()) continue;
@@ -317,24 +349,26 @@ class Shape
       for(int iy=0; iy<FluidBlock::sizeY; ++iy)
       for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
         const Real chi = pos->second->chi[iy][ix];
-        if (chi == 0) continue;
+        if (chi < 2.2e-16) continue;
         Real p[2];
         vInfo[i].pos(p, ix, iy);
-        p[0] -= centerOfMass[0];
-        p[1] -= centerOfMass[1];
-        const Real alpha = 1./(1. + dt * lambda * chi);
-        const Real uTot = u -omega*p[1] +pos->second->udef[iy][ix][0];
-        const Real vTot = v +omega*p[0] +pos->second->udef[iy][ix][1];
+        p[0] -= centerOfMass[0]; p[1] -= centerOfMass[1];
+        const Real alpha = 1/(1 + lamdt * chi);
+        const Real* udef = pos->second->udef[iy][ix];
+        const Real uTot = u -omega*p[1] +udef[0];// -sim.uinfx;
+        const Real vTot = v +omega*p[0] +udef[1];// -sim.uinfy;
         b(ix,iy).u = alpha*b(ix,iy).u + (1-alpha)*uTot;
         b(ix,iy).v = alpha*b(ix,iy).v + (1-alpha)*vTot;
       }
     }
   }
 
-  void _diagnostics(const Real uBody, const Real vBody, const Real omegaBody, const vector<BlockInfo>&vInfo, const Real nu, const Real time, const int step, const Real lambda)
+  void diagnostics()
   {
-    double cX=0, cY=0, cmX=0, cmY=0, fx=0, fy=0, pMin=10, pMax=0, mass=0, volS=0, volF=0;
-    const double dh = vInfo[0].h_gridpoint;
+    /*
+    const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
+    Real cX=0, cY=0, cmX=0, cmY=0, fx=0, fy=0, pMin=10, pMax=0, mass=0, volS=0, volF=0;
+    const double dh = sim.getH();
 
     #pragma omp parallel for reduction(max : pMax) reduction (min : pMin) reduction(+ : cX,cY,volF,cmX,cmY,fx,fy,mass,volS)
     for(int i=0; i<vInfo.size(); i++) {
@@ -358,7 +392,7 @@ class Shape
     cmX /= mass; cX /= volS; fx *= dh*dh*lambda;
     cmY /= mass; cY /= volS; fy *= dh*dh*lambda;
     const Real rhoSAvg = mass/volS, length = getCharLength();
-    const Real speed = sqrt ( uBody * uBody + vBody * vBody);
+    const Real speed = std::sqrt ( uBody * uBody + vBody * vBody);
     const Real cDx = 2*fx/(speed*speed*length + 2.2e-16);
     const Real cDy = 2*fy/(speed*speed*length + 2.2e-16);
     const Real Re_uBody = getCharLength()*speed/nu;
@@ -385,12 +419,14 @@ class Shape
       <<" "<<cDx<<" "<<cDy<<" "<<rhoSAvg<<" "<<fx<<" "<<fy<<endl;
 
     myfile.close();
+    */
   }
 
-  void characteristic_function(const vector<BlockInfo>& vInfo)
+  void characteristic_function()
   {
+  	const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
     #pragma omp parallel for schedule(dynamic)
-    for(int i=0; i<vInfo.size(); i++) {
+    for(size_t i=0; i<vInfo.size(); i++) {
       FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
       const auto pos = obstacleBlocks.find(vInfo[i].blockID);
       if(pos == obstacleBlocks.end())
@@ -407,14 +443,13 @@ class Shape
   template <typename Kernel>
   void compute(const Kernel& kernel, const vector<BlockInfo>& vInfo)
   {
-    assert(grid_ptr not_eq nullptr);
     #pragma omp parallel
     {
       Lab mylab;
-      mylab.prepare(*grid_ptr, kernel.stencil_start, kernel.stencil_end, false);
+      mylab.prepare(*(sim.grid), kernel.stencil_start, kernel.stencil_end, false);
 
       #pragma omp for schedule(dynamic)
-      for (int i=0; i<vInfo.size(); i++)
+      for (size_t i=0; i<vInfo.size(); i++)
       {
         const auto pos = obstacleBlocks.find(vInfo[i].blockID);
         if(pos == obstacleBlocks.end()) continue;
@@ -428,14 +463,13 @@ class Shape
   template <typename Kernel>
   void compute_surface(const Kernel& kernel, const vector<BlockInfo>& vInfo)
   {
-    assert(grid_ptr not_eq nullptr);
     #pragma omp parallel
     {
       Lab mylab;
-      mylab.prepare(*grid_ptr, kernel.stencil_start, kernel.stencil_end, false);
+      mylab.prepare(*(sim.grid), kernel.stencil_start, kernel.stencil_end, false);
 
       #pragma omp for schedule(dynamic)
-      for (int i=0; i<vInfo.size(); i++)
+      for (size_t i=0; i<vInfo.size(); i++)
       {
         const auto pos = obstacleBlocks.find(vInfo[i].blockID);
         if(pos == obstacleBlocks.end()) continue; //obstacle is not in the block
@@ -449,13 +483,14 @@ class Shape
     }
   }
 
-  void computeForces(const int stepID, const Real time, const Real dt, const Real NU, const Real uBody, const Real vBody, const Real omegaBody, const bool bDump, const vector<BlockInfo>& vInfo)
+  void computeForces()
   {
+  	const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
     Real vel_unit[2] = {0., 0.};
-    const Real vel_norm = std::sqrt(uBody*uBody + vBody*vBody);
-    if(vel_norm>1e-9) { vel_unit[0]=uBody/vel_norm; vel_unit[1]=vBody/vel_norm; }
+    const Real vel_norm = std::sqrt(u*u + v*v);
+    if(vel_norm>1e-9){ vel_unit[0]=u/vel_norm; vel_unit[1]=v/vel_norm; }
 
-    OperatorComputeForces finalize(NU, vel_unit, centerOfMass);
+    OperatorComputeForces finalize(sim.nu, vel_unit, centerOfMass);
     compute_surface(finalize, vInfo);
 
     //additive quantities:
@@ -488,10 +523,10 @@ class Shape
     Real EffPDef    = Pthrust/(Pthrust-min(defPower,(Real)0.)+1e-16);
     Real EffPDefBnd = Pthrust/(Pthrust-    defPowerBnd+1e-16);
 
-    #ifndef RL_MPI_TRAIN
-    if (bDump) {
+    #ifndef RL_TRAIN
+    if (sim._bDump) {
       char buf[500];
-      sprintf(buf, "surface_0_%07d.raw", stepID);
+      sprintf(buf, "surface_0_%07d.raw", sim.step);
       FILE * pFile = fopen (buf, "wb");
       for(auto & block : obstacleBlocks) block.second->print(pFile);
       fflush(pFile);
@@ -506,16 +541,16 @@ class Shape
     	ssP<<"powerValues_0.dat"; //obstacleID
 
       fileForce.open(ssF.str().c_str(), ios::app);
-      if(stepID==0)
+      if(sim.step==0)
         fileForce<<"time Fx Fy FxPres FyPres FxVisc FyVisc tau tauPres tauVisc drag thrust perimeter circulation"<<std::endl;
 
-      fileForce<<time<<" "<<forcex<<" "<<forcey<<" "<<forcex_P<<" "<<forcey_P<<" "<<forcex_V <<" "<<forcey_V<<" "<<torque <<" "<<torque_P<<" "<<torque_V<<" "<<drag<<" "<<thrust<<" "<<perimeter<<" "<<circulation<<endl;
+      fileForce<<sim.time<<" "<<forcex<<" "<<forcey<<" "<<forcex_P<<" "<<forcey_P<<" "<<forcex_V <<" "<<forcey_V<<" "<<torque <<" "<<torque_P<<" "<<torque_V<<" "<<drag<<" "<<thrust<<" "<<perimeter<<" "<<circulation<<endl;
       fileForce.close();
 
       filePower.open(ssP.str().c_str(), ios::app);
-      if(stepID==0)
+      if(sim.step==0)
         filePower<<"time Pthrust Pdrag PoutBnd Pout defPowerBnd defPower EffPDefBnd EffPDef"<<std::endl;
-      filePower<<time<<" "<<Pthrust<<" "<<Pdrag<<" "<<PoutBnd<<" "<<Pout<<" "<<defPowerBnd<<" "<<defPower<<" "<<EffPDefBnd<<" "<<EffPDef<<endl;
+      filePower<<sim.time<<" "<<Pthrust<<" "<<Pdrag<<" "<<PoutBnd<<" "<<Pout<<" "<<defPowerBnd<<" "<<defPower<<" "<<EffPDefBnd<<" "<<EffPDef<<endl;
       filePower.close();
     }
     #endif

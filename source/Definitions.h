@@ -10,8 +10,6 @@
 #define CubismUP_2D_DataStructures_h
 
 #include "common.h"
-#include "Layer.h"
-#include "LayerToVTK.h"
 #include "BoundaryConditions.h"
 
 #ifndef _BS_
@@ -24,15 +22,14 @@ struct FluidElement
 	Real rho, tmp, p, pOld; //used by pressure
 
   FluidElement() :
-  rho(0), u(0), v(0), p(0), pOld(0), tmpU(0), tmpV(0), tmp(0)//, divU(0), x(0), y(0)
+  u(0), v(0), tmpU(0), tmpV(0), rho(0), tmp(0), p(0), pOld(0)
   {}
 
   void clear()
   {
-      rho = u = v = p = pOld = tmpU = tmpV = tmp = 0;
+    u = v = tmpU = tmpV = rho = tmp = p = pOld = 0;
   }
 };
-
 
 struct FluidVTKStreamer
 {
@@ -46,72 +43,6 @@ struct FluidVTKStreamer
 		output[3] = input.p;
 		output[4] = input.tmp;
 	}
-};
-
-// this is used for serialization - important that ALL the quantities are streamed
-struct StreamerGridPoint
-{
-	static const int channels = 9;
-
-	void operate(const FluidElement& input, Real output[channels]) const
-	{
-		abort();
-		output[0] = input.rho;
-		output[1] = input.u;
-		output[2] = input.v;
-		output[3] = input.p;
-		output[4] = input.pOld;
-		output[5] = input.tmpU;
-		output[6] = input.tmpV;
-		output[7] = input.tmp;
-	}
-
-	void operate(const Real input[channels], FluidElement& output) const
-	{
-		abort();
-		output.rho  = input[0];
-		output.u    = input[1];
-		output.v    = input[2];
-		output.p    = input[3];
-		output.pOld = input[4];
-		output.tmpU = input[5];
-		output.tmpV = input[6];
-		output.tmp  = input[7];
-	}
-};
-
-struct StreamerGridPointASCII
-{
-	void operate(const FluidElement& input, ofstream& output) const
-	{
-		output << input.rho << " " << input.u << " " << input.v << " " << input.p << " " << input.pOld << " " << input.tmpU << " " << input.tmpV << " " << input.tmp;
-	}
-
-	void operate(ifstream& input, FluidElement& output) const
-	{
-		input >> output.rho;
-		input >> output.u;
-		input >> output.v;
-		input >> output.p;
-		input >> output.pOld;
-		input >> output.tmpU;
-		input >> output.tmpV;
-		input >> output.tmp;
-	}
-};
-
-struct StreamerDiv
-{
-	static const int channels = 1;
-	static void operate(const FluidElement& input, Real output[1])
-	{
-	   output[0] = input.tmp;
-  }
-
-  static void operate(const Real input[1], FluidElement& output)
-  {
-      output.tmp = input[0];
-  }
 };
 
 struct FluidBlock
@@ -158,6 +89,37 @@ struct FluidBlock
 	}
 };
 
+// this is used for serialization - important that ALL the quantities are treamed
+struct StreamerGridPoint
+{
+  static const int channels = 9;
+  void operate(const FluidElement& input, Real output[channels]) const
+  {
+    abort();
+    output[0] = input.rho;
+    output[1] = input.u;
+    output[2] = input.v;
+    output[3] = input.p;
+    output[4] = input.pOld;
+    output[5] = input.tmpU;
+    output[6] = input.tmpV;
+    output[7] = input.tmp;
+  }
+
+  void operate(const Real input[channels], FluidElement& output) const
+  {
+    abort();
+    output.rho  = input[0];
+    output.u    = input[1];
+    output.v    = input[2];
+    output.p    = input[3];
+    output.pOld = input[4];
+    output.tmpU = input[5];
+    output.tmpV = input[6];
+    output.tmp  = input[7];
+  }
+};
+
 template <> inline void FluidBlock::Write<StreamerGridPoint>(ofstream& output, StreamerGridPoint streamer) const
 {
 	output.write((const char *)&data[0][0][0], sizeof(FluidElement)*sizeX*sizeY);
@@ -167,8 +129,6 @@ template <> inline void FluidBlock::Read<StreamerGridPoint>(ifstream& input, Str
 {
 	input.read((char *)&data[0][0][0], sizeof(FluidElement)*sizeX*sizeY);
 }
-
-
 
 struct StreamerSerialization
 {
@@ -246,137 +206,6 @@ struct StreamerSerialization
 };
 
 template<typename BlockType, template<typename X> class allocator=std::allocator>
-class BlockLabBottomWall : public BlockLab<BlockType,allocator>
-{
-	typedef typename BlockType::ElementType ElementTypeBlock;
-
- public:
-    ElementTypeBlock pDirichlet;
-
-	BlockLabBottomWall(): BlockLab<BlockType,allocator>()
-    {
-        pDirichlet.rho = 1;
-        pDirichlet.u = 0;
-        pDirichlet.v = 0;
-        pDirichlet.p = 0;
-        pDirichlet.pOld = 0;
-        //pDirichlet.divU = 0;
-        pDirichlet.tmp = 1;
-        pDirichlet.tmpU = 0;
-        pDirichlet.tmpV = 0;
-    }
-
-	void _apply_bc(const BlockInfo& info, const Real t=0)
-	{
-		BoundaryCondition<BlockType,ElementTypeBlock,allocator> bc(this->m_stencilStart, this->m_stencilEnd, this->m_cacheBlock);
-
-		// keep periodicity in x direction
-		if (info.index[1]==0)		   bc.template applyBC_mixedBottom<1,0>(pDirichlet);
-		if (info.index[1]==this->NY-1) bc.template applyBC_mixedTop<1,1>(pDirichlet);
-	}
-};
-
-template<typename BlockType, template<typename X> class allocator=std::allocator>
-class BlockLabPipe : public BlockLab<BlockType,allocator>
-{
-	typedef typename BlockType::ElementType ElementTypeBlock;
-
- public:
-	BlockLabPipe(): BlockLab<BlockType,allocator>(){}
-
-	void _apply_bc(const BlockInfo& info, const Real t=0)
-	{
-		BoundaryCondition<BlockType,ElementTypeBlock,allocator> bc(this->m_stencilStart, this->m_stencilEnd, this->m_cacheBlock);
-
-		if (info.index[1]==0)		   bc.template applyBC_mixedBottom<1,0>();
-		if (info.index[1]==this->NY-1) bc.template applyBC_mixedBottom<1,1>();
-	}
-};
-
-template<typename BlockType, template<typename X> class allocator=std::allocator>
-class BlockLabVortex : public BlockLab<BlockType,allocator>
-{
-	typedef typename BlockType::ElementType ElementTypeBlock;
-
- public:
-	BlockLabVortex(): BlockLab<BlockType,allocator>(){}
-
-	void _apply_bc(const BlockInfo& info, const Real t=0)
-	{
-		BoundaryCondition<BlockType,ElementTypeBlock,allocator> bc(this->m_stencilStart, this->m_stencilEnd, this->m_cacheBlock);
-
-		if (info.index[0]==0)		   bc.template applyBC_vortex<0,0>(info);
-		if (info.index[0]==this->NX-1) bc.template applyBC_vortex<0,1>(info);
-		if (info.index[1]==0)		   bc.template applyBC_vortex<1,0>(info);
-		if (info.index[1]==this->NY-1) bc.template applyBC_vortex<1,1>(info);
-	}
-};
-
-template<typename BlockType, template<typename X> class allocator=std::allocator>
-class BlockLabOpenBox : public BlockLab<BlockType,allocator>
-{
-	typedef typename BlockType::ElementType ElementTypeBlock;
-
- public:
-	ElementTypeBlock pDirichlet;
-
-	BlockLabOpenBox(): BlockLab<BlockType,allocator>()
-	{
-		pDirichlet.rho = 1;
-		pDirichlet.u = 0;
-		pDirichlet.v = 0;
-		pDirichlet.p = 0;
-		pDirichlet.pOld = 0;
-		//pDirichlet.divU = 0;
-		pDirichlet.tmp = 1;
-		pDirichlet.tmpU = 0;
-		pDirichlet.tmpV = 0;
-	}
-
-	void _apply_bc(const BlockInfo& info, const Real t=0)
-	{
-		BoundaryCondition<BlockType,ElementTypeBlock,allocator> bc(this->m_stencilStart, this->m_stencilEnd, this->m_cacheBlock);
-
-		if (info.index[0]==0)		   bc.template applyBC_BoxLeft<0,0>(pDirichlet);
-		if (info.index[0]==this->NX-1) bc.template applyBC_BoxRight<0,1>(pDirichlet);
-		if (info.index[1]==0)		   bc.template applyBC_mixedBottom<1,0>(pDirichlet);
-		if (info.index[1]==this->NY-1) bc.template applyBC_mixedTop<1,1>(pDirichlet);
-	}
-};
-
-template<typename BlockType, template<typename X> class allocator=std::allocator>
-class BlockLabBox : public BlockLab<BlockType,allocator>
-{
-	typedef typename BlockType::ElementType ElementTypeBlock;
-
- public:
-	ElementTypeBlock pDirichlet;
-
-	BlockLabBox(): BlockLab<BlockType,allocator>()
-	{
-		pDirichlet.rho = 1;
-		pDirichlet.u = 0;
-		pDirichlet.v = 0;
-		pDirichlet.p = 0;
-		pDirichlet.pOld = 0;
-		//pDirichlet.divU = 0;
-		pDirichlet.tmp = 1;
-		pDirichlet.tmpU = 0;
-		pDirichlet.tmpV = 0;
-	}
-
-	void _apply_bc(const BlockInfo& info, const Real t=0)
-	{
-		BoundaryCondition<BlockType,ElementTypeBlock,allocator> bc(this->m_stencilStart, this->m_stencilEnd, this->m_cacheBlock);
-
-		if (info.index[0]==0)		   bc.template applyBC_BoxLeft<0,0>(pDirichlet);
-		if (info.index[0]==this->NX-1) bc.template applyBC_BoxRight<0,1>(pDirichlet);
-		if (info.index[1]==0)		   bc.template applyBC_mixedBottom<1,0>(pDirichlet);
-		if (info.index[1]==this->NY-1) bc.template applyBC_BoxTop<1,1>(pDirichlet);
-	}
-};
-
-template<typename BlockType, template<typename X> class allocator=std::allocator>
 class BlockLabOpen: public BlockLab<BlockType,allocator>
 {
     typedef typename BlockType::ElementType ElementTypeBlock;
@@ -398,29 +227,78 @@ class BlockLabOpen: public BlockLab<BlockType,allocator>
 
 typedef Grid<FluidBlock, std::allocator> FluidGrid;
 
-#ifdef _MIXED_
-typedef BlockLabBottomWall<FluidBlock, std::allocator> Lab;
-#endif // _MIXED_
-
-#ifdef _PERIODIC_
+//#ifndef _MIXED_
+//#ifndef _BOX_
+//#ifndef _OPENBOX_
 //typedef BlockLab<FluidBlock, std::allocator> Lab;
 typedef BlockLabOpen<FluidBlock, std::allocator> Lab;
-#endif // _PERIODIC_
+//#else
+//  typedef BlockLabOpenBox<FluidBlock, std::allocator> Lab;
+//#endif // _OPENBOX_
+//#else
+//  typedef BlockLabBox<FluidBlock, std::allocator> Lab;
+//#endif // _BOX_
+//#else
+//  typedef BlockLabBottomWall<FluidBlock, std::allocator> Lab;
+//#endif // _MIXED_
 
-#ifdef _VORTEX_
-typedef BlockLabVortex<FluidBlock, std::allocator> Lab;
-#endif // _VORTEX_
+class Shape;
 
-#ifdef _PIPE_
-typedef BlockLabPipe<FluidBlock, std::allocator> Lab;
-#endif // _PIPE_
+struct SimulationData
+{
+  FluidGrid * grid = nullptr;
+  vector<Shape*> shapes;
 
-#ifdef _OPENBOX_
-typedef BlockLabOpenBox<FluidBlock, std::allocator> Lab;
-#endif // _PIPE_
+  double time = 0;
+  int step = 0;
 
-#ifdef _BOX_
-typedef BlockLabBox<FluidBlock, std::allocator> Lab;
-#endif // _PIPE_
+  Real uinfx = 0;
+  Real uinfy = 0;
+
+  double lambda = 0;
+  double nu = 0;
+  double dlm = -1;
+
+  Real gravity[2] = { (Real) 0.0, (Real) -9.81 };
+  // nsteps==0 means that this stopping criteria is not active
+  int nsteps = 0;
+  // endTime==0  means that this stopping criteria is not active
+  double endTime = 0;
+
+  double dt = 0;
+  double CFL = 0.1;
+
+	// output
+  // dumpFreq==0 means that this dumping frequency (in #steps) is not active
+	int dumpFreq = 0;
+  // dumpTime==0 means that this dumping frequency (in time)   is not active
+	double dumpTime = 0;
+  double nextDumpTime = 0;
+  bool _bDump = false;
+
+  bool bDump()
+  {
+		const bool timeDump = dumpTime>0 && time > nextDumpTime;
+		const bool stepDump = dumpFreq>0 && step % dumpFreq == 0;
+    _bDump = stepDump || timeDump;
+    return _bDump;
+  }
+  void registerDump();
+  bool bOver() const
+  {
+		const bool timeEnd = endTime>0 && time > endTime;
+		const bool stepEnd =  nsteps>0 && step > nsteps;
+    return timeEnd || stepEnd;
+  }
+  double minRho() const;
+  double maxSpeed() const;
+  double maxRelSpeed() const;
+  double getH() const
+  {
+    return grid->getBlocksInfo().front().h_gridpoint; // yikes
+  }
+
+  ~SimulationData();
+};
 
 #endif

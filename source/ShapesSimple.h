@@ -22,18 +22,20 @@
 class Disk : public Shape
 {
  protected:
-  Real radius;
+  const Real radius;
 
  public:
-  Disk(Real center[2], Real radius, const Real rhoS) :
-  Shape(center, 0, rhoS), radius(radius) { }
+  Disk( SimulationData& s, ArgumentParser& p, Real C[2] ) :
+  Shape(s,p,C), radius( p("-radius").asDouble(0.1) ) {
+    printf("Created a Disk with: R:%f rho:%f\n",radius,rhoS);
+  }
 
   Real getCharLength() const override
   {
     return 2 * radius;
   }
 
-  void outputSettings(ostream &outStream) const
+  void outputSettings(ostream &outStream) const override
   {
     outStream << "Disk\n";
     outStream << "radius " << radius << endl;
@@ -47,12 +49,14 @@ class Disk : public Shape
     for(auto & entry : obstacleBlocks) delete entry.second;
     obstacleBlocks.clear();
 
-    FillBlocks_Cylinder kernel(radius, h, center, rhoS);
-    for(int i=0; i<vInfo.size(); i++) {
-      if(kernel._is_touching(vInfo[i])) { //position of sphere + radius + 2*h safety
-        assert(obstacleBlocks.find(vInfo[i].blockID) == obstacleBlocks.end());
-        obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
-        obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
+    {
+      FillBlocks_Cylinder kernel(radius, h, center, rhoS);
+      for(size_t i=0; i<vInfo.size(); i++) {
+        if(kernel._is_touching(vInfo[i])) { //position of sphere + radius + 2*h safety
+          assert(obstacleBlocks.find(vInfo[i].blockID) == obstacleBlocks.end());
+          obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
+          obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
+        }
       }
     }
 
@@ -61,7 +65,7 @@ class Disk : public Shape
       FillBlocks_Cylinder kernel(radius, h, center, rhoS);
 
       #pragma omp for schedule(dynamic)
-      for(int i=0; i<vInfo.size(); i++) {
+      for(size_t i=0; i<vInfo.size(); i++) {
         const auto pos = obstacleBlocks.find(vInfo[i].blockID);
         if(pos == obstacleBlocks.end()) continue;
         FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
@@ -81,9 +85,9 @@ class DiskVarDensity : public Shape
   const Real rhoBot;
 
  public:
-  DiskVarDensity(Real C[2], Real R, Real ang, Real rhoT, Real rhoB) :
-  Shape(C, ang, min(rhoT,rhoB)), radius(R), rhoTop(rhoT), rhoBot(rhoB)
-  {
+  DiskVarDensity( SimulationData& s, ArgumentParser& p, Real C[2] ) :
+  Shape(s,p,C), radius( p("-radius").asDouble(0.1) ),
+  rhoTop(p("-rhoTop").asDouble(rhoS) ), rhoBot(p("-rhoBot").asDouble(rhoS) ) {
     d_gm[0] = 0;
     // based on weighted average between the centers of mass of half-disks:
     d_gm[1] = -4.*radius/(3.*M_PI) * (rhoTop-rhoBot)/(rhoTop+rhoBot);
@@ -104,7 +108,7 @@ class DiskVarDensity : public Shape
     obstacleBlocks.clear();
 
     FillBlocks_Cylinder kernel(radius, h, center, rhoS);
-    for(int i=0; i<vInfo.size(); i++) {
+    for(size_t i=0; i<vInfo.size(); i++) {
       if(kernel._is_touching(vInfo[i])) {
         assert(obstacleBlocks.find(vInfo[i].blockID) == obstacleBlocks.end());
         obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
@@ -119,7 +123,7 @@ class DiskVarDensity : public Shape
       FillBlocks_HalfCylinder kernelH(radius, h, center, rhoS, orientation);
 
       #pragma omp for schedule(dynamic)
-      for(int i=0; i<vInfo.size(); i++) {
+      for(size_t i=0; i<vInfo.size(); i++) {
         BlockInfo info = vInfo[i];
         const auto pos = obstacleBlocks.find(info.blockID);
         if(pos == obstacleBlocks.end()) continue;
@@ -132,7 +136,7 @@ class DiskVarDensity : public Shape
     for (auto & block : obstacleBlocks) block.second->allocate_surface();
   }
 
-  void outputSettings(ostream &outStream)
+  void outputSettings(ostream &outStream) const override
   {
     outStream << "DiskVarDensity\n";
     outStream << "radius " << radius << endl;
@@ -148,20 +152,21 @@ class Ellipse : public Shape
  protected:
   const Real semiAxis[2];
   //Characteristic scales:
-  const Real a=max(semiAxis[0],semiAxis[1]), b=min(semiAxis[0],semiAxis[1]);
-  const Real velscale = std::sqrt((rhoS/1.-1)*9.8*b);
-  const Real lengthscale = a, timescale = a/velscale;
+  const Real majax = std::max(semiAxis[0], semiAxis[1]);
+  const Real minax = std::min(semiAxis[0], semiAxis[1]);
+  const Real velscale = std::sqrt((rhoS/1-1)*9.81*minax);
+  const Real lengthscale = majax, timescale = majax/velscale;
   //const Real torquescale = M_PI/8*pow((a*a-b*b)*velscale,2)/a/b;
-  const Real torquescale = M_PI*a*a*velscale*velscale;
+  const Real torquescale = M_PI*majax*majax*velscale*velscale;
 
   Real Torque = 0, old_Torque = 0, old_Dist = 100;
   Real powerOutput = 0, old_powerOutput = 0;
 
  public:
-  Ellipse(Real C[2], Real SA[2], Real ang, const Real rho) :
-    Shape(C, ang, rho), semiAxis{SA[0],SA[1]}
-  {
-    printf("Created ellipse semiAxis:[%f %f] rhoS:%f a:%f b:%f velscale:%f lengthscale:%f timescale:%f torquescale:%f\n", semiAxis[0], semiAxis[1], rhoS, a, b, velscale, lengthscale, timescale, torquescale); fflush(0);
+  Ellipse(SimulationData&s, ArgumentParser&p, Real C[2]) : Shape(s,p,C),
+    semiAxis{ (Real) p("-semiAxisX").asDouble(.1),
+              (Real) p("-semiAxisY").asDouble(.2) } {
+    printf("Created ellipse semiAxis:[%f %f] rhoS:%f a:%f b:%f velscale:%f lengthscale:%f timescale:%f torquescale:%f\n", semiAxis[0], semiAxis[1], rhoS, majax, minax, velscale, lengthscale, timescale, torquescale); fflush(0);
   }
 
   Real getCharLength() const  override
@@ -169,7 +174,7 @@ class Ellipse : public Shape
     return 2 * max(semiAxis[1],semiAxis[0]);
   }
 
-  void outputSettings(ostream &outStream) const
+  void outputSettings(ostream &outStream) const override
   {
     outStream << "Ellipse\n";
     outStream << "semiAxisX " << semiAxis[0] << endl;
@@ -178,7 +183,7 @@ class Ellipse : public Shape
     Shape::outputSettings(outStream);
   }
 
-  #ifdef RL_MPI_CLIENT
+  #if 0 //def RL_TRAIN
   void act(Real*const uBody, Real*const vBody, Real*const omegaBody, const Real dt) override
   {
     assert(time_ptr not_eq nullptr);
@@ -241,22 +246,23 @@ class Ellipse : public Shape
     for(auto & entry : obstacleBlocks) delete entry.second;
     obstacleBlocks.clear();
 
-    FillBlocks_Ellipse kernel(semiAxis[0], semiAxis[1], h, center, orientation, rhoS);
-    for(int i=0; i<vInfo.size(); i++) {
-      //const auto pos = obstacleBlocks.find(info.blockID);
-      if(kernel._is_touching(vInfo[i])) { //position of sphere + radius + 2*h safety
-        assert(obstacleBlocks.find(vInfo[i].blockID)==obstacleBlocks.end());
-        obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
-        obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
+    {
+      FillBlocks_Ellipse kernel(semiAxis[0], semiAxis[1], h, center, orientation, rhoS);
+      for(size_t i=0; i<vInfo.size(); i++) {
+        //const auto pos = obstacleBlocks.find(info.blockID);
+        if(kernel._is_touching(vInfo[i])) { //position of sphere + radius + 2*h safety
+          assert(obstacleBlocks.find(vInfo[i].blockID)==obstacleBlocks.end());
+          obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
+          obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
+        }
       }
     }
-
     #pragma omp parallel
     {
       FillBlocks_Ellipse kernel(semiAxis[0], semiAxis[1], h, center, orientation, rhoS);
 
       #pragma omp for schedule(dynamic)
-      for(int i=0; i<vInfo.size(); i++) {
+      for(size_t i=0; i<vInfo.size(); i++) {
         const auto pos = obstacleBlocks.find(vInfo[i].blockID);
         if(pos == obstacleBlocks.end()) continue;
         FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;

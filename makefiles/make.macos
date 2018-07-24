@@ -1,21 +1,23 @@
-CC=g++-7
-LD=g++-7
+CC=g++-8
+LD=g++-8
 
 SMARTIESDIR = /Users/novatig/code/smarties/source/
+VTKVER=-8.1
+VTKDIR=/usr/local/Cellar/vtk/8.1.1/
+CPPFLAGS+= -I$(VTKDIR)include/vtk$(VTKVER)/
 CPPFLAGS += -D_VTK62_
-CPPFLAGS+= -I/usr/local/Cellar/vtk/7.1.1_1/include/vtk-7.1/
 
 export LD_LIBRARY_PATH:=$(VTK_LIB_DIR):$(LD_LIBRARY_PATH)
-LIBS += -L/usr/local/Cellar/vtk/7.1.1_1/lib/ -lz \
-         -lvtkCommonCore-7.1 \
-         -lvtkCommonSystem-7.1 \
-         -lvtkCommonMath-7.1 \
-         -lvtkCommonDataModel-7.1 \
-         -lvtkCommonComputationalGeometry-7.1 \
-         -lvtkIOCore-7.1 \
-         -lvtkIOAMR-7.1 \
-         -lvtkIOXML-7.1 \
-         -lvtkIOXMLParser-7.1 \
-         -lvtkIOLegacy-7.1 \
-         -lvtkIOImport-7.1 \
-         -lvtkIOExport-7.1
+LIBS += -L$(VTKDIR)lib/ -lz \
+         -lvtkCommonCore$(VTKVER) \
+         -lvtkCommonSystem$(VTKVER) \
+         -lvtkCommonMath$(VTKVER) \
+         -lvtkCommonDataModel$(VTKVER) \
+         -lvtkCommonComputationalGeometry$(VTKVER) \
+         -lvtkIOCore$(VTKVER) \
+         -lvtkIOAMR$(VTKVER) \
+         -lvtkIOXML$(VTKVER) \
+         -lvtkIOXMLParser$(VTKVER) \
+         -lvtkIOLegacy$(VTKVER) \
+         -lvtkIOImport$(VTKVER) \
+         -lvtkIOExport$(VTKVER)

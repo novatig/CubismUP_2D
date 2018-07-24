@@ -17,7 +17,11 @@
 
 class Blowfish : public Shape
 {
- protected:
+ public:
+  Real flapAng_R = 0, flapAng_L = 0;
+  Real flapVel_R = 0, flapVel_L = 0;
+  Real flapAcc_R = 0, flapAcc_L = 0;
+
   const Real radius;
   const Real rhoTop = 1.5; //top half
   const Real rhoBot = 0.5; //bot half
@@ -28,30 +32,27 @@ class Blowfish : public Shape
   const Real finAngle0 = M_PI/6; //fins
 
   const Real attachDist = radius+finWidth;
-  Real flapAng_R = 0, flapAng_L = 0;
-  Real flapVel_R = 0, flapVel_L = 0;
-  Real flapAcc_R = 0, flapAcc_L = 0;
   //Real powerOutput = 0, old_powerOutput = 0;
   const Real rhoF = 1; //ASSUME RHO FLUID == 1
   const Real lengthscale = 2*radius;
   const Real distHalfCM = 4*radius/(3*M_PI);
   const Real halfarea = 0.5*M_PI*radius*radius;
-  const Real minRho = min(rhoTop,rhoBot), maxRho = max(rhoTop,rhoBot);
-  const Real forceDw = halfarea*(rhoF-minRho)*9.8;
-  const Real forceUp = halfarea*(maxRho-rhoF)*9.8;
+  const Real minRho = std::min(rhoTop,rhoBot), maxRho = std::max(rhoTop,rhoBot);
+  const Real forceDw = halfarea*(rhoF-minRho)*std::fabs(sim.gravity[1]);
+  const Real forceUp = halfarea*(maxRho-rhoF)*std::fabs(sim.gravity[1]);
   const Real torquescale = distHalfCM*(forceDw+forceUp);
-  const Real velscale = sqrt(torquescale/lengthscale/lengthscale/rhoF);
+  const Real velscale = std::sqrt(torquescale/lengthscale/lengthscale/rhoF);
   const Real timescale = lengthscale/velscale;
 
- public:
-  Blowfish(Real C[2],const Real ang,const Real R):Shape(C,ang,0.5),radius(R)
+  Blowfish(SimulationData&s, ArgumentParser&p, Real C[2])
+  : Shape(s,p,C), radius( p("-radius").asDouble(0.1) )
   {
     // based on weighted average
     const Real CentTop =  distHalfCM;
     const Real MassTop =  halfarea*rhoTop;
     const Real CentBot = -distHalfCM;
     const Real MassBot =  halfarea*rhoBot;
-    const Real CentFin = -sin(finAngle0)*(attachDist+finLength/2);
+    const Real CentFin = -std::sin(finAngle0)*(attachDist+finLength/2);
     const Real MassFin = 2*finLength*finWidth*rhoFin;
 
     d_gm[0] = 0;
@@ -61,63 +62,13 @@ class Blowfish : public Shape
     centerOfMass[1]=center[1]-sin(orientation)*d_gm[0]-cos(orientation)*d_gm[1];
   }
 
-  #ifdef RL_MPI_CLIENT
-    void act(Real*const uBody, Real*const vBody, Real*const omegaBody, const Real dt) override
-    {
-      assert(time_ptr not_eq nullptr);
-      assert(communicator not_eq nullptr);
-      if(!initialized_time_next_comm || *time_ptr>time_next_comm)
-      {
-        initialized_time_next_comm = true;
-        time_next_comm = time_next_comm + 0.1*timescale;
-        //compute torque scale:
-
-        const Real w = (*omegaBody)*timescale, angle = orientation;
-        const Real u = (*uBody)/velscale, v = (*vBody)/velscale;
-        const Real cosAng = cos(angle), sinAng = sin(angle);
-        const Real U = u*cosAng + v*sinAng, V = v*cosAng - u*sinAng;
-        const Real WR = flapVel_R*timescale, WL = flapVel_L*timescale;
-
-        const bool ended = cosAng<0; //(angle>M_PI || angle<-M_PI);
-        const Real reward = ended ? -10 : cosAng -sqrt(u*u+v*v);
-        if (ended) {
-          printf("End of episode due to angle: %f\n", orientation);
-          info = _AGENT_LASTCOMM;
-        }
-
-        vector<double> states = {U, V, w, angle, flapAng_R, flapAng_L, WR, WL};
-        vector<double> action = {0, 0};
-
-        printf("(%u) Sending (%lu) [%f %f %f %f %f %f %f %f]\n",
-          iter++, states.size(), U, V, w, angle, flapAng_R, flapAng_L, WR, WL);
-
-        communicator->sendState(0, info, states, reward);
-
-        if(info == _AGENT_LASTCOMM) throw iter;
-        else info = _AGENT_NORMALCOMM;
-
-        communicator->recvAction(action);
-        printf("Received %f %f\n", action[0], action[1]);
-        flapAcc_R = action[0]/timescale/timescale;
-        flapAcc_L = action[1]/timescale/timescale;
-      }
-    }
-  #else
-    void act(Real*const uBody, Real*const vBody, Real*const omegaBody, const Real dt) override
-    {
-      *omegaBody = 0;
-      const Real omega = 2*M_PI/timescale;
-      const Real amp = omega*omega*M_PI/8;
-      printf("V:%f, L:%f, Flap amp %f, omega %f\n", velscale, lengthscale, amp, omega);
-      //accelation is a sine, therefore angvel is cosine and angle is sine
-      flapAcc_R =  amp*std::sin(omega*(*time_ptr));
-      flapAcc_L = -amp*std::sin(omega*(*time_ptr));
-    }
-  #endif
-
-  void updatePosition(const Real u[2], Real omega, Real dt) override
+  void updatePosition(double dt) override
   {
-    Shape::updatePosition(u, omega, dt);
+    Shape::updatePosition(dt);
+
+    flapAng_R += dt*flapVel_R + .5*dt*dt*flapAcc_R;
+    flapAng_L += dt*flapVel_L + .5*dt*dt*flapAcc_L;
+
     if(flapAng_R > M_PI/2) { //maximum extent of fin is pi/2
       printf("Blocked flapAng_R at  M_PI/2\n");
       flapAng_R =  M_PI/2;
@@ -142,14 +93,11 @@ class Blowfish : public Shape
       if(flapVel_L<0) flapVel_L = 0;
       if(flapAcc_L<0) flapAcc_L = 0;
     }
-
-    flapAng_R += dt*flapVel_R + .5*dt*dt*flapAcc_R;
-    flapAng_L += dt*flapVel_L + .5*dt*dt*flapAcc_L;
     flapVel_R += dt*flapAcc_R;
     flapVel_L += dt*flapAcc_L;
-    #ifndef RL_MPI_CLIENT
-    printf("[ang, angvel, angacc] : right:[%f %f %f] left:[%f %f %f]\n",
-     flapAng_R, flapVel_R, flapAcc_R, flapAng_L, flapVel_L, flapAcc_L);
+    #ifndef RL_TRAIN
+      printf("[ang, angvel, angacc] : right:[%f %f %f] left:[%f %f %f]\n",
+        flapAng_R, flapVel_R, flapAcc_R, flapAng_L, flapVel_L, flapAcc_L);
     #endif
   }
 
@@ -173,29 +121,31 @@ class Blowfish : public Shape
     for(auto & entry : obstacleBlocks) delete entry.second;
     obstacleBlocks.clear();
 
-    const FillBlocks_Cylinder kernelC(radius, h, center, rhoBot);
-    const FillBlocks_Plate kernelF1(finLength, finWidth, h, attach1, angleTotFin1, flapVel_R, rhoFin);
-    const FillBlocks_Plate kernelF2(finLength, finWidth, h, attach2, angleTotFin2, flapVel_L, rhoFin);
+    {
+      const FillBlocks_Cylinder kernelC(radius, h, center, rhoBot);
+      const FillBlocks_Plate kernelF1(finLength, finWidth, h, attach1, angleTotFin1, flapVel_R, rhoFin);
+      const FillBlocks_Plate kernelF2(finLength, finWidth, h, attach2, angleTotFin2, flapVel_L, rhoFin);
 
-    for(int i=0; i<vInfo.size(); i++) {
-      BlockInfo info = vInfo[i];
-      if(kernelC._is_touching(info))
-      {
-        assert(obstacleBlocks.find(info.blockID) == obstacleBlocks.end());
-        obstacleBlocks[info.blockID] = new ObstacleBlock;
-        obstacleBlocks[info.blockID]->clear(); //memset 0
-      }
-      else if(kernelF1._is_touching(info))
-      {
-        assert(obstacleBlocks.find(info.blockID) == obstacleBlocks.end());
-        obstacleBlocks[info.blockID] = new ObstacleBlock;
-        obstacleBlocks[info.blockID]->clear(); //memset 0
-      }
-      else if(kernelF2._is_touching(info))
-      {
-        assert(obstacleBlocks.find(info.blockID) == obstacleBlocks.end());
-        obstacleBlocks[info.blockID] = new ObstacleBlock;
-        obstacleBlocks[info.blockID]->clear(); //memset 0
+      for(size_t i=0; i<vInfo.size(); i++) {
+        BlockInfo info = vInfo[i];
+        if(kernelC._is_touching(info))
+        {
+          assert(obstacleBlocks.find(info.blockID) == obstacleBlocks.end());
+          obstacleBlocks[info.blockID] = new ObstacleBlock;
+          obstacleBlocks[info.blockID]->clear(); //memset 0
+        }
+        else if(kernelF1._is_touching(info))
+        {
+          assert(obstacleBlocks.find(info.blockID) == obstacleBlocks.end());
+          obstacleBlocks[info.blockID] = new ObstacleBlock;
+          obstacleBlocks[info.blockID]->clear(); //memset 0
+        }
+        else if(kernelF2._is_touching(info))
+        {
+          assert(obstacleBlocks.find(info.blockID) == obstacleBlocks.end());
+          obstacleBlocks[info.blockID] = new ObstacleBlock;
+          obstacleBlocks[info.blockID]->clear(); //memset 0
+        }
       }
     }
 
@@ -206,7 +156,7 @@ class Blowfish : public Shape
       const FillBlocks_Plate kernelF2(finLength, finWidth, h, attach2, angleTotFin2, flapVel_L, rhoFin);
 
       #pragma omp for schedule(dynamic)
-      for(int i=0; i<vInfo.size(); i++) {
+      for(size_t i=0; i<vInfo.size(); i++) {
         BlockInfo info = vInfo[i];
         const auto pos = obstacleBlocks.find(info.blockID);
         if(pos == obstacleBlocks.end()) continue;
@@ -226,7 +176,7 @@ class Blowfish : public Shape
     return 2 * radius;
   }
 
-  void outputSettings(ostream &outStream)
+  void outputSettings(ostream &outStream) const override
   {
     outStream << "Blowfish\n";
     Shape::outputSettings(outStream);

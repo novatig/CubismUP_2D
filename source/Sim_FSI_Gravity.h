@@ -4,57 +4,6 @@
 //
 //	Class for the simulation of gravity driven FSI
 //
-//	Makefile arguments
-//		particles:		if active, use particles (remeshing kernel should be chosen by commenting/uncommenting in the code), otherwise use finite differences
-//		poisson:		Poisson solver, split-fftw/hypre
-//		multiphase:		activate/deactivate advection of densities, false should be used
-//		bc:				boundary conditions, for this setting, mixed should be used
-//		precision:		single/double, default: double
-//		config:			configuration debug/production, default: debug
-//		nthreads:		#threads, default: 48
-//		bs:				Cubism block size, default: 32
-//		vertexcentered:	always set to false for this setting
-//
-//	Command line arguments
-//		-bpdx:			mandatory, #blocks in x direction
-//		-bpdy:			mandatory, #blocks in y direction
-//		-restart:		needed to restart from a previous checkpoint
-//		-nsteps:		simulation ends with nsteps iterations. If 0, ignored
-//		-tend:			simulation ends at time tend. If 0, ignored
-//		-fdump:			#timesteps between grid outputs. If 0, ignored
-//		-tdump:			time interval for grid output. If 0, ignored
-//		-file:			location and base name of output files
-//		-CFL:			CFL constant used for CFL condition and for diffusion
-//		-LCFL:			particle Lagrangian-CFL (not required when using finite differences)
-//		-verbose:		activate verbosity
-//		-serialization:	mandatory if restarting, path to serialized checkpoint data
-//		-lambda:		Penalization parameter, default: 1e5
-//		-rhoS:			solid density
-//		-shape:			select shape to be used: disk/ellipse, default: disk
-//		-radius:		if shape==disk, select radius, default: 0.1
-//		-semiAxisX:		if shape==ellipse, select X axis, default: 0.1
-//		-semiAxisY:		if shape==ellipse, select Y axis, default: 0.2
-//		-angle:			if shape==ellipse, select orientation
-//		-split:			use split technique for the pressure solver (only used by Hypre implementation)
-//		-nu:			mu for diffusion operator (which is divided by the density to recover nu)
-//		-ypos:			position in the vertical direction used to place the shape in the initial conditions
-//
-//	Output
-//		diagnostics.dat
-//			 0 - step
-//			 1 - time
-//			 2 - dt
-//			 3 - bpdx
-//			 4 - lambda
-//			 5 - cD
-//			 6 - Re
-//			 7 - x[0]
-//			 8 - x[1]
-//			 9 - u[0]
-//			10 - u[1]
-//			11 - orientation
-//			12 - omegaBody
-//
 //  Created by Christian Conti on 1/26/15.
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
@@ -67,34 +16,43 @@
 class Sim_FSI_Gravity : public Simulation_FSI
 {
  protected:
-	#ifdef RL_MPI_CLIENT
-	Communicator*const communicator;
-	#endif
-	Real uBody[2] = {0,0};
-	Real omegaBody = 0;
-	double dtCFL=0, dtLCFL=0, dtFourier=0, dtBody=0;
-	double re=0, nu=0, uinfx=0, uinfy=0;
-	double minRho=0;
-  bool bDump = false;
-	Real gravity[2] = {0,-9.81};
 
 	void _diagnostics();
-	void _ic();
-	double _nonDimensionalTime();
 
 	// should this stuff be moved? - serialize method will do that
-	void _dumpSettings(ostream& outStream);
+	//void _dumpSettings(ostream& outStream);
 
 public:
-	#ifdef RL_MPI_CLIENT
-	Sim_FSI_Gravity(Communicator*const comm, int argc, char ** argv);
-	#else
 	Sim_FSI_Gravity(int argc, char ** argv);
-	#endif
 	~Sim_FSI_Gravity();
 
-	void init();
-	void simulate();
+	void init() override;
+
+  double calcMaxTimestep() override;
+
+	bool advance(const double DT) override;
+
+  #if 0
+  Real uOld = 0, vOld = 0;
+  double maxA = 0;
+  void testUnifRhoDisk()
+  {
+    // this test only works for constant density disks as it is written now
+    const double accMy = (uBody[1]-vOld)/dt;
+    const double accMx = (uBody[0]-uOld)/dt;
+    vOld = uBody[1];
+    uOld = uBody[0];
+    const double accT = (shape->getMinRhoS()-1)/(shape->getMinRhoS()+1)*gravity[1];
+    const double accN = (shape->getMinRhoS()-1)/(shape->getMinRhoS()  )*gravity[1];
+    //if (verbose)
+    cout<<"Acceleration with added mass (measured x,y, expected, no added mass)\t"
+        <<accMx<<"\t"<<accMy<<"\t"<<accT<<"\t"<<accN<<endl;
+    stringstream ss;
+    ss<<path2file<<"_addedmass.dat";
+    ofstream myfile(ss.str(), fstream::app);
+    myfile<<step<<" "<<time<<" "<<accMx<<" "<<accMy<<" "<<accT<<" "<<accN<<endl;
+  }
+  #endif
 };
 
 #endif /* defined(__CubismUP_2D__Sim_FSI_Gravity__) */

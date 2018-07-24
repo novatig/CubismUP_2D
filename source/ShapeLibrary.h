@@ -49,7 +49,7 @@ static inline void towersDeltaAndStep(const Real distPx, const Real distMx, cons
 struct FillBlocks_Cylinder
 {
   const Real radius, safe_radius, rhoS;
-  const double cylinder_position[2];
+  const Real cylinder_position[2];
   Real cylinder_box[2][2];
 
   void _find_cylinder_box()
@@ -60,7 +60,7 @@ struct FillBlocks_Cylinder
     cylinder_box[1][1] = cylinder_position[1] + safe_radius;
   }
 
-  FillBlocks_Cylinder(Real rad, Real h, double pos[2], Real rho):
+  FillBlocks_Cylinder(Real rad, Real h, Real pos[2], Real rho):
   radius(rad),safe_radius(rad+4*h),rhoS(rho),cylinder_position{pos[0],pos[1]}
   {
       _find_cylinder_box();
@@ -122,7 +122,7 @@ struct FillBlocks_Cylinder
       }
 
       #ifndef NDEBUG
-      if (H < o->chi[iy][ix]) {
+      if (H < obstblock->chi[iy][ix]) {
         printf("FillBlocks_Cylinder: Error is obstblock->chi \n");
         abort();
       }
@@ -138,9 +138,9 @@ struct FillBlocks_Cylinder
 struct FillBlocks_HalfCylinder
 {
   const Real radius, safe_radius;
-  const double cylinder_position[2], angle, safety, rhoS;
-  const double cosang = std::cos(angle);
-  const double sinang = std::sin(angle);
+  const Real cylinder_position[2], angle, safety, rhoS;
+  const Real cosang = std::cos(angle);
+  const Real sinang = std::sin(angle);
   Real cylinder_box[2][2];
 
   inline void changeFrame(Real p[2]) const
@@ -171,7 +171,7 @@ struct FillBlocks_HalfCylinder
     cylinder_box[1][1] = cylinder_position[1] + right;
   }
 
-  FillBlocks_HalfCylinder(Real rad, Real h, double pos[2], Real rho, Real ang):
+  FillBlocks_HalfCylinder(Real rad, Real h, Real pos[2], Real rho, Real ang):
   radius(rad), safe_radius(rad+4*h), cylinder_position{pos[0],pos[1]}, angle(ang), safety(4*h), rhoS(rho)
   {
       _find_cylinder_box();
@@ -230,7 +230,7 @@ struct FillBlocks_HalfCylinder
       }
 
       #ifndef NDEBUG
-      if (H < o->chi[iy][ix]) {
+      if (H < obstblock->chi[iy][ix]) {
         printf("FillBlocks_Cylinder: Error is obstblock->chi \n");
         abort();
       }
@@ -338,9 +338,9 @@ struct FillBlocks_Ellipse
   }
 
   const Real e0,e1,safety;
-  const double position[2], angle, rhoS;
-  const double cosang = std::cos(angle);
-  const double sinang = std::sin(angle);
+  const Real position[2], angle, rhoS;
+  const Real cosang = std::cos(angle);
+  const Real sinang = std::sin(angle);
   Real sphere_box[2][2];
 
   void _find_cylinder_box()
@@ -352,7 +352,9 @@ struct FillBlocks_Ellipse
       sphere_box[1][1] = position[1] + (maxAxis + safety);
   }
 
-  FillBlocks_Ellipse(const Real e0, const Real e1, const Real h, const double pos[2], Real ang, Real rho): e0(e0), e1(e1), safety(4*h), position{pos[0], pos[1]}, angle(ang), rhoS(rho)
+  FillBlocks_Ellipse(const Real _e0, const Real _e1, const Real h,
+    const Real pos[2], Real ang, Real rho): e0(_e0), e1(_e1), safety(4*h),
+    position{pos[0], pos[1]}, angle(ang), rhoS(rho)
   {
           _find_cylinder_box();
   }
@@ -418,14 +420,13 @@ struct FillBlocks_EllipseFinalize
   const int stencil_start[3] = {-1, -1, 0}, stencil_end[3] = {2, 2, 1};
 	StencilInfo stencil;
 
-  FillBlocks_EllipseFinalize(const Real h, Real rho): h(h), rhoS(rho)
+  FillBlocks_EllipseFinalize(const Real _h, Real rho): h(_h), rhoS(rho)
   {
     stencil = StencilInfo(-1,-1,0, 2,2,1, false, 1, 5);
   }
 
   inline void operator()(Lab& l, const BlockInfo&i, FluidBlock&b, ObstacleBlock*const o) const
   {
-    const Real h = i.h_gridpoint;
     for(int iy=0; iy<FluidBlock::sizeY; iy++)
     for(int ix=0; ix<FluidBlock::sizeX; ix++)
     {
@@ -459,8 +460,8 @@ struct FillBlocks_Plate
   //position is not the center of mass, is is the center of the base
   const Real LX, LY, safety;
   const Real position[2], angle, angvel, rhoS;
-  const double cosang = std::cos(angle);
-  const double sinang = std::sin(angle);
+  const Real cosang = std::cos(angle);
+  const Real sinang = std::sin(angle);
   Real bbox[2][2];
 
   inline void toFrame(Real p[2]) const
@@ -472,7 +473,7 @@ struct FillBlocks_Plate
 
   void _find_bbox()
   {
-      const double maxreach = LX + LY + safety;
+      const Real maxreach = LX + LY + safety;
       bbox[0][0] = position[0] - maxreach;
       bbox[0][1] = position[0] + maxreach;
       bbox[1][0] = position[1] - maxreach;
@@ -527,7 +528,7 @@ struct FillBlocks_Plate
       }
 
       #ifndef NDEBUG
-      if (H < o->chi[iy][ix]) {
+      if (H < obstblock->chi[iy][ix]) {
         printf("FillBlocks_Cylinder: Error is obstblock->chi \n");
         abort();
       }
@@ -545,9 +546,9 @@ struct FillBlocks_Plate
 struct FillBlocks_VarRhoCylinder
 {
   const Real radius, safe_radius, rhoTop, rhoBot, angle;
-  const double cosang = std::cos(angle);
-  const double sinang = std::sin(angle);
-  const double cylinder_position[2];
+  const Real cosang = std::cos(angle);
+  const Real sinang = std::sin(angle);
+  const Real cylinder_position[2];
   Real cylinder_box[2][2];
 
   void _find_cylinder_box()
@@ -572,7 +573,7 @@ struct FillBlocks_VarRhoCylinder
     p[1] = -x*sinang + y*cosang;
   }
 
-  FillBlocks_VarRhoCylinder(Real rad, Real h, double pos[2], Real rhoT, Real rhoB, Real ang) : radius(rad), safe_radius(rad+4*h), rhoTop(rhoT), rhoBot(rhoB), angle(ang), cylinder_position{pos[0],pos[1]}
+  FillBlocks_VarRhoCylinder(Real rad, Real h, Real pos[2], Real rhoT, Real rhoB, Real ang) : radius(rad), safe_radius(rad+4*h), rhoTop(rhoT), rhoBot(rhoB), angle(ang), cylinder_position{pos[0],pos[1]}
   {
     _find_cylinder_box();
   }
@@ -630,7 +631,7 @@ struct FillBlocks_VarRhoCylinder
       }
 
       #ifndef NDEBUG
-      if (H > 0 && < o->chi[iy][ix]) {
+      if (H > 0 && H < obstblock->chi[iy][ix]) {
         printf("FillBlocks_Cylinder: Error is obstblock->chi \n");
         abort();
       }
@@ -650,8 +651,8 @@ struct FillBlocks_VarRhoCylinder
 struct FillBlocks_VarRhoEllipseFinalize
 {
   const Real h, rhoTop, rhoBot, angle, position[2];
-  const double cosang = std::cos(angle);
-  const double sinang = std::sin(angle);
+  const Real cosang = std::cos(angle);
+  const Real sinang = std::sin(angle);
   const int stencil_start[3] = {-1, -1, 0}, stencil_end[3] = {2, 2, 1};
 
   inline Real mollified_heaviside(const Real x) const
@@ -668,11 +669,10 @@ struct FillBlocks_VarRhoEllipseFinalize
     p[1] = -x*sinang + y*cosang;
   }
 
-  FillBlocks_VarRhoEllipseFinalize(Real h, double C[2], Real rhoT, Real rhoB, Real ang) : h(h), rhoTop(rhoT), rhoBot(rhoB), angle(ang), position{C[0],C[1]} {}
+  FillBlocks_VarRhoEllipseFinalize(Real _h, Real C[2], Real rhoT, Real rhoB, Real ang) : h(_h), rhoTop(rhoT), rhoBot(rhoB), angle(ang), position{C[0],C[1]} {}
 
   inline void operator()(Lab& l, const BlockInfo&i, FluidBlock&b, ObstacleBlock*const o) const
   {
-    const Real h = i.h_gridpoint;
     for(int iy=0; iy<FluidBlock::sizeY; iy++)
     for(int ix=0; ix<FluidBlock::sizeX; ix++)
     {

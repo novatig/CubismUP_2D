@@ -14,12 +14,10 @@
 #include "GenericOperator.h"
 
 template<typename Lab>
-double findMaxAOMP(vector<BlockInfo>& myInfo, FluidGrid & grid)
+inline double findMaxA(const SimulationData& sim)
 {
-	double maxA = 0;
-
-	BlockInfo * ary = &myInfo.front();
-	const int N = myInfo.size();
+	Real maxA = 0;
+  const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
 
 	const int stencil_start[3] = {-1,-1, 0};
 	const int stencil_end[3]   = { 2, 2, 1};
@@ -27,27 +25,24 @@ double findMaxAOMP(vector<BlockInfo>& myInfo, FluidGrid & grid)
  	#pragma omp parallel
 	{
 		Lab lab;
-		lab.prepare(grid, stencil_start, stencil_end, true);
+		lab.prepare(*(sim.grid), stencil_start, stencil_end, true);
 
 		#pragma omp for schedule(static) reduction(max:maxA)
-		for (int i=0; i<N; i++)
-		{
-			lab.load(ary[i], 0);
+		for(size_t i=0; i<vInfo.size(); i++) {
+			lab.load(vInfo[i], 0);
 
-			BlockInfo info = myInfo[i];
-			FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-
-			const double inv2h = info.h_gridpoint;
+			const BlockInfo info = vInfo[i];
+			const FluidBlock& b = *(FluidBlock*)info.ptrBlock;
+			const Real inv2h = info.h_gridpoint;
 
 			for(int iy=0; iy<FluidBlock::sizeY; ++iy)
 				for(int ix=0; ix<FluidBlock::sizeX; ++ix)
 				{
-					double dudx = (lab(ix+1,iy  ).u-lab(ix-1,iy  ).u) * inv2h;
-					double dudy = (lab(ix  ,iy+1).u-lab(ix  ,iy-1).u) * inv2h;
-					double dvdx = (lab(ix+1,iy  ).v-lab(ix-1,iy  ).v) * inv2h;
-					double dvdy = (lab(ix  ,iy+1).v-lab(ix  ,iy-1).v) * inv2h;
-
-					maxA = max(max(dudx,dudy),max(dvdx,dvdy));
+					Real dudx = std::fabs((lab(ix+1,iy  ).u-lab(ix-1,iy  ).u) * inv2h );
+					Real dudy = std::fabs((lab(ix  ,iy+1).u-lab(ix  ,iy-1).u) * inv2h );
+					Real dvdx = std::fabs((lab(ix+1,iy  ).v-lab(ix-1,iy  ).v) * inv2h );
+					Real dvdy = std::fabs((lab(ix  ,iy+1).v-lab(ix  ,iy-1).v) * inv2h );
+					maxA = std::max(std::max(dudx,dudy),std::max(dvdx,dvdy));
 				}
 		}
 	}
@@ -57,44 +52,38 @@ double findMaxAOMP(vector<BlockInfo>& myInfo, FluidGrid & grid)
 
 // -gradp, divergence, advection
 template<typename Lab, typename Kernel>
-void processOMP(double dt, vector<BlockInfo>& myInfo, FluidGrid & grid)
+inline void processOMP(const SimulationData& sim)
 {
-	BlockInfo * ary = &myInfo.front();
-	const int N = myInfo.size();
-
+  const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
 	#pragma omp parallel
 	{
-		Kernel kernel(dt);
-
+		Kernel kernel(sim.dt);
 		Lab mylab;
-		mylab.prepare(grid, kernel.stencil_start, kernel.stencil_end, true);
+		mylab.prepare(sim.grid, kernel.stencil_start, kernel.stencil_end, true);
 
 		#pragma omp for schedule(static)
-		for (int i=0; i<N; i++)
-		{
-			mylab.load(ary[i], 0);
-
-			kernel(mylab, ary[i], *(FluidBlock*)ary[i].ptrBlock);
+		for(size_t i=0; i<vInfo.size(); i++) {
+			mylab.load(vInfo[i], 0);
+			kernel(mylab, vInfo[i], *(FluidBlock*)vInfo[i].ptrBlock);
 		}
 	}
 }
 
-double findMaxUOMP(vector<BlockInfo>& myInfo, FluidGrid & grid)
+inline double findMaxUOMP(const SimulationData& sim)
 {
-	double maxU = 0;
-	const int N = myInfo.size();
-
+	Real maxU = 0;
+  const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
 	#pragma omp parallel for schedule(static) reduction(max:maxU)
-	for(int i=0; i<N; i++)
-	{
-		BlockInfo info = myInfo[i];
+	for(size_t i=0; i<vInfo.size(); i++) {
+		const BlockInfo info = vInfo[i];
 		FluidBlock& b = *(FluidBlock*)info.ptrBlock;
 
 		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-			for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-			{
-				maxU = max(maxU,(double)fabs(b(ix,iy).u));
-				maxU = max(maxU,(double)fabs(b(ix,iy).v));
+			for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
+				maxU = std::max( maxU, std::fabs( b(ix,iy).u + sim.uinfx ) );
+				maxU = std::max( maxU, std::fabs( b(ix,iy).v + sim.uinfy ) );
+				maxU = std::max( maxU, std::fabs( b(ix,iy).u ) );
+				maxU = std::max( maxU, std::fabs( b(ix,iy).v ) );
 			}
 	}
 
@@ -136,7 +125,7 @@ void computeForcesFromVorticity(vector<BlockInfo>& myInfo, FluidGrid & grid,
 	oldAccVort[1] = mV;
 }
 */
-
+/*
 class OperatorVorticityTmp : public GenericLabOperator
 {
  public:
@@ -167,7 +156,7 @@ class OperatorVorticityTmp : public GenericLabOperator
 			}
 	}
 };
-
+*/
 /*
 class OperatorVorticity : public GenericLabOperator
 {

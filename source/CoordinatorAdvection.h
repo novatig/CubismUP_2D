@@ -16,17 +16,17 @@ class OperatorAdvectionFD : public GenericLabOperator
 {
  private:
   const double dt;
-  const  Real* const uBody;
-  const  Real* const vBody;
+  const Real uinf;
+  const Real vinf;
 
  public:
-  OperatorAdvectionFD(double dt, const Real*const uBody, const Real*const vBody)
-  : dt(dt), uBody(uBody), vBody(vBody)
+  OperatorAdvectionFD(double _dt, const Real u, const Real v)
+  : dt(_dt), uinf(u), vinf(v)
   {
     #ifndef _MULTIPHASE_
-    stencil = StencilInfo(-1,-1,0, 2,2,1, false, 2, 0,1);
+      stencil = StencilInfo(-1,-1,0, 2,2,1, false, 2, 0,1);
     #else
-    stencil = StencilInfo(-1,-1,0, 2,2,1, false, 3, 0,1,4);
+      stencil = StencilInfo(-1,-1,0, 2,2,1, false, 3, 0,1,4);
     #endif
     stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
     stencil_end[0] = 2; stencil_end[1] = 2; stencil_end[2] = 1;
@@ -41,13 +41,8 @@ class OperatorAdvectionFD : public GenericLabOperator
     for (int iy=0; iy<FluidBlock::sizeY; ++iy)
     for (int ix=0; ix<FluidBlock::sizeX; ++ix)
     {
-      #ifndef _MOVING_FRAME_
-        const Real v = lab(ix,iy).v;
-        const Real u = lab(ix,iy).u;
-      #else
-        const Real v = lab(ix,iy).v - *vBody;
-        const Real u = lab(ix,iy).u - *uBody;
-      #endif
+      const Real u = lab(ix,iy).u + uinf;
+      const Real v = lab(ix,iy).v + vinf;
 
       const Real dudx = lab(ix+1,iy).u - lab(ix-1,iy).u;
       const Real dudy = lab(ix,iy+1).u - lab(ix,iy-1).u;
@@ -58,10 +53,10 @@ class OperatorAdvectionFD : public GenericLabOperator
       o(ix,iy).tmpV = lab(ix,iy).v + fac*(u * dvdx + v * dvdy);
 
       #ifdef _MULTIPHASE_
-      const Real drdx = lab(ix+1,iy).rho - lab(ix-1,iy).rho;
-      const Real drdy = lab(ix,iy+1).rho - lab(ix,iy-1).rho;
+        const Real drdx = lab(ix+1,iy).rho - lab(ix-1,iy).rho;
+        const Real drdy = lab(ix,iy+1).rho - lab(ix,iy-1).rho;
 
-      o(ix,iy).tmp  = lab(ix,iy).rho + fac*(u * drdx + v * drdy);
+        o(ix,iy).tmp  = lab(ix,iy).rho + fac*(u * drdx + v * drdy);
       #endif
     }
   }
@@ -70,26 +65,21 @@ class OperatorAdvectionFD : public GenericLabOperator
 class OperatorAdvectionUpwind3rdOrder : public GenericLabOperator
 {
  private:
-  double dt;
-        const Real* const uBody;
-        const Real* const vBody;
+  const double dt;
+  const Real uinf;
+  const Real vinf;
 
  public:
-    OperatorAdvectionUpwind3rdOrder(double dt, const Real* const uBody, const Real* const vBody)
-  : dt(dt), uBody(uBody), vBody(vBody)
+  OperatorAdvectionUpwind3rdOrder(double _dt, const Real u, const Real v)
+  : dt(_dt), uinf(u), vinf(v)
     {
       #ifndef _MULTIPHASE_
-      stencil = StencilInfo(-2,-2,0, 3,3,1, false, 2, 0,1);
+        stencil = StencilInfo(-2,-2,0, 3,3,1, false, 2, 0,1);
       #else
-      stencil = StencilInfo(-2,-2,0, 3,3,1, false, 3, 0,1,4);
+        stencil = StencilInfo(-2,-2,0, 3,3,1, false, 3, 0,1,4);
       #endif
-        stencil_start[0] = -2;
-        stencil_start[1] = -2;
-        stencil_start[2] = 0;
-
-        stencil_end[0] = 3;
-        stencil_end[1] = 3;
-        stencil_end[2] = 1;
+      stencil_start[0] = -2; stencil_start[1] = -2; stencil_start[2] = 0;
+      stencil_end[0] = 3; stencil_end[1] = 3; stencil_end[2] = 1;
     }
 
   ~OperatorAdvectionUpwind3rdOrder() {}
@@ -111,11 +101,8 @@ class OperatorAdvectionUpwind3rdOrder : public GenericLabOperator
         const Real uLx = lab(ix-2,iy  ).u, vLx = lab(ix-2,iy  ).v;
         const Real uly = lab(ix  ,iy-1).u, vly = lab(ix  ,iy-1).v;
         const Real uLy = lab(ix  ,iy-2).u, vLy = lab(ix  ,iy-2).v;
-        #ifndef _MOVING_FRAME_
-          const Real u = ucc, v = vcc;
-        #else
-          const Real u = ucc - *uBody, v = vcc - *vBody;
-        #endif
+
+        const Real u = ucc + uinf, v = vcc + vinf;
         const Real dux = u>0 ? 2*upx+3*ucc-6*ulx+uLx : -uPx+6*upx-3*ucc-2*ulx;
         const Real duy = v>0 ? 2*upy+3*ucc-6*uly+uLy : -uPy+6*upy-3*ucc-2*uly;
         const Real dvx = u>0 ? 2*vpx+3*vcc-6*vlx+vLx : -vPx+6*vpx-3*vcc-2*vlx;
@@ -142,66 +129,42 @@ class OperatorAdvectionUpwind3rdOrder : public GenericLabOperator
 template <typename Lab>
 class CoordinatorAdvection : public GenericCoordinator
 {
- protected:
-   const Real* const uBody;
-   const Real* const vBody;
-    #ifdef _MULTIPHASE_
-    const Real rhoS;
-    #endif
-
  public:
- #ifndef _MULTIPHASE_
-    CoordinatorAdvection(Real * uBody, Real * vBody, FluidGrid * grid) :
-    GenericCoordinator(grid), uBody(uBody), vBody(vBody)
- #else
-    CoordinatorAdvection(Real * uBody, Real * vBody, FluidGrid * grid, Real rhoS) :
-    GenericCoordinator(grid), uBody(uBody), vBody(vBody), rhoS(rhoS)
- #endif
-    {
-    }
+    CoordinatorAdvection(SimulationData& s) : GenericCoordinator(s) { }
 
   void operator()(const double dt)
   {
     check("advection - start");
-    const int N = vInfo.size();
-
     #ifndef NDEBUG
-    #pragma omp parallel for schedule(static)
-    for(int i=0; i<N; i++)
-    {
-      BlockInfo info = vInfo[i];
-      FluidBlock& b = *(FluidBlock*)info.ptrBlock;
+      #pragma omp parallel for schedule(static)
+      for(size_t i=0; i<vInfo.size(); i++) {
+        BlockInfo info = vInfo[i];
+        FluidBlock& b = *(FluidBlock*)info.ptrBlock;
 
-      for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-        for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-        {
-          b(ix,iy).tmpU = 0;
-          b(ix,iy).tmpV = 0;
-          #ifdef _MULTIPHASE_
-          b(ix,iy).tmp = 0;
-          #endif // _MULTIPHASE_
-        }
-    }
+        for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+          for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
+            b(ix,iy).tmpU = 0;
+            b(ix,iy).tmpV = 0;
+            #ifdef _MULTIPHASE_
+              b(ix,iy).tmp = 0;
+            #endif // _MULTIPHASE_
+          }
+      }
     #endif
     ////////////////////////////////////////////////////////////////////////////
 
 
     #pragma omp parallel
     {
-      OperatorAdvectionUpwind3rdOrder kernel(dt,uBody,vBody);
+      OperatorAdvectionUpwind3rdOrder kernel(dt, sim.uinfx, sim.uinfy);
       //OperatorAdvectionFD kernel(dt,uBody,vBody);
 
       Lab mylab;
-      #ifdef _MOVING_FRAME_
-      mylab.pDirichlet.u = *uBody;
-      mylab.pDirichlet.v = *vBody;
-      #endif
-      mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, false);
+      mylab.prepare(*(sim.grid), kernel.stencil_start, kernel.stencil_end, false);
 
       #pragma omp for schedule(static)
-      for (int i=0; i<N; i++)
-      {
-        BlockInfo info = vInfo[i];
+      for (size_t i=0; i<vInfo.size(); i++) {
+        const BlockInfo& info = vInfo[i];
         mylab.load(info, 0);
         kernel(mylab, info, *(FluidBlock*)info.ptrBlock);
       }
@@ -209,13 +172,9 @@ class CoordinatorAdvection : public GenericCoordinator
 
     ///////////////////////////////////////////////////////////////////////////
 
-    #ifdef _MULTIPHASE_
-        const Real minrho = min((Real)1.,rhoS);
-        const Real maxrho = max((Real)1.,rhoS);
-    #endif
 
     #pragma omp parallel for schedule(static)
-    for(int i=0; i<N; i++)
+    for(size_t i=0; i<vInfo.size(); i++)
     {
       BlockInfo info = vInfo[i];
       FluidBlock& b = *(FluidBlock*)info.ptrBlock;
@@ -226,7 +185,7 @@ class CoordinatorAdvection : public GenericCoordinator
           b(ix,iy).u = b(ix,iy).tmpU;
           b(ix,iy).v = b(ix,iy).tmpV;
           #ifdef _MULTIPHASE_ // threshold density
-          b(ix,iy).rho = min(max(b(ix,iy).tmp,minrho),maxrho);
+          b(ix,iy).rho = b(ix,iy).tmp;
           #endif // _MULTIPHASE_
         }
     }

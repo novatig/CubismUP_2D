@@ -35,8 +35,7 @@ class BoundaryCondition
   }
  public:
 
-  BoundaryCondition(const int ss[3], const int se[3], Matrix3D<TElement, true, allocator> * cacheBlock):
-  cacheBlock(cacheBlock)
+  BoundaryCondition(const int ss[3], const int se[3], Matrix3D<TElement,true, allocator>* cb): cacheBlock(cb)
   {
     s[0]=s[1]=s[2]=0;
     e[0]=e[1]=e[2]=0;
@@ -64,7 +63,7 @@ class BoundaryCondition
     for(int ix=s[0]; ix<e[0]; ix++)
     {
       (*this)(ix,iy) = (*this)(dir==0? (side==0? 0:TBlock::sizeX-1):ix,
-                    dir==1? (side==0? 0:TBlock::sizeY-1):iy);
+                               dir==1? (side==0? 0:TBlock::sizeY-1):iy);
     }
   }
 

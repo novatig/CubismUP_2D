@@ -18,14 +18,14 @@
 class GenericCoordinator
 {
 protected:
-	FluidGrid * grid;
-	vector<BlockInfo> vInfo;
+  SimulationData& sim;
+	const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
 
 	inline void check(string infoText)
 	{
-#ifndef NDEBUG
-#pragma omp parallel for schedule(static)
-		for(int i=0; i<vInfo.size(); i++)
+    #ifndef NDEBUG
+    #pragma omp parallel for schedule(static)
+		for(size_t i=0; i<vInfo.size(); i++)
 		{
 			BlockInfo info = vInfo[i];
 			FluidBlock& b = *(FluidBlock*)info.ptrBlock;
@@ -47,15 +47,12 @@ protected:
 				assert(b(ix,iy).v < 1e10); assert(b(ix,iy).p < 1e10);
 			}
 		}
-#endif
+    #endif
 	}
 
 public:
-	GenericCoordinator(FluidGrid * grid) : grid(grid)
-	{
-		vInfo = grid->getBlocksInfo();
-	}
-
+	GenericCoordinator(SimulationData& s) : sim(s) { }
+  virtual ~GenericCoordinator() {}
 	virtual void operator()(const double dt) = 0;
 
 	virtual string getName() = 0;

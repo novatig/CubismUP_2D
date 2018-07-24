@@ -128,7 +128,9 @@ struct ObstacleBlock
   {
     assert(filled);
     for(size_t i=0; i<n_surfPoints; i++) {
-      float buf[]={pX[i],pY[i],P[i],fX[i],fY[i],vx[i],vy[i],vxDef[i],vyDef[i], surface[i]->dchidx, surface[i]->dchidy};
+      float buf[]={(float)pX[i], (float)pY[i], (float)P[i], (float)fX[i],
+        (float)fY[i], (float)vx[i], (float)vy[i], (float)vxDef[i],
+        (float)vyDef[i], (float)surface[i]->dchidx, (float)surface[i]->dchidy};
       fwrite (buf, sizeof(float), 11, pFile);
       fflush(pFile);
     }
