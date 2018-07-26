@@ -53,16 +53,12 @@ class OperatorViscousDrag : public GenericLabOperator
 class OperatorDiffusion : public GenericLabOperator
 {
  private:
-  const double mu, dt;
+  const double nu, dt;
 
  public:
-  OperatorDiffusion(double _dt, double _mu) : mu(_mu), dt(_dt)
+  OperatorDiffusion(double _dt, double _nu) : nu(_nu), dt(_dt)
   {
-    #ifndef _MULTIPHASE_
-      stencil = StencilInfo(-1,-1,0, 2,2,1, false, 2, 0,1);
-    #else
-      stencil = StencilInfo(-1,-1,0, 2,2,1, false, 3, 0,1,4);
-    #endif
+    stencil = StencilInfo(-1,-1,0, 2,2,1, false, 2, 0,1);
     stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
     stencil_end[0] = 2; stencil_end[1] = 2; stencil_end[2] = 1;
   }
@@ -72,7 +68,7 @@ class OperatorDiffusion : public GenericLabOperator
   template <typename Lab, typename BlockType>
   void operator()(Lab & lab, const BlockInfo& info, BlockType& o) const
   {
-    const Real prefactor = mu * dt / (info.h_gridpoint*info.h_gridpoint);
+    const Real fac = nu * dt / (info.h_gridpoint*info.h_gridpoint);
 
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix)
@@ -82,12 +78,9 @@ class OperatorDiffusion : public GenericLabOperator
       const FluidElement& phiS = lab(ix,iy-1);
       const FluidElement& phiE = lab(ix+1,iy);
       const FluidElement& phiW = lab(ix-1,iy);
-      const Real fac = prefactor/phi.rho;
+
       o(ix,iy).tmpU = phi.u + fac * (phiN.u +phiS.u +phiE.u +phiW.u -phi.u*4);
       o(ix,iy).tmpV = phi.v + fac * (phiN.v +phiS.v +phiE.v +phiW.v -phi.v*4);
-      #ifdef _MULTIPHASE_
-      o(ix,iy).tmp=phi.rho+fac*(phiN.rho+phiS.rho+phiE.rho+phiW.rho-phi.rho*4);
-      #endif
     }
    }
 };
@@ -99,19 +92,14 @@ class CoordinatorDiffusion : public GenericCoordinator
   {
     #ifndef NDEBUG
     #pragma omp parallel for schedule(static)
-    for(size_t i=0; i<vInfo.size(); i++)
-    {
+    for(size_t i=0; i<vInfo.size(); i++) {
       BlockInfo info = vInfo[i];
       FluidBlock& b = *(FluidBlock*)info.ptrBlock;
 
       for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-        for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-        {
+        for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
           b(ix,iy).tmpU = 0;
           b(ix,iy).tmpV = 0;
-          #ifdef _MULTIPHASE_
-            b(ix,iy).tmp = 0;
-          #endif
         }
     }
     #endif
@@ -120,19 +108,14 @@ class CoordinatorDiffusion : public GenericCoordinator
   inline void update()
   {
     #pragma omp parallel for schedule(static)
-    for(size_t i=0; i<vInfo.size(); i++)
-    {
+    for(size_t i=0; i<vInfo.size(); i++) {
       BlockInfo info = vInfo[i];
       FluidBlock& b = *(FluidBlock*)info.ptrBlock;
 
       for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-        for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-        {
+        for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
           b(ix,iy).u = b(ix,iy).tmpU;
           b(ix,iy).v = b(ix,iy).tmpV;
-          #ifdef _MULTIPHASE_
-            b(ix,iy).rho = b(ix,iy).tmp;
-          #endif
         }
     }
    }

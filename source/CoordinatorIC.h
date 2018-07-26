@@ -28,7 +28,7 @@ class OperatorIC : public GenericOperator
 
         block(ix,iy).u = 0;
         block(ix,iy).v = 0;
-        block(ix,iy).rho = 1;
+        block(ix,iy).invRho = 1;
 
         block(ix,iy).p = 0;
         block(ix,iy).pOld = 0;

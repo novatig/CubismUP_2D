@@ -34,8 +34,8 @@ class PoissonSolverScalarFFTW
 
   Profiler profiler;
   const int bs[2] = {BlockType::sizeX, BlockType::sizeY};
-  const size_t nx = grid.getBlocksPerDimension(0)*bs[0];
-  const size_t ny = grid.getBlocksPerDimension(1)*bs[1];
+  const size_t nx = grid.getBlocksPerDimension(1)*bs[1];
+  const size_t ny = grid.getBlocksPerDimension(0)*bs[0];
   const size_t ny_hat = ny/2 +1;
   const Real norm_factor = 1./(nx*ny);
   const Real h = grid.getBlocksInfo().front().h_gridpoint;
@@ -77,16 +77,16 @@ protected:
 
   void _cub2fftw()
   {
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for(size_t i=0; i<infos.size(); ++i) {
       const BlockInfo& info = infos[i];
       BlockType& b = *(BlockType*)infos[i].ptrBlock;
       const size_t blocki = bs[0]*info.index[0], blockj = bs[1]*info.index[1];
-      const size_t offset = blockj + 2*ny_hat * blocki;
+      const size_t offset = blocki + 2*ny_hat * blockj;
 
       for(int iy=0; iy<BlockType::sizeY; iy++)
       for(int ix=0; ix<BlockType::sizeX; ix++) {
-        const size_t dest_index = offset + iy + 2*ny_hat * ix;
+        const size_t dest_index = offset + ix + 2*ny_hat * iy;
         rhs[dest_index] = b(ix,iy).tmp;
       }
     }
@@ -98,7 +98,7 @@ protected:
     const Real factor = h2*norm_factor;
     mycomplex * const in_out = (mycomplex *)rhs;
 
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for(size_t i=0; i<nx; ++i)
       for(size_t j = 0; j<ny_hat; ++j)
       {
@@ -131,7 +131,7 @@ protected:
 
     const Real waveFactX = 2.0*M_PI/(nx*h);
     const Real waveFactY = 2.0*M_PI/(ny*h);
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for(size_t i=0; i<nx; ++i)
       for(size_t j = 0; j<ny_hat; ++j) {
         const int linidx = i * ny_hat + j;
@@ -150,16 +150,16 @@ protected:
 
   void _fftw2cub()
   {
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for(size_t i=0; i<infos.size(); ++i) {
       const BlockInfo& info = infos[i];
       BlockType& b = *(BlockType*)infos[i].ptrBlock;
       const size_t blocki = bs[0]*info.index[0], blockj = bs[1]*info.index[1];
-      const size_t offset = blockj + 2*ny_hat * blocki;
+      const size_t offset = blocki + 2*ny_hat * blockj;
 
       for(int iy=0; iy<BlockType::sizeY; iy++)
       for(int ix=0; ix<BlockType::sizeX; ix++) {
-        const size_t src_index = offset + iy + 2*ny_hat * ix;
+        const size_t src_index = offset + ix + 2*ny_hat * iy;
         b(ix,iy).tmp = rhs[src_index];
       }
     }
@@ -172,9 +172,9 @@ public:
   void solve(const bool spectral=true)
   {
 
-    profiler.push_start("CUB2FFTW");
-      _cub2fftw();
-    profiler.pop_stop();
+    //profiler.push_start("CUB2FFTW");
+    //  _cub2fftw();
+    //profiler.pop_stop();
 
     profiler.push_start("FFTW FORWARD");
     #ifndef _FLOAT_PRECISION_
@@ -183,7 +183,6 @@ public:
       fftwf_execute(fwd);
     #endif // _FLOAT_PRECISION_
     profiler.pop_stop();
-    //assert((1./gsize[0]-h) < 2.2e-16);
 
     profiler.push_start("SOLVE");
       if(spectral) _solveSpectral();
@@ -220,5 +219,17 @@ public:
 
     fftwf_free(rhs);
     #endif // _FLOAT_PRECISION_
+  }
+
+  inline size_t _offset(const BlockInfo &info) const {
+    const size_t blocki = bs[0]*info.index[0], blockj = bs[1]*info.index[1];
+    return blocki + 2*ny_hat * blockj;
+  }
+  inline size_t _dest(const size_t offset, const int iy, const int ix) const {
+    return offset + ix + 2*ny_hat * iy;
+  }
+  inline void _cub2fftw(const size_t offset, const int iy, const int ix, const Real ret) const {
+    const size_t dest_index = _dest(offset, iy, ix);
+    rhs[dest_index] = ret;
   }
 };

@@ -50,7 +50,7 @@ void Sim_FSI_Gravity::init()
 
   pipeline.push_back( new CoordinatorPenalization(sim) );
 
-  #if 1
+  #if 1 // in one sweep advect, diffuse, add hydrostatic
     pipeline.push_back( new CoordinatorMultistep<Lab>(sim) );
   #else
     pipeline.push_back( new CoordinatorAdvection<Lab>(sim) );
@@ -76,9 +76,8 @@ void Sim_FSI_Gravity::init()
 double Sim_FSI_Gravity::calcMaxTimestep()
 {
   const Real maxU = findMaxUOMP( sim ); assert(maxU>=0);
-  const double maxMu = sim.nu / sim.minRho();
   const double h = sim.getH();
-  const double dtFourier = h*h/maxMu, dtCFL = maxU<2.2e-16? 1 : h/maxU;
+  const double dtFourier = h*h/sim.nu, dtCFL = maxU<2.2e-16? 1 : h/maxU;
   sim.dt = sim.CFL * std::min(dtCFL, dtFourier);
 
   const double maxUb = sim.maxRelSpeed();
@@ -87,16 +86,16 @@ double Sim_FSI_Gravity::calcMaxTimestep()
 
   if(sim.dlm > 1) sim.lambda = sim.dlm / sim.dt;
 
-  if (sim.step < 1000)
+  if (sim.step < 100)
   {
-    const double x = (sim.step+1)/1000;
+    const double x = (sim.step+1)/100;
     const double logCFL = std::log(sim.CFL);
     const double rampCFL = std::exp(-5*(1-x) + logCFL * x);
     sim.dt = rampCFL*std::min({dtCFL, dtFourier, dtBody});
   }
   #ifndef RL_TRAIN
     cout << "time, dt (Fourier, CFL, body): "
-    <<sim.time<<" "<<sim.dt<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody<<endl;
+    <<sim.time<<" "<<sim.dt<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody<<" "<<sim.uinfx<<" "<<sim.uinfy<<endl;
   #endif
 
   return sim.dt;

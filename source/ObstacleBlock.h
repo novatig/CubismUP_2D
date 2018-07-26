@@ -75,6 +75,7 @@ struct ObstacleBlock
   {
     clear_surface();
     memset(chi, 0, sizeof(Real)*sizeX*sizeY);
+    memset(rho, 0, sizeof(Real)*sizeX*sizeY);
     memset(udef, 0, sizeof(Real)*sizeX*sizeY*2);
   }
 
@@ -85,12 +86,13 @@ struct ObstacleBlock
     udef[iy][ix][0] = _udef; udef[iy][ix][1] = _vdef;
     rho[iy][ix] = _rho; chi[iy][ix] = _chi;
 
-    if (delta>1e-6)
+    if (delta>0)
     {
       n_surfPoints++;
+      // multiply by cell area h^2 and by 0.5/h due to finite diff of gradHX
       const Real dchidx = -delta*gradUX * h*h * .5/h; //gcc will
       const Real dchidy = -delta*gradUY * h*h * .5/h; //sort it out
-      const Real _delta =  delta        * h*h;
+      const Real _delta =  delta        * h*h * .5/h;
       surface.push_back(new surface_data(ix,iy,dchidx,dchidy,_delta));
     }
   }
@@ -103,12 +105,13 @@ struct ObstacleBlock
     udef[iy][ix][0] = 0; udef[iy][ix][1] = 0;
     rho[iy][ix] = _rho; chi[iy][ix] = _chi;
 
-    if (delta>1e-6)
+    if (delta>0)
     {
       n_surfPoints++;
+      // multiply by cell area h^2 and by 0.5/h due to finite diff of gradHX
       const Real dchidx = -delta*gradUX * h*h * .5/h; //gcc will
       const Real dchidy = -delta*gradUY * h*h * .5/h; //sort it out
-      const Real _delta =  delta        * h*h;
+      const Real _delta =  delta        * h*h * .5/h;
       surface.push_back(new surface_data(ix,iy,dchidx,dchidy,_delta));
     }
   }

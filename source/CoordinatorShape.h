@@ -29,7 +29,6 @@ class CoordinatorComputeShape : public GenericCoordinator
 
     for( const auto& shape : sim.shapes )
     {
-      shape->create(vInfo);
       shape->updatePosition(dt);
       Real p[2] = {0,0};
       shape->getCentroid(p);
@@ -44,7 +43,7 @@ class CoordinatorComputeShape : public GenericCoordinator
       FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
       for(int iy=0; iy<FluidBlock::sizeY; ++iy)
       for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
-        b(ix,iy).rho = 1;
+        b(ix,iy).invRho = 1;
         b(ix,iy).tmp = 0;
       }
     }

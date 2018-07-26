@@ -30,8 +30,8 @@ class CoordinatorGravity : public GenericCoordinator
 
       for(int iy=0; iy<FluidBlock::sizeY; ++iy)
       for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
-        b(ix,iy).u += dt*gravity[0]*(1-1/b(ix,iy).rho);
-        b(ix,iy).v += dt*gravity[1]*(1-1/b(ix,iy).rho);
+        b(ix,iy).u += dt*gravity[0]*(1 - b(ix,iy).invRho);
+        b(ix,iy).v += dt*gravity[1]*(1 - b(ix,iy).invRho);
       }
     }
   }

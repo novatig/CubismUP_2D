@@ -33,17 +33,17 @@ protected:
 			for(int iy=0; iy<FluidBlock::sizeY; ++iy)
 			for(int ix=0; ix<FluidBlock::sizeX; ++ix)
 			{
-				if (std::isnan(b(ix,iy).rho) || std::isnan(b(ix,iy).u) ||
+				if (std::isnan(b(ix,iy).invRho) || std::isnan(b(ix,iy).u) ||
 				std::isnan(b(ix,iy).v) || std::isnan(b(ix,iy).p))
 					cout << infoText.c_str() <<endl;
-				if (b(ix,iy).rho <= 0) cout << infoText.c_str() << endl;
+				if (b(ix,iy).invRho <= 0) cout << infoText.c_str() << endl;
 
-				assert(b(ix,iy).rho > 0);
-				assert(!std::isnan(b(ix,iy).rho)); assert(!std::isnan(b(ix,iy).u));
+				assert(b(ix,iy).invRho > 0);
+				assert(!std::isnan(b(ix,iy).invRho)); assert(!std::isnan(b(ix,iy).u));
 				assert(!std::isnan(b(ix,iy).v)); assert(!std::isnan(b(ix,iy).p));
 				assert(!std::isnan(b(ix,iy).pOld)); assert(!std::isnan(b(ix,iy).tmpU));
 				assert(!std::isnan(b(ix,iy).tmpV)); assert(!std::isnan(b(ix,iy).tmp));
-				assert(b(ix,iy).rho < 1e10); assert(b(ix,iy).u < 1e10);
+				assert(b(ix,iy).invRho < 1e10); assert(b(ix,iy).u < 1e10);
 				assert(b(ix,iy).v < 1e10); assert(b(ix,iy).p < 1e10);
 			}
 		}

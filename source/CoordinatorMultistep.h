@@ -58,7 +58,7 @@ class OperatorMultistep : public GenericLabOperator
       const Real dvx = u>0 ? 2*vpx+3*vcc-6*vlx+vLx : -vPx+6*vpx-3*vcc-2*vlx;
       const Real dvy = v>0 ? 2*vpy+3*vcc-6*vly+vLy : -vPy+6*vpy-3*vcc-2*vly;
 
-      const Real gravFac = dt * (1 - 1/o(ix,iy).rho);
+      const Real gravFac = dt * (1 - o(ix,iy).invRho);
       const Real duGrav = g[0] * gravFac, dvGrav = g[1] * gravFac;
       const Real duDiff = diffac * (upx + upy + ulx + uly - 4 * ucc);
       const Real dvDiff = diffac * (vpx + vpy + vlx + vly - 4 * vcc);

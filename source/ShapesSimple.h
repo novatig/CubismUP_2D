@@ -73,6 +73,66 @@ class Disk : public Shape
       }
     }
 
+    removeMoments(vInfo);
+    for (auto & block : obstacleBlocks) block.second->allocate_surface();
+  }
+};
+
+class HalfDisk : public Shape
+{
+ protected:
+  const Real radius;
+
+ public:
+  Disk( SimulationData& s, ArgumentParser& p, Real C[2] ) :
+  Shape(s,p,C), radius( p("-radius").asDouble(0.1) ) {
+    printf("Created a Disk with: R:%f rho:%f\n",radius,rhoS);
+  }
+
+  Real getCharLength() const override
+  {
+    return 2 * radius;
+  }
+
+  void outputSettings(ostream &outStream) const override
+  {
+    outStream << "HalfDisk\n";
+    outStream << "radius " << radius << endl;
+
+    Shape::outputSettings(outStream);
+  }
+
+  void create(const vector<BlockInfo>& vInfo) override
+  {
+    const Real h =  vInfo[0].h_gridpoint;
+    for(auto & entry : obstacleBlocks) delete entry.second;
+    obstacleBlocks.clear();
+
+    {
+      FillBlocks_HalfCylinder kernel(radius, h, center, rhoS, orientation);
+      for(size_t i=0; i<vInfo.size(); i++) {
+        if(kernel._is_touching(vInfo[i])) { //position of sphere + radius + 2*h safety
+          assert(obstacleBlocks.find(vInfo[i].blockID) == obstacleBlocks.end());
+          obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
+          obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
+        }
+      }
+    }
+
+    #pragma omp parallel
+    {
+      FillBlocks_HalfCylinder kernel(radius, h, center, rhoS, orientation);
+
+      #pragma omp for schedule(dynamic)
+      for(size_t i=0; i<vInfo.size(); i++) {
+        const auto pos = obstacleBlocks.find(vInfo[i].blockID);
+        if(pos == obstacleBlocks.end()) continue;
+        FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+        kernel(vInfo[i], b, pos->second);
+      }
+    }
+
+    removeMoments(vInfo);
     for (auto & block : obstacleBlocks) block.second->allocate_surface();
   }
 };
@@ -106,21 +166,19 @@ class DiskVarDensity : public Shape
     const Real h =  vInfo[0].h_gridpoint;
     for(auto & entry : obstacleBlocks) delete entry.second;
     obstacleBlocks.clear();
-
-    FillBlocks_Cylinder kernel(radius, h, center, rhoS);
-    for(size_t i=0; i<vInfo.size(); i++) {
-      if(kernel._is_touching(vInfo[i])) {
-        assert(obstacleBlocks.find(vInfo[i].blockID) == obstacleBlocks.end());
-        obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
-        obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
+    {
+      FillBlocks_Cylinder kernel(radius, h, center, rhoS);
+      for(size_t i=0; i<vInfo.size(); i++) {
+        if(kernel._is_touching(vInfo[i])) {
+          assert(obstacleBlocks.find(vInfo[i].blockID) == obstacleBlocks.end());
+          obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
+          obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
+        }
       }
     }
-
     #pragma omp parallel
     {
-      FillBlocks_Cylinder kernelC(radius, h, center, rhoS);
-      //assumption: if touches cylinder, it touches half cylinder:
-      FillBlocks_HalfCylinder kernelH(radius, h, center, rhoS, orientation);
+      FillBlocks_VarRhoCylinder kernel(radius, h, center, rhoTop, rhoBot, orientation);
 
       #pragma omp for schedule(dynamic)
       for(size_t i=0; i<vInfo.size(); i++) {
@@ -128,11 +186,11 @@ class DiskVarDensity : public Shape
         const auto pos = obstacleBlocks.find(info.blockID);
         if(pos == obstacleBlocks.end()) continue;
         FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-        kernelC(info, b, pos->second);
-        kernelH(info, b, pos->second);
+        kernel(info, b, pos->second);
       }
     }
 
+    removeMoments(vInfo);
     for (auto & block : obstacleBlocks) block.second->allocate_surface();
   }
 

@@ -19,15 +19,15 @@
 struct FluidElement
 {
   Real u, v, tmpU, tmpV; //used by advection and diffusion
-	Real rho, tmp, p, pOld; //used by pressure
+	Real invRho, tmp, p, pOld; //used by pressure
 
   FluidElement() :
-  u(0), v(0), tmpU(0), tmpV(0), rho(0), tmp(0), p(0), pOld(0)
+  u(0), v(0), tmpU(0), tmpV(0), invRho(0), tmp(0), p(0), pOld(0)
   {}
 
   void clear()
   {
-    u = v = tmpU = tmpV = rho = tmp = p = pOld = 0;
+    u = v = tmpU = tmpV = invRho = tmp = p = pOld = 0;
   }
 };
 
@@ -37,7 +37,7 @@ struct FluidVTKStreamer
 
 	void operate(FluidElement input, Real output[channels])
 	{
-		output[0] = input.rho;
+		output[0] = 1/input.invRho;
 		output[1] = input.u;
 		output[2] = input.v;
 		output[3] = input.p;
@@ -96,7 +96,7 @@ struct StreamerGridPoint
   void operate(const FluidElement& input, Real output[channels]) const
   {
     abort();
-    output[0] = input.rho;
+    output[0] = input.invRho;
     output[1] = input.u;
     output[2] = input.v;
     output[3] = input.p;
@@ -109,7 +109,7 @@ struct StreamerGridPoint
   void operate(const Real input[channels], FluidElement& output) const
   {
     abort();
-    output.rho  = input[0];
+    output.invRho  = input[0];
     output.u    = input[1];
     output.v    = input[2];
     output.p    = input[3];
@@ -141,7 +141,7 @@ struct StreamerSerialization
 	void operate(const int ix, const int iy, const int iz, Real output[NCHANNELS]) const
 	{
 		const FluidElement& input = ref.data[iz][iy][ix];
-		output[0] = input.rho;
+		output[0] = input.invRho;
 		output[1] = input.u;
 		output[2] = input.v;
 		output[3] = input.p;
@@ -155,7 +155,7 @@ struct StreamerSerialization
 	void operate(const Real input[NCHANNELS], const int ix, const int iy, const int iz) const
 	{
 		FluidElement& output = ref.data[iz][iy][ix];
-		output.rho  = input[0];
+		output.invRho  = input[0];
 		output.u    = input[1];
 		output.v    = input[2];
 		output.p    = input[3];
@@ -171,7 +171,7 @@ struct StreamerSerialization
 		const FluidElement& input = ref.data[iz][iy][ix];
 
 		switch(field) {
-			case 0: *ovalue = input.rho; break;
+			case 0: *ovalue = input.invRho; break;
 			case 1: *ovalue = input.u; break;
 			case 2: *ovalue = input.v; break;
 			case 3: *ovalue = input.p; break;
@@ -189,7 +189,7 @@ struct StreamerSerialization
 		FluidElement& output = ref.data[iz][iy][ix];
 
 		switch(field) {
-			case 0:  output.rho  = ivalue; break;
+			case 0:  output.invRho  = ivalue; break;
 			case 1:  output.u    = ivalue; break;
 			case 2:  output.v    = ivalue; break;
 			case 3:  output.p    = ivalue; break;

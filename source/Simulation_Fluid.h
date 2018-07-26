@@ -153,42 +153,4 @@ class Simulation_Fluid
   }
 };
 
-#if 0
-void testNans()
-{
-  #ifndef NDEBUG
-  {
-    vector<BlockInfo> vInfo = grid->getBlocksInfo();
-    const int N = vInfo.size();
-
-    #pragma omp parallel for schedule(static)
-    for(int i=0; i<N; i++)
-    {
-      BlockInfo info = vInfo[i];
-      FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-
-      for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-      for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-      {
-        if(std::isnan(b(ix,iy).rho)||std::isnan(b(ix,iy).u)||
-          std::isnan(b(ix,iy).v)||std::isnan(b(ix,iy).p)) cout<<"dump"<<endl;
-
-        if (b(ix,iy).rho <= 0)
-          cout << "dump " << b(ix,iy).rho << "\t" << info.index[0] << " " << info.index[1] << " " << ix << " " << iy << endl;
-
-        assert(b(ix,iy).rho > 0);
-        assert(!std::isnan(b(ix,iy).rho));
-        assert(!std::isnan(b(ix,iy).u));
-        assert(!std::isnan(b(ix,iy).v));
-        assert(!std::isnan(b(ix,iy).p));
-        assert(!std::isnan(b(ix,iy).pOld));
-        assert(!std::isnan(b(ix,iy).tmpU));
-        assert(!std::isnan(b(ix,iy).tmpV));
-        assert(!std::isnan(b(ix,iy).tmp));
-      }
-    }
-  }
-  #endif
-}
-#endif
 #endif

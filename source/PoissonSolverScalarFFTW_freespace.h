@@ -34,8 +34,9 @@ class PoissonSolverScalarFFTW
 
   Profiler profiler;
   const int bs[2] = {BlockType::sizeX, BlockType::sizeY};
-  const size_t nx = grid.getBlocksPerDimension(0)*bs[0];
-  const size_t ny = grid.getBlocksPerDimension(1)*bs[1];
+  // for fftw we swap x and y directions for ease of copying to/from grid
+  const size_t nx = grid.getBlocksPerDimension(1)*bs[1];
+  const size_t ny = grid.getBlocksPerDimension(0)*bs[0];
   const size_t mx = 2 * nx - 1;
   const size_t my = 2 * ny - 1;
   const size_t my_hat = my/2 +1;
@@ -139,16 +140,16 @@ class PoissonSolverScalarFFTW
 
   void _cub2fftw() const
   {
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for(size_t i=0; i<infos.size(); ++i) {
       const BlockInfo& info = infos[i];
       BlockType& b = *(BlockType*)infos[i].ptrBlock;
       const size_t blocki = bs[0]*info.index[0], blockj = bs[1]*info.index[1];
-      const size_t offset = blockj + 2*my_hat * blocki;
+      const size_t offset = blocki + 2*my_hat * blockj;
 
       for(int iy=0; iy<BlockType::sizeY; iy++)
       for(int ix=0; ix<BlockType::sizeX; ix++) {
-        const size_t dest_index = offset + iy + 2*my_hat * ix;
+        const size_t dest_index = offset + ix + 2*my_hat * iy;
         rhs[dest_index] = b(ix,iy).tmp;
       }
     }
@@ -159,7 +160,7 @@ class PoissonSolverScalarFFTW
     mycomplex * const in_out = (mycomplex *)rhs;
     const Real* const G_hat = m_kernel;
 
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for(size_t i=0; i<mx;     ++i)
     for(size_t j=0; j<my_hat; ++j) {
       const int linidx = i * my_hat + j;
@@ -170,17 +171,16 @@ class PoissonSolverScalarFFTW
 
   void _fftw2cub() const
   {
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for(size_t i=0; i<infos.size(); ++i) {
       const BlockInfo& info = infos[i];
       BlockType& b = *(BlockType*)infos[i].ptrBlock;
       const size_t blocki = bs[0]*info.index[0], blockj = bs[1]*info.index[1];
-      const size_t offset = blockj + 2*my_hat * blocki;
+      const size_t offset = blocki + 2*my_hat * blockj;
 
       for(int iy=0; iy<BlockType::sizeY; iy++)
       for(int ix=0; ix<BlockType::sizeX; ix++) {
-        const size_t src_index = offset + iy + 2*my_hat * ix;
-        assert(src_index>=0 && src_index<mx*my_hat*2);
+        const size_t src_index = offset + ix + 2*my_hat * iy;
         b(ix,iy).tmp = rhs[src_index];
       }
     }
@@ -190,37 +190,36 @@ class PoissonSolverScalarFFTW
 
   PoissonSolverScalarFFTW(TGrid& _grid) : grid(_grid) { _setup(); }
 
-  void solve(const bool spectral=false)
+  void solve()
   {
 
-    profiler.push_start("CUB2FFTW");
-    _cub2fftw();
-    profiler.pop_stop();
+    //profiler.push_start("CUB2FFTW");
+    //_cub2fftw();
+    //profiler.pop_stop();
 
-    profiler.push_start("FFTW FORWARD");
+    //profiler.push_start("FFTW FORWARD");
     #ifndef _FLOAT_PRECISION_
       fftw_execute(fwd);
     #else // _FLOAT_PRECISION_
       fftwf_execute(fwd);
     #endif // _FLOAT_PRECISION_
-    profiler.pop_stop();
-    //assert((1./gsize[0]-h) < 2.2e-16);
+    //profiler.pop_stop();
 
-    profiler.push_start("SOLVE");
+    //profiler.push_start("SOLVE");
     _solve();
-    profiler.pop_stop();
+    //profiler.pop_stop();
 
-    profiler.push_start("FFTW INVERSE");
+    //profiler.push_start("FFTW INVERSE");
     #ifndef _FLOAT_PRECISION_
       fftw_execute(bwd);
     #else // _FLOAT_PRECISION_
       fftwf_execute(bwd);
     #endif // _FLOAT_PRECISION_
-    profiler.pop_stop();
+    //profiler.pop_stop();
 
-    profiler.push_start("FFTW2CUB");
+    //profiler.push_start("FFTW2CUB");
     _fftw2cub();
-    profiler.pop_stop();
+    //profiler.pop_stop();
 
     //profiler.printSummary();
   }
@@ -244,5 +243,17 @@ class PoissonSolverScalarFFTW
     fftwf_free(m_kernel);
 
     #endif // _FLOAT_PRECISION_
+  }
+
+  inline size_t _offset(const BlockInfo &info) const {
+    const size_t blocki = bs[0]*info.index[0], blockj = bs[1]*info.index[1];
+    return blocki + 2*my_hat * blockj;
+  }
+  inline size_t _dest(const size_t offset, const int iy, const int ix) const {
+    return offset + ix + 2*my_hat * iy;
+  }
+  inline void _cub2fftw(const size_t offset, const int iy, const int ix, const Real ret) const {
+    const size_t dest_index = _dest(offset, iy, ix);
+    rhs[dest_index] = ret;
   }
 };

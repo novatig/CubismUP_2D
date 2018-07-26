@@ -70,7 +70,7 @@ SMARTIESDIR = ../../smarties/source/Communicators/
 CPPFLAGS += -I$(SMARTIESDIR)
 OBJECTS += Communicator.o
 VPATH := $(SRC_DIR):$(CUBISM_DIR):$(SMARTIESDIR)
-all: blowfish 
+all: blowfish
 else
 VPATH := $(SRC_DIR):$(CUBISM_DIR)
 all: simulation
@@ -89,5 +89,5 @@ simulation: main.o $(OBJECTS)
 
 
 clean:
-	rm -f simulation test
-	rm -f $(OBJECTS) $(OBJECTS_TEST)
+	rm -f simulation blowfish
+	rm -f *.o *.d

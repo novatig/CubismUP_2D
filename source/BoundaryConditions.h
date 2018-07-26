@@ -78,7 +78,7 @@ class BoundaryCondition
     for(int iy=s[1]; iy<e[1]; iy++)
     for(int ix=s[0]; ix<e[0]; ix++)
     {
-      (*this)(ix,iy).rho  = p.rho;
+      (*this)(ix,iy).invRho  = p.invRho;
       (*this)(ix,iy).tmp  = p.tmp;
 
       // dirichlet BC
@@ -105,7 +105,7 @@ class BoundaryCondition
     for(int iy=s[1]; iy<e[1]; iy++)
     for(int ix=s[0]; ix<e[0]; ix++)
     {
-      (*this)(ix,iy).rho  = (*this)(ix, TBlock::sizeY-1).rho;//p.rho;
+      (*this)(ix,iy).invRho  = (*this)(ix, TBlock::sizeY-1).invRho;//p.rho;
       (*this)(ix,iy).tmp  = (*this)(ix, TBlock::sizeY-1).tmp;//p.rho;
 
       // dirichlet BC
@@ -133,7 +133,7 @@ class BoundaryCondition
     for(int iy=s[1]; iy<e[1]; iy++)
     for(int ix=s[0]; ix<e[0]; ix++)
     {
-      (*this)(ix,iy).rho  = p.rho;
+      (*this)(ix,iy).invRho  = p.invRho;
       (*this)(ix,iy).tmp  = p.tmp;
 
       // dirichlet BC
@@ -160,7 +160,7 @@ class BoundaryCondition
     for(int iy=s[1]; iy<e[1]; iy++)
     for(int ix=s[0]; ix<e[0]; ix++)
     {
-      (*this)(ix,iy).rho  = p.rho;
+      (*this)(ix,iy).invRho  = p.invRho;
       (*this)(ix,iy).tmp  = p.tmp;
 
       // dirichlet BC
@@ -187,7 +187,7 @@ class BoundaryCondition
     for(int iy=s[1]; iy<e[1]; iy++)
     for(int ix=s[0]; ix<e[0]; ix++)
     {
-      (*this)(ix,iy).rho  = p.rho;
+      (*this)(ix,iy).invRho  = p.invRho;
       (*this)(ix,iy).tmp  = p.tmp;
 
       // dirichlet BC
@@ -227,7 +227,7 @@ class BoundaryCondition
                 const Real r = sqrt(p[0]*p[0] + p[1]*p[1]);
         const Real invR = 1./r;
 
-        (*this)(ix,iy).rho = r;
+        (*this)(ix,iy).invRho = r;
         (*this)(ix,iy).u   =   sin(p[1])*cos(r*M_PI/2)*invR;//-p[1];//
         (*this)(ix,iy).v   =  -sin(p[0])*cos(r*M_PI/2)*invR;// p[0];//
          // what about pressure?

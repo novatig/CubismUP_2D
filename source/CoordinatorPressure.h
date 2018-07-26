@@ -22,13 +22,16 @@ class OperatorDivergenceSplit : public GenericLabOperator
  private:
   const double dt;
   const Real rho0;
+  const PoissonSolverScalarFFTW<FluidGrid> * const solver;
 
   static inline Real mean(const Real a, const Real b) {return .5 * (a + b);}
   //harmonic mean: (why?)
   //inline Real mean(const Real a, const Real b) const {return 2.*a*b/(a+b);}
 
  public:
-  OperatorDivergenceSplit(double _dt, double _rho0) : dt(_dt), rho0(_rho0)
+  OperatorDivergenceSplit(double _dt, double _rho0,
+    const PoissonSolverScalarFFTW<FluidGrid> * const ps) :
+    dt(_dt), rho0(_rho0), solver(ps)
   {
     stencil = StencilInfo(-1,-1,0, 2,2,1, false, 5, 0,1,4,6,7);
     stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
@@ -42,15 +45,16 @@ class OperatorDivergenceSplit : public GenericLabOperator
   {
     const Real invH2 = 1./(info.h_gridpoint*info.h_gridpoint);
     const Real factor = rho0 * 0.5/(info.h_gridpoint * dt);
+    const size_t offset = solver->_offset(info);
 
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix)
     {
-      FluidElement& phi  = lab(ix  ,iy  );
-      FluidElement& phiN = lab(ix  ,iy+1);
-      FluidElement& phiS = lab(ix  ,iy-1);
-      FluidElement& phiE = lab(ix+1,iy  );
-      FluidElement& phiW = lab(ix-1,iy  );
+      const FluidElement& phi  = lab(ix  ,iy  );
+      const FluidElement& phiN = lab(ix  ,iy+1);
+      const FluidElement& phiS = lab(ix  ,iy-1);
+      const FluidElement& phiE = lab(ix+1,iy  );
+      const FluidElement& phiW = lab(ix-1,iy  );
 
       const Real pN = 2*phiN.p - phiN.pOld;
       const Real pS = 2*phiS.p - phiS.pOld;
@@ -58,15 +62,15 @@ class OperatorDivergenceSplit : public GenericLabOperator
       const Real pE = 2*phiE.p - phiE.pOld;
       const Real p  = 2*phi.p  - phi.pOld;
 
-      const Real fN = (1-rho0/mean(phiN.rho,phi.rho))*(pN - p ); // x1/h later
-      const Real fS = (1-rho0/mean(phiS.rho,phi.rho))*(p  - pS);
-      const Real fE = (1-rho0/mean(phiE.rho,phi.rho))*(pE - p );
-      const Real fW = (1-rho0/mean(phiW.rho,phi.rho))*(p  - pW);
+      // times 1/h later
+      const Real fN = (1-rho0*mean(phiN.invRho,phi.invRho))*(pN - p );
+      const Real fS = (1-rho0*mean(phiS.invRho,phi.invRho))*(p  - pS);
+      const Real fE = (1-rho0*mean(phiE.invRho,phi.invRho))*(pE - p );
+      const Real fW = (1-rho0*mean(phiW.invRho,phi.invRho))*(p  - pW);
 
       const Real divUfac = factor * (phiE.u-phiW.u + phiN.v-phiS.v);
       const Real hatPfac =  invH2 * (fE - fW + fN - fS);
-
-      o(ix, iy).tmp  = divUfac + hatPfac;
+      solver->_cub2fftw(offset, iy, ix, divUfac + hatPfac);
     }
   }
 };
@@ -78,7 +82,8 @@ class OperatorGradPSplit : public GenericLabOperator
   const double dt;
 
  public:
-  OperatorGradPSplit(double _dt, double _rho0) : rho0(_rho0), dt(_dt)
+  OperatorGradPSplit(double _dt, double _rho0,
+    const PoissonSolverScalarFFTW<FluidGrid> * const ps) : rho0(_rho0), dt(_dt)
   {
     stencil = StencilInfo(-1,-1,0, 2,2,1, false, 3, 5,6,7);
     stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
@@ -92,7 +97,7 @@ class OperatorGradPSplit : public GenericLabOperator
   {
     const double dh = info.h_gridpoint;
     const Real prefactor = -.5 * dt / dh;
-
+    const Real invRho0 = 1/rho0;
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix)
     {
@@ -108,12 +113,12 @@ class OperatorGradPSplit : public GenericLabOperator
       const Real pE = 2*phiE.p - phiE.pOld;
 
       // divU contains the pressure correction after the Poisson solver
-      o(ix,iy).u += prefactor/rho0 * (phiE.tmp - phiW.tmp);
-      o(ix,iy).v += prefactor/rho0 * (phiN.tmp - phiS.tmp);
+      o(ix,iy).u += prefactor*invRho0 * (phiE.tmp - phiW.tmp);
+      o(ix,iy).v += prefactor*invRho0 * (phiN.tmp - phiS.tmp);
 
       // add the split explicit term
-      o(ix,iy).u += prefactor * (pE - pW) * (1./phi.rho - 1/rho0);
-      o(ix,iy).v += prefactor * (pN - pS) * (1./phi.rho - 1/rho0);
+      o(ix,iy).u += prefactor * (pE - pW) * (phi.invRho - invRho0);
+      o(ix,iy).v += prefactor * (pN - pS) * (phi.invRho - invRho0);
     }
   }
 };
@@ -196,11 +201,11 @@ class CoordinatorPressure : public GenericCoordinator
   {
     #pragma omp parallel
     {
-      Operator kernel(dt, minRho);
+      Operator kernel(dt, minRho, &pressureSolver);
       Lab mylab;
       mylab.prepare(*(sim.grid), kernel.stencil_start, kernel.stencil_end, false);
 
-      #pragma omp for schedule(dynamic)
+      #pragma omp for schedule(static)
       for(size_t i=0; i<vInfo.size(); i++) {
         const BlockInfo& info = vInfo[i];
         mylab.load(info, 0);

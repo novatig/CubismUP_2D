@@ -31,7 +31,7 @@ class Blowfish : public Shape
   const Real finWidth  = 0.1*radius; //fins
   const Real finAngle0 = M_PI/6; //fins
 
-  const Real attachDist = radius+finWidth;
+  const Real attachDist = radius + std::max(finWidth, (Real)sim.getH()*2);
   //Real powerOutput = 0, old_powerOutput = 0;
   const Real rhoF = 1; //ASSUME RHO FLUID == 1
   const Real lengthscale = 2*radius;
@@ -58,8 +58,9 @@ class Blowfish : public Shape
     d_gm[0] = 0;
     d_gm[1] = -(CentTop*MassTop + CentBot*MassBot + CentFin*MassFin)/(MassTop + MassBot + MassFin);
 
-    centerOfMass[0]=center[0]-cos(orientation)*d_gm[0]+sin(orientation)*d_gm[1];
-    centerOfMass[1]=center[1]-sin(orientation)*d_gm[0]-cos(orientation)*d_gm[1];
+    centerOfMass[0]=center[0]-std::cos(orientation)*d_gm[0]+std::sin(orientation)*d_gm[1];
+    centerOfMass[1]=center[1]-std::sin(orientation)*d_gm[0]-std::cos(orientation)*d_gm[1];
+    //cout << "Created Blowfish"
   }
 
   void updatePosition(double dt) override
@@ -68,6 +69,8 @@ class Blowfish : public Shape
 
     flapAng_R += dt*flapVel_R + .5*dt*dt*flapAcc_R;
     flapAng_L += dt*flapVel_L + .5*dt*dt*flapAcc_L;
+    flapVel_R += dt*flapAcc_R;
+    flapVel_L += dt*flapAcc_L;
 
     if(flapAng_R > M_PI/2) { //maximum extent of fin is pi/2
       printf("Blocked flapAng_R at  M_PI/2\n");
@@ -93,9 +96,41 @@ class Blowfish : public Shape
       if(flapVel_L<0) flapVel_L = 0;
       if(flapAcc_L<0) flapAcc_L = 0;
     }
-    flapVel_R += dt*flapAcc_R;
-    flapVel_L += dt*flapAcc_L;
+
+    #if 0
+    // based on weighted average
+    const Real CentTop =  distHalfCM;
+    const Real MassTop =  halfarea*rhoTop;
+    const Real CentBot = -distHalfCM;
+    const Real MassBot =  halfarea*rhoBot;
+    const Real MassFin = finLength*finWidth*rhoFin;
+
+    const Real angAttF1 = orientation -finAngle0;
+    const Real angAttF2 = orientation +finAngle0 +M_PI;
+    const Real angTotF1 = angAttF1  +flapAng_R;
+    const Real angTotF2 = angAttF2  +flapAng_L;
+
+    // compute new centers of fins relative to geometric center
+    const Real CMF1[2] = {
+      attachDist*std::cos(angAttF1) +finLength/2*std::cos(angTotF1),
+      attachDist*std::sin(angAttF1) +finLength/2*std::sin(angTotF1)
+    };
+    const Real CMF2[2] = {
+      attachDist*std::cos(angAttF2) +finLength/2*std::cos(angTotF2),
+      attachDist*std::sin(angAttF2) +finLength/2*std::sin(angTotF2)
+    };
+    //const Real d_gmox = d_gm[0], d_gmoy = d_gm[1];
+    d_gm[0] = (CMF1[0] + CMF2[0])/2;
+    d_gm[1] = -(CentTop*MassTop + CentBot*MassBot + (CMF1[1] + CMF2[1])*MassFin)/(MassTop + MassBot + 2*MassFin);
+    //cout << d_gmox <<" "<< d_gm[0] <<" "<< d_gmoy <<" "<< d_gm[1] << endl;
+
+    center[0] = centerOfMass[0] + std::cos(orientation)*d_gm[0] - std::sin(orientation)*d_gm[1];
+    center[1] = centerOfMass[1] + std::sin(orientation)*d_gm[0] + std::cos(orientation)*d_gm[1];
+    #endif
+
     #ifndef RL_TRAIN
+    if(  std::fabs(flapVel_R) + std::fabs(flapAcc_R) + std::fabs(flapVel_L)
+       + std::fabs(flapAcc_L) > std::numeric_limits<Real>::epsilon() )
       printf("[ang, angvel, angacc] : right:[%f %f %f] left:[%f %f %f]\n",
         flapAng_R, flapVel_R, flapAcc_R, flapAng_L, flapVel_L, flapAcc_L);
     #endif
@@ -109,12 +144,12 @@ class Blowfish : public Shape
     const Real angleTotFin2 = angleAttFin2 +flapAng_L;
 
     const Real attach1[2] = {
-      center[0]+attachDist*cos(angleAttFin1),
-      center[1]+attachDist*sin(angleAttFin1)
+      center[0]+attachDist*std::cos(angleAttFin1),
+      center[1]+attachDist*std::sin(angleAttFin1)
     };
     const Real attach2[2] = {
-      center[0]+attachDist*cos(angleAttFin2),
-      center[1]+attachDist*sin(angleAttFin2)
+      center[0]+attachDist*std::cos(angleAttFin2),
+      center[1]+attachDist*std::sin(angleAttFin2)
     };
 
     const Real h = vInfo[0].h_gridpoint;
@@ -127,7 +162,7 @@ class Blowfish : public Shape
       const FillBlocks_Plate kernelF2(finLength, finWidth, h, attach2, angleTotFin2, flapVel_L, rhoFin);
 
       for(size_t i=0; i<vInfo.size(); i++) {
-        BlockInfo info = vInfo[i];
+        const BlockInfo& info = vInfo[i];
         if(kernelC._is_touching(info))
         {
           assert(obstacleBlocks.find(info.blockID) == obstacleBlocks.end());
@@ -157,7 +192,7 @@ class Blowfish : public Shape
 
       #pragma omp for schedule(dynamic)
       for(size_t i=0; i<vInfo.size(); i++) {
-        BlockInfo info = vInfo[i];
+        const BlockInfo& info = vInfo[i];
         const auto pos = obstacleBlocks.find(info.blockID);
         if(pos == obstacleBlocks.end()) continue;
         FluidBlock& b = *(FluidBlock*)info.ptrBlock;
