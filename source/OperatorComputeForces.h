@@ -1,5 +1,5 @@
-#ifndef CubismUP_2D_OperatorComputeForces_h
-#define CubismUP_2D_OperatorComputeForces_h
+
+#pragma once
 #include "ObstacleBlock.h"
 
 struct OperatorComputeForces
@@ -72,5 +72,3 @@ struct OperatorComputeForces
     }
   }
 };
-
-#endif

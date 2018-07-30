@@ -6,8 +6,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_CoordinatorGravity_h
-#define CubismUP_2D_CoordinatorGravity_h
+#pragma once
 
 #include "GenericCoordinator.h"
 #include "GenericOperator.h"
@@ -59,6 +58,3 @@ class CoordinatorGravity : public GenericCoordinator
     return "Gravity";
   }
 };
-
-
-#endif

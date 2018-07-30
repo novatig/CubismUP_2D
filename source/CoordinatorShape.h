@@ -6,8 +6,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_CoordinatorComputeShape_h
-#define CubismUP_2D_CoordinatorComputeShape_h
+#pragma once
 
 #include "GenericCoordinator.h"
 #include "Shape.h"
@@ -117,4 +116,3 @@ class CoordinatorComputeForces : public GenericCoordinator
     return "Forces";
   }
 };
-#endif

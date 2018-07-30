@@ -10,8 +10,7 @@
 // Ellipse, due to computational cost, requires first running FillBlocks_Ellipse
 // on all blocks, which writes onto tmp, then either EllipseFinalize or VarRho
 
-#ifndef IF2D_ROCKS_IF2D_ObstacleLibrary_h
-#define IF2D_ROCKS_IF2D_ObstacleLibrary_h
+#pragma once
 
 #include "common.h"
 #include "Definitions.h"
@@ -175,7 +174,7 @@ struct FillBlocks_HalfCylinder
   inline Real distanceTocylinder(const Real x, const Real y) const
   {
     const Real Y = - x*sinang + y*cosang;
-    if(Y<0) return Y;
+    if(Y>0) return -Y;
     else return radius - std::sqrt(x*x+y*y); // pos inside, neg outside
   }
 
@@ -633,4 +632,3 @@ struct FillBlocks_VarRhoEllipseFinalize
     }
   }
 };
-#endif

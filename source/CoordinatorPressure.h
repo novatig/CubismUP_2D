@@ -6,8 +6,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_CoordinatorPressure_h
-#define CubismUP_2D_CoordinatorPressure_h
+#pragma once
 
 #include "GenericCoordinator.h"
 #ifdef FREESPACE
@@ -266,4 +265,3 @@ class CoordinatorPressure : public GenericCoordinator
     return "Pressure";
   }
 };
-#endif

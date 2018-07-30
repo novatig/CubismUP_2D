@@ -1,5 +1,5 @@
-#ifndef CubismUP_2D_ObstacleBlock_h
-#define CubismUP_2D_ObstacleBlock_h
+
+#pragma once
 #include <vector> //surface vector
 #include <cstring> //memset
 #include <stdio.h> //print
@@ -139,5 +139,3 @@ struct ObstacleBlock
     }
   }
 };
-
-#endif

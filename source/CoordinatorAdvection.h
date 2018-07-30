@@ -6,8 +6,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_CoordinatorAdvection_h
-#define CubismUP_2D_CoordinatorAdvection_h
+#pragma once
 
 #include "GenericCoordinator.h"
 #include <cmath>
@@ -198,5 +197,3 @@ class CoordinatorAdvection : public GenericCoordinator
     return "Advection";
   }
 };
-
-#endif

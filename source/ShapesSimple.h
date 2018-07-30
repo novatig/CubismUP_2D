@@ -11,8 +11,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_ShapeSimple_h
-#define CubismUP_2D_ShapeSimple_h
+#pragma once
 
 #include "ShapeLibrary.h"
 #include "Shape.h"
@@ -21,11 +20,9 @@
 
 class Disk : public Shape
 {
- protected:
   const Real radius;
-
  public:
-  Disk( SimulationData& s, ArgumentParser& p, Real C[2] ) :
+  Disk(SimulationData& s, ArgumentParser& p, Real C[2] ) :
   Shape(s,p,C), radius( p("-radius").asDouble(0.1) ) {
     printf("Created a Disk with: R:%f rho:%f\n",radius,rhoS);
   }
@@ -84,9 +81,9 @@ class HalfDisk : public Shape
   const Real radius;
 
  public:
-  Disk( SimulationData& s, ArgumentParser& p, Real C[2] ) :
+  HalfDisk( SimulationData& s, ArgumentParser& p, Real C[2] ) :
   Shape(s,p,C), radius( p("-radius").asDouble(0.1) ) {
-    printf("Created a Disk with: R:%f rho:%f\n",radius,rhoS);
+    printf("Created a half Disk with: R:%f rho:%f\n",radius,rhoS);
   }
 
   Real getCharLength() const override
@@ -134,74 +131,6 @@ class HalfDisk : public Shape
 
     removeMoments(vInfo);
     for (auto & block : obstacleBlocks) block.second->allocate_surface();
-  }
-};
-
-class DiskVarDensity : public Shape
-{
- protected:
-  const Real radius;
-  const Real rhoTop;
-  const Real rhoBot;
-
- public:
-  DiskVarDensity( SimulationData& s, ArgumentParser& p, Real C[2] ) :
-  Shape(s,p,C), radius( p("-radius").asDouble(0.1) ),
-  rhoTop(p("-rhoTop").asDouble(rhoS) ), rhoBot(p("-rhoBot").asDouble(rhoS) ) {
-    d_gm[0] = 0;
-    // based on weighted average between the centers of mass of half-disks:
-    d_gm[1] = -4.*radius/(3.*M_PI) * (rhoTop-rhoBot)/(rhoTop+rhoBot);
-
-    centerOfMass[0] = center[0] - cos(orientation)*d_gm[0] + sin(orientation)*d_gm[1];
-    centerOfMass[1] = center[1] - sin(orientation)*d_gm[0] - cos(orientation)*d_gm[1];
-  }
-
-  Real getCharLength() const  override
-  {
-    return 2 * radius;
-  }
-
-  void create(const vector<BlockInfo>& vInfo) override
-  {
-    const Real h =  vInfo[0].h_gridpoint;
-    for(auto & entry : obstacleBlocks) delete entry.second;
-    obstacleBlocks.clear();
-    {
-      FillBlocks_Cylinder kernel(radius, h, center, rhoS);
-      for(size_t i=0; i<vInfo.size(); i++) {
-        if(kernel._is_touching(vInfo[i])) {
-          assert(obstacleBlocks.find(vInfo[i].blockID) == obstacleBlocks.end());
-          obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
-          obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
-        }
-      }
-    }
-    #pragma omp parallel
-    {
-      FillBlocks_VarRhoCylinder kernel(radius, h, center, rhoTop, rhoBot, orientation);
-
-      #pragma omp for schedule(dynamic)
-      for(size_t i=0; i<vInfo.size(); i++) {
-        BlockInfo info = vInfo[i];
-        const auto pos = obstacleBlocks.find(info.blockID);
-        if(pos == obstacleBlocks.end()) continue;
-        FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-        kernel(info, b, pos->second);
-      }
-    }
-
-    removeMoments(vInfo);
-    for (auto & block : obstacleBlocks) block.second->allocate_surface();
-  }
-
-  void outputSettings(ostream &outStream) const override
-  {
-    outStream << "DiskVarDensity\n";
-    outStream << "radius " << radius << endl;
-    outStream << "rhoTop " << rhoTop << endl;
-    outStream << "rhoBot " << rhoBot << endl;
-
-    Shape::outputSettings(outStream);
   }
 };
 
@@ -335,221 +264,143 @@ class Ellipse : public Shape
   }
 };
 
-/*
-class EllipseVarDensity : public Shape
+class DiskVarDensity : public Shape
 {
  protected:
-  // these quantities are defined in the local coordinates of the ellipse
-  Real semiAxis[2];
-  Real rhoS1, rhoS2;
-
-  // code from http://www.geometrictools.com/
-  //----------------------------------------------------------------------------
-  // The ellipse is (x0/semiAxis0)^2 + (x1/semiAxis1)^2 = 1.  The query point is (y0,y1).
-  // The function returns the distance from the query point to the ellipse.
-  // It also computes the ellipse point (x0,x1) that is closest to (y0,y1).
-  //----------------------------------------------------------------------------
-  Real DistancePointEllipseSpecial (const Real e[2], const Real y[2], Real x[2]) const
-  {
-    Real distance = (Real)0;
-    if (y[1] > (Real)0)
-    {
-      if (y[0] > (Real)0)
-      {
-        // Bisect to compute the root of F(t) for t >= -e1*e1.
-        Real esqr[2] = { e[0]*e[0], e[1]*e[1] };
-        Real ey[2] = { e[0]*y[0], e[1]*y[1] };
-        Real t0 = -esqr[1] + ey[1];
-        Real t1 = -esqr[1] + sqrt(ey[0]*ey[0] + ey[1]*ey[1]);
-        Real t = t0;
-        const int imax = 2*std::numeric_limits<Real>::max_exponent;
-        for (int i = 0; i < imax; ++i)
-        {
-          t = ((Real)0.5)*(t0 + t1);
-          if (t == t0 || t == t1)
-          {
-            break;
-          }
-
-          Real r[2] = { ey[0]/(t + esqr[0]), ey[1]/(t + esqr[1]) };
-          Real f = r[0]*r[0] + r[1]*r[1] - (Real)1;
-          if (f > (Real)0)
-          {
-            t0 = t;
-          }
-          else if (f < (Real)0)
-          {
-            t1 = t;
-          }
-          else
-          {
-            break;
-          }
-        }
-
-        x[0] = esqr[0]*y[0]/(t + esqr[0]);
-        x[1] = esqr[1]*y[1]/(t + esqr[1]);
-        Real d[2] = { x[0] - y[0], x[1] - y[1] };
-        distance = sqrt(d[0]*d[0] + d[1]*d[1]);
-      }
-      else  // y0 == 0
-      {
-        x[0] = (Real)0;
-        x[1] = e[1];
-        distance = fabs(y[1] - e[1]);
-      }
-    }
-    else  // y1 == 0
-    {
-      Real denom0 = e[0]*e[0] - e[1]*e[1];
-      Real e0y0 = e[0]*y[0];
-      if (e0y0 < denom0)
-      {
-        // y0 is inside the subinterval.
-        Real x0de0 = e0y0/denom0;
-        Real x0de0sqr = x0de0*x0de0;
-        x[0] = e[0]*x0de0;
-        x[1] = e[1]*sqrt(fabs((Real)1 - x0de0sqr));
-        Real d0 = x[0] - y[0];
-        distance = sqrt(d0*d0 + x[1]*x[1]);
-      }
-      else
-      {
-        // y0 is outside the subinterval.  The closest ellipse point has
-        // x1 == 0 and is on the domain-boundary interval (x0/e0)^2 = 1.
-        x[0] = e[0];
-        x[1] = (Real)0;
-        distance = fabs(y[0] - e[0]);
-      }
-    }
-    return distance;
-  }
-
-  Real DistancePointEllipse(const Real y[2], Real x[2]) const
-  {
-    // Determine reflections for y to the first quadrant.
-    bool reflect[2];
-    int i, j;
-    for (i = 0; i < 2; ++i)
-    {
-      reflect[i] = (y[i] < (Real)0);
-    }
-
-    // Determine the axis order for decreasing extents.
-    int permute[2];
-    if (semiAxis[0] < semiAxis[1])
-    {
-      permute[0] = 1;  permute[1] = 0;
-    }
-    else
-    {
-      permute[0] = 0;  permute[1] = 1;
-    }
-
-    int invpermute[2];
-    for (i = 0; i < 2; ++i)
-    {
-      invpermute[permute[i]] = i;
-    }
-
-    Real locE[2], locY[2];
-    for (i = 0; i < 2; ++i)
-    {
-      j = permute[i];
-      locE[i] = semiAxis[j];
-      locY[i] = y[j];
-      if (reflect[j])
-      {
-        locY[i] = -locY[i];
-      }
-    }
-
-    Real locX[2];
-    Real distance = DistancePointEllipseSpecial(locE, locY, locX);
-
-    // Restore the axis order and reflections.
-    for (i = 0; i < 2; ++i)
-    {
-      j = invpermute[i];
-      if (reflect[j])
-      {
-        locX[j] = -locX[j];
-      }
-      x[i] = locX[j];
-    }
-
-    return distance;
-  }
+  const Real radius;
+  const Real rhoTop;
+  const Real rhoBot;
 
  public:
-  EllipseVarDensity(Real center[2], Real semiAxis[2], Real orientation, const Real rhoS1, const Real rhoS2, const Real mollChi, const Real mollRho, bool bPeriodic[2], Real domainSize[2]) : Shape(center, orientation, min(rhoS1,rhoS2), mollChi, mollRho, bPeriodic, domainSize), semiAxis{semiAxis[0],semiAxis[1]}, rhoS1(rhoS1), rhoS2(rhoS2)
-  {
+  DiskVarDensity( SimulationData& s, ArgumentParser& p, Real C[2] ) :
+  Shape(s,p,C), radius( p("-radius").asDouble(0.1) ),
+  rhoTop(p("-rhoTop").asDouble(rhoS) ), rhoBot(p("-rhoBot").asDouble(rhoS) ) {
     d_gm[0] = 0;
-    d_gm[1] = -4.*semiAxis[0]/(3.*M_PI) * (rhoS1-rhoS2)/(rhoS1+rhoS2); // based on weighted average between the centers of mass of half-disks
+    // based on weighted average between the centers of mass of half-disks:
+    d_gm[1] = -4.*radius/(3.*M_PI) * (rhoTop-rhoBot)/(rhoTop+rhoBot);
 
     centerOfMass[0] = center[0] - cos(orientation)*d_gm[0] + sin(orientation)*d_gm[1];
     centerOfMass[1] = center[1] - sin(orientation)*d_gm[0] - cos(orientation)*d_gm[1];
   }
 
-  Real chi(Real p[2], Real h) const
+  Real getCharLength() const  override
   {
-    const Real centerPeriodic[2] = {center[0] - floor(center[0]/domainSize[0]) * bPeriodic[0],
-                    center[1] - floor(center[1]/domainSize[1]) * bPeriodic[1]};
-    Real x[2] = {0,0};
-    const Real pShift[2] = {p[0]-centerPeriodic[0],p[1]-centerPeriodic[1]};
-
-    const Real rotatedP[2] = { cos(orientation)*pShift[1] - sin(orientation)*pShift[0],
-                   sin(orientation)*pShift[1] + cos(orientation)*pShift[0] };
-    const Real dist = DistancePointEllipse(rotatedP, x);
-    const int sign = ( (rotatedP[0]*rotatedP[0]+rotatedP[1]*rotatedP[1]) > (x[0]*x[0]+x[1]*x[1]) ) ? 1 : -1;
-
-    return smoothHeaviside(sign*dist,0,mollChi*sqrt(2)*h);
+    return 2 * radius;
   }
 
-  Real rho(Real p[2], Real h, Real mask) const
+  void create(const vector<BlockInfo>& vInfo) override
   {
-    // not handling periodicity
-
-    Real r = 0;
-    if (orientation == 0 || orientation == 2*M_PI)
-      r = smoothHeaviside(p[1],center[1], mollRho*sqrt(2)*h);
-    else if (orientation == M_PI)
-      r = smoothHeaviside(center[1],p[1], mollRho*sqrt(2)*h);
-    else if (orientation == M_PI_2)
-      r = smoothHeaviside(center[0],p[0], mollRho*sqrt(2)*h);
-    else if (orientation == 3*M_PI_2)
-      r = smoothHeaviside(p[0],center[0], mollRho*sqrt(2)*h);
-    else
+    const Real h =  vInfo[0].h_gridpoint;
+    for(auto & entry : obstacleBlocks) delete entry.second;
+    obstacleBlocks.clear();
     {
-      const Real tantheta = tan(orientation);
-      r = smoothHeaviside(p[1], tantheta*p[0]+center[1]-tantheta*center[0], mollRho*sqrt(2)*h);
-      r = (orientation>M_PI_2 && orientation<3*M_PI_2) ? 1-r : r;
+      FillBlocks_Cylinder kernel(radius, h, center, rhoS);
+      for(size_t i=0; i<vInfo.size(); i++) {
+        if(kernel._is_touching(vInfo[i])) {
+          assert(obstacleBlocks.find(vInfo[i].blockID) == obstacleBlocks.end());
+          obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
+          obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
+        }
+      }
+    }
+    #pragma omp parallel
+    {
+      FillBlocks_VarRhoCylinder kernel(radius, h, center, rhoTop, rhoBot, orientation);
+
+      #pragma omp for schedule(dynamic)
+      for(size_t i=0; i<vInfo.size(); i++) {
+        BlockInfo info = vInfo[i];
+        const auto pos = obstacleBlocks.find(info.blockID);
+        if(pos == obstacleBlocks.end()) continue;
+        FluidBlock& b = *(FluidBlock*)info.ptrBlock;
+        kernel(info, b, pos->second);
+      }
     }
 
-    return ((rhoS2-rhoS1)*r+rhoS1)*mask + 1.*(1.-mask);
+    removeMoments(vInfo);
+    for (auto & block : obstacleBlocks) block.second->allocate_surface();
   }
 
-  Real rho(Real p[2], Real h) const
+  void outputSettings(ostream &outStream) const override
   {
-    Real mask = chi(p,h);
-    return rho(p,h,mask);
-  }
-
-  Real getCharLength() const
-  {
-    return 2 * semiAxis[1];
-  }
-
-  void outputSettings(ostream &outStream) const
-  {
-    outStream << "Ellipse\n";
-    outStream << "semiAxisX " << semiAxis[0] << endl;
-    outStream << "semiAxisY " << semiAxis[1] << endl;
-    outStream << "rhoS1 " << rhoS1 << endl;
-    outStream << "rhoS2 " << rhoS2 << endl;
+    outStream << "DiskVarDensity\n";
+    outStream << "radius " << radius << endl;
+    outStream << "rhoTop " << rhoTop << endl;
+    outStream << "rhoBot " << rhoBot << endl;
 
     Shape::outputSettings(outStream);
   }
 };
-*/
-#endif
+
+class EllipseVarDensity : public Shape
+{
+  protected:
+   const Real semiAxisX;
+   const Real semiAxisY;
+   const Real rhoTop;
+   const Real rhoBot;
+
+  public:
+   EllipseVarDensity( SimulationData& s, ArgumentParser& p, Real C[2] ) :
+   Shape(s,p,C),
+   semiAxisX( p("-semiAxisX").asDouble(0.1) ),
+   semiAxisY( p("-semiAxisY").asDouble(0.1) ),
+   rhoTop(p("-rhoTop").asDouble(rhoS) ), rhoBot(p("-rhoBot").asDouble(rhoS) ) {
+     d_gm[0] = 0;
+     // based on weighted average between the centers of mass of half-disks:
+     d_gm[1] = -4.*semiAxisY/(3.*M_PI) * (rhoTop-rhoBot)/(rhoTop+rhoBot);
+
+     centerOfMass[0] = center[0] - cos(orientation)*d_gm[0] + sin(orientation)*d_gm[1];
+     centerOfMass[1] = center[1] - sin(orientation)*d_gm[0] - cos(orientation)*d_gm[1];
+   }
+
+   Real getCharLength() const override {
+     return 2 * std::max(semiAxisX, semiAxisY);
+   }
+
+   void create(const vector<BlockInfo>& vInfo) override
+   {
+     const Real h =  vInfo[0].h_gridpoint;
+     for(auto & entry : obstacleBlocks) delete entry.second;
+     obstacleBlocks.clear();
+     {
+       FillBlocks_Ellipse kernel(semiAxisX, semiAxisY, h, center, orientation, rhoTop);
+       for(size_t i=0; i<vInfo.size(); i++) {
+         if(kernel._is_touching(vInfo[i])) {
+           assert(obstacleBlocks.find(vInfo[i].blockID) == obstacleBlocks.end());
+           obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
+           obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
+         }
+       }
+     }
+     #pragma omp parallel
+     {
+       FillBlocks_Ellipse kernel(semiAxisX, semiAxisY, h, center, orientation, rhoTop);
+
+       #pragma omp for schedule(dynamic)
+       for(size_t i=0; i<vInfo.size(); i++) {
+         BlockInfo info = vInfo[i];
+         const auto pos = obstacleBlocks.find(info.blockID);
+         if(pos == obstacleBlocks.end()) continue;
+         FluidBlock& b = *(FluidBlock*)info.ptrBlock;
+         kernel(info, b, pos->second);
+       }
+     }
+
+     const FillBlocks_VarRhoEllipseFinalize finalize(h, center, rhoTop, rhoBot, orientation);
+     compute(finalize, vInfo);
+     removeMoments(vInfo);
+     for (auto & block : obstacleBlocks) block.second->allocate_surface();
+   }
+
+   void outputSettings(ostream &outStream) const override
+   {
+     outStream << "Ellipse\n";
+     outStream << "semiAxisX " << semiAxisX << endl;
+     outStream << "semiAxisY " << semiAxisY << endl;
+     outStream << "rhoTop " << rhoTop << endl;
+     outStream << "rhoBot " << rhoBot << endl;
+
+     Shape::outputSettings(outStream);
+   }
+};

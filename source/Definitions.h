@@ -6,8 +6,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_DataStructures_h
-#define CubismUP_2D_DataStructures_h
+#pragma once
 
 #include "common.h"
 #include "BoundaryConditions.h"
@@ -300,5 +299,3 @@ struct SimulationData
 
   ~SimulationData();
 };
-
-#endif

@@ -9,8 +9,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_GenericCoordinator_h
-#define CubismUP_2D_GenericCoordinator_h
+#pragma once
 
 #include "Definitions.h"
 #include "GenericOperator.h"
@@ -57,5 +56,3 @@ public:
 
 	virtual string getName() = 0;
 };
-
-#endif

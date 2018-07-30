@@ -8,8 +8,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef __CubismUP_2D__Sim_FSI_Gravity__
-#define __CubismUP_2D__Sim_FSI_Gravity__
+#pragma once
 
 #include "Simulation_FSI.h"
 
@@ -54,5 +53,3 @@ public:
   }
   #endif
 };
-
-#endif /* defined(__CubismUP_2D__Sim_FSI_Gravity__) */

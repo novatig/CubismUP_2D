@@ -6,8 +6,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_CoordinatorIC_h
-#define CubismUP_2D_CoordinatorIC_h
+#pragma once
 
 #include "GenericCoordinator.h"
 #include "Shape.h"
@@ -142,5 +141,3 @@ class CoordinatorFadeOut : public GenericCoordinator
     return "FadeOut";
   }
 };
-
-#endif

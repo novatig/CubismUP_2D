@@ -9,8 +9,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_Simulation_Fluid_h
-#define CubismUP_2D_Simulation_Fluid_h
+#pragma once
 
 #include "Definitions.h"
 //#include "ProcessOperatorsOMP.h"
@@ -152,5 +151,3 @@ class Simulation_Fluid
     }
   }
 };
-
-#endif

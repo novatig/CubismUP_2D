@@ -11,8 +11,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_Simulation_FSI_h
-#define CubismUP_2D_Simulation_FSI_h
+#pragma once
 
 #include "Simulation_Fluid.h"
 #include "ShapesSimple.h"
@@ -44,13 +43,17 @@ class Simulation_FSI : public Simulation_Fluid
     Shape* shape = nullptr;
 		const string shapeType = parser("-shape").asString("disk");
 		if (shapeType=="disk")
-      shape = new Disk(sim, parser, center);
+      shape = new Disk(             sim, parser, center);
+		else if (shapeType=="halfDisk")
+      shape = new HalfDisk(         sim, parser, center);
 		else if (shapeType=="ellipse")
-      shape = new Ellipse(sim, parser, center);
+      shape = new Ellipse(          sim, parser, center);
 		else if (shapeType=="diskVarDensity")
-      shape = new DiskVarDensity(sim, parser, center);
+      shape = new DiskVarDensity(   sim, parser, center);
+		else if (shapeType=="ellipseVarDensity")
+      shape = new EllipseVarDensity(sim, parser, center);
 		else if (shapeType=="blowfish")
-			shape = new Blowfish(sim, parser, center);
+			shape = new Blowfish(         sim, parser, center);
 		else
 		{
 			cout << "Error - this shape is not currently implemented! Aborting now\n";
@@ -62,5 +65,3 @@ class Simulation_FSI : public Simulation_Fluid
 		// nothing needs to be done on restart
 	}
 };
-
-#endif

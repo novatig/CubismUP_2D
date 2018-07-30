@@ -11,8 +11,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_Shape_h
-#define CubismUP_2D_Shape_h
+#pragma once
 #include "OperatorComputeForces.h"
 
 class Shape
@@ -69,7 +68,7 @@ class Shape
  public:
   Shape( SimulationData& s, ArgumentParser& p, Real C[2] ) :
   sim(s), center{C[0],C[1]}, centerOfMass{C[0],C[1]}, d_gm{0,0},
-  orientation( p("-angle").asDouble(0) ),
+  orientation( p("-angle").asDouble(0)*M_PI/180 ),
   rhoS( p("-rhoS").asDouble(1) ),
   bForced( p("-bForced").asBool(false) ),
   bFixed( p("-bFixed").asBool(false) ),
@@ -202,8 +201,7 @@ class Shape
   Integrals integrateObstBlock(const vector<BlockInfo>& vInfo)
   {
     Real _m=0, _V=0, _j=0, _u=0, _v=0, _a=0, _x=0, _y=0, _X=0, _Y=0;
-    #pragma omp parallel for schedule(dynamic) \
-      reduction( + : _m, _V, _j, _u, _v, _a, _x, _y, _X, _Y )
+    #pragma omp parallel for schedule(dynamic) reduction( + : _m, _V, _j, _u, _v, _a, _x, _y, _X, _Y )
     for(size_t i=0; i<vInfo.size(); i++)
     {
       const auto pos = obstacleBlocks.find(vInfo[i].blockID);
@@ -583,5 +581,3 @@ class Shape
     #endif
   }
 };
-
-#endif

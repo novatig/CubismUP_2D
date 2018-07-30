@@ -6,8 +6,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_common_h
-#define CubismUP_2D_common_h
+#pragma once
 
 #include <cassert>
 #include <sstream>
@@ -32,5 +31,3 @@ typedef float Real;
 #include <BlockLab.h>
 #include <Profiler.h>
 #include "StencilInfo.h"
-
-#endif

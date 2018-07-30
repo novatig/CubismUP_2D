@@ -11,8 +11,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_Blowfish_h
-#define CubismUP_2D_Blowfish_h
+#pragma once
 #include "Shape.h"
 
 class Blowfish : public Shape
@@ -217,5 +216,3 @@ class Blowfish : public Shape
     Shape::outputSettings(outStream);
   }
 };
-
-#endif
