@@ -11,8 +11,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_Simulation_FSI_h
-#define CubismUP_2D_Simulation_FSI_h
+#pragma once
 
 #include "Simulation_Fluid.h"
 #include "ShapesSimple.h"
@@ -21,70 +20,48 @@
 
 class Simulation_FSI : public Simulation_Fluid
 {
- protected:
-	// penalization parameter
-	Real lambda, dlm;
-	Real dragP[2], dragV;
-
-	// body
-	Shape* shape;
-
  public:
+
+  Shape* getShape() { return sim.shapes[0]; }
+
 	Simulation_FSI(const int argc, char ** argv) : Simulation_Fluid(argc,argv) { }
 
 	virtual void init()
 	{
 		Simulation_Fluid::init();
 
-		lambda = parser("-lambda").asDouble(1e5);
-		dlm = parser("-dlm").asDouble(1.);
-		double rhoS = parser("-rhoS").asDouble(1);
-		Real centerOfMass[2] = {0,0};
-    vector<BlockInfo> vInfo = grid->getBlocksInfo();
+		parser.set_strict_mode();
+    const Real axX = parser("-bpdx").asInt();
+    const Real axY = parser("-bpdy").asInt();
+		parser.unset_strict_mode();
+    const Real ext = std::max(axX, axY);
+    Real center[2] = {
+        (Real) parser("-xpos").asDouble(.5*axX/ext),
+        (Real) parser("-ypos").asDouble(.5*axY/ext)
+    };
 
-		string shapeType = parser("-shape").asString("disk");
+    Shape* shape = nullptr;
+		const string shapeType = parser("-shape").asString("disk");
 		if (shapeType=="disk")
-		{
-			Real radius = parser("-radius").asDouble(0.1);
-			shape = new Disk(centerOfMass, radius, rhoS);
-		}
+      shape = new Disk(             sim, parser, center);
+		else if (shapeType=="halfDisk")
+      shape = new HalfDisk(         sim, parser, center);
 		else if (shapeType=="ellipse")
-		{
-			Real semiAxis[2] = {parser("-semiAxisX").asDouble(.1), parser("-semiAxisY").asDouble(.2)};
-			Real angle = parser("-angle").asDouble(0.0);
-			shape = new Ellipse(centerOfMass, semiAxis, angle, rhoS);
-		}
+      shape = new Ellipse(          sim, parser, center);
 		else if (shapeType=="diskVarDensity")
-		{
-			Real radius = parser("-radius").asDouble(0.1);
-			Real rhoTop = parser("-rhoTop").asDouble(1);
-			Real angle = parser("-angle").asDouble(0.0);
-			shape = new DiskVarDensity(centerOfMass, radius, angle, rhoTop, rhoS);
-		}
+      shape = new DiskVarDensity(   sim, parser, center);
+		else if (shapeType=="ellipseVarDensity")
+      shape = new EllipseVarDensity(sim, parser, center);
 		else if (shapeType=="blowfish")
-		{
-			#ifndef RL_MPI_CLIENT
-				Real angle = parser("-angle").asDouble(0.0);
-			#else
-			  mt19937 gen(parser("-Socket").asInt(0));
-				uniform_real_distribution<Real> dis(-.1,.1);
-				Real angle = dis(gen);
-			#endif
-			Real radius = parser("-radius").asDouble(0.1);
-			shape = new Blowfish(centerOfMass, angle, radius);
-		}
+			shape = new Blowfish(         sim, parser, center);
 		else
 		{
 			cout << "Error - this shape is not currently implemented! Aborting now\n";
 			abort();
 		}
+    assert(shape not_eq nullptr);
+    sim.shapes.push_back(shape);
+
 		// nothing needs to be done on restart
 	}
-
-	virtual ~Simulation_FSI()
-	{
-		delete shape;
-	}
 };
-
-#endif

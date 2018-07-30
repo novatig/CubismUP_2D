@@ -1,19 +1,21 @@
 #module load gcc
 
-export OMP_NUM_THREADS=48
+export OMP_NUM_THREADS=4
 
-BASEPATH=/cluster/scratch/eceva/CubismUP_2D
+BASEPATH=../runs
 mkdir -p $BASEPATH
 FOLDERNAME=${BASEPATH}/$1
 
-OPTIONS="-bpdx 64 -bpdy 128 -tdump 0.05 -CFL 0.1 -radius 0.05 -rhoS 10.00 -lambda 1e5 -nu 0.00002 -ypos 0.85"
+OPTIONS="-bpdx 16 -bpdy 16 -tdump 0.1 -nu 0.0001 -tend 10"
+OPTIONS+=" -shape diskVarDensity -rhoTop 1.5 -rhoBot 0.5 -rhoS 0.5"
+OPTIONS+=" -ypos 0.5 -radius 0.1 -angle 0.1"
+# -bForced 1 -bFixed 1 -yvel 0.1
 export LD_LIBRARY_PATH=/cluster/home/novatig/VTK-7.1.0/Build/lib/:$LD_LIBRARY_PATH
+export DYLD_LIBRARY_PATH=/usr/local/Cellar/vtk/8.1.1/lib/:$DYLD_LIBRARY_PATH
 
 mkdir -p ${FOLDERNAME}
 cp ../makefiles/simulation ${FOLDERNAME}
 cd ${FOLDERNAME}
 
-./simulation -tend 10 ${OPTIONS}
+./simulation ${OPTIONS}
 #valgrind  --num-callers=100  --tool=memcheck  --leak-check=yes  --track-origins=yes --show-reachable=yes ./simulation -tend 10 ${OPTIONS}
-
-

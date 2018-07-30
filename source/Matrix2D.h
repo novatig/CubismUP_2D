@@ -9,9 +9,6 @@
 
 #pragma once
 
-
-
-
 //lo metto qui perche' mi fa schifo
 #define _FORBID_COPIES(x) \
 x(const x& culo){abort();}\

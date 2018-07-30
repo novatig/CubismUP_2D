@@ -1,5 +1,5 @@
-#ifndef CubismUP_2D_OperatorComputeForces_h
-#define CubismUP_2D_OperatorComputeForces_h
+
+#pragma once
 #include "ObstacleBlock.h"
 
 struct OperatorComputeForces
@@ -47,7 +47,8 @@ struct OperatorComputeForces
       o->vyDef[i] = o->udef[iy][ix][1]; o->vy[i] = l(ix,iy).v;
 
       //perimeter:
-      o->perimeter += o->surface[i]->delta;
+      o->perimeter += sqrt(normX*normX + normY*normY);
+      o->circulation += normX*o->vy[i] - normY*o->vx[i];
       //forces (total, visc, pressure):
       o->forcex   += fXT; o->forcey   += fYT;
       o->forcex_V += fXV; o->forcey_V += fYV;
@@ -71,5 +72,3 @@ struct OperatorComputeForces
     }
   }
 };
-
-#endif

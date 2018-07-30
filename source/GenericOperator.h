@@ -6,8 +6,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_Operator_h
-#define CubismUP_2D_Operator_h
+#pragma once
 
 class GenericOperator
 {
@@ -24,5 +23,3 @@ public:
 
 	// cannot put the templated operator here!
 };
-
-#endif

@@ -9,8 +9,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_GenericCoordinator_h
-#define CubismUP_2D_GenericCoordinator_h
+#pragma once
 
 #include "Definitions.h"
 #include "GenericOperator.h"
@@ -18,14 +17,14 @@
 class GenericCoordinator
 {
 protected:
-	FluidGrid * grid;
-	vector<BlockInfo> vInfo;
+  SimulationData& sim;
+	const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
 
 	inline void check(string infoText)
 	{
-#ifndef NDEBUG
-#pragma omp parallel for schedule(static)
-		for(int i=0; i<vInfo.size(); i++)
+    #ifndef NDEBUG
+    #pragma omp parallel for schedule(static)
+		for(size_t i=0; i<vInfo.size(); i++)
 		{
 			BlockInfo info = vInfo[i];
 			FluidBlock& b = *(FluidBlock*)info.ptrBlock;
@@ -33,32 +32,27 @@ protected:
 			for(int iy=0; iy<FluidBlock::sizeY; ++iy)
 			for(int ix=0; ix<FluidBlock::sizeX; ++ix)
 			{
-				if (std::isnan(b(ix,iy).rho) || std::isnan(b(ix,iy).u) ||
+				if (std::isnan(b(ix,iy).invRho) || std::isnan(b(ix,iy).u) ||
 				std::isnan(b(ix,iy).v) || std::isnan(b(ix,iy).p))
 					cout << infoText.c_str() <<endl;
-				if (b(ix,iy).rho <= 0) cout << infoText.c_str() << endl;
+				if (b(ix,iy).invRho <= 0) cout << infoText.c_str() << endl;
 
-				assert(b(ix,iy).rho > 0);
-				assert(!std::isnan(b(ix,iy).rho)); assert(!std::isnan(b(ix,iy).u));
+				assert(b(ix,iy).invRho > 0);
+				assert(!std::isnan(b(ix,iy).invRho)); assert(!std::isnan(b(ix,iy).u));
 				assert(!std::isnan(b(ix,iy).v)); assert(!std::isnan(b(ix,iy).p));
 				assert(!std::isnan(b(ix,iy).pOld)); assert(!std::isnan(b(ix,iy).tmpU));
 				assert(!std::isnan(b(ix,iy).tmpV)); assert(!std::isnan(b(ix,iy).tmp));
-				assert(b(ix,iy).rho < 1e10); assert(b(ix,iy).u < 1e10);
+				assert(b(ix,iy).invRho < 1e10); assert(b(ix,iy).u < 1e10);
 				assert(b(ix,iy).v < 1e10); assert(b(ix,iy).p < 1e10);
 			}
 		}
-#endif
+    #endif
 	}
 
 public:
-	GenericCoordinator(FluidGrid * grid) : grid(grid)
-	{
-		vInfo = grid->getBlocksInfo();
-	}
-
+	GenericCoordinator(SimulationData& s) : sim(s) { }
+  virtual ~GenericCoordinator() {}
 	virtual void operator()(const double dt) = 0;
 
 	virtual string getName() = 0;
 };
-
-#endif

@@ -6,36 +6,28 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_common_h
-#define CubismUP_2D_common_h
+#pragma once
 
 #include <cassert>
 #include <sstream>
 #include <cmath>
 #include <cstdio>
+#include <vector>
 
-// utmost import to be defined before including cubism
-
-// double precision fftw not installed currently
-#ifndef _SP_COMP_
+using namespace std;
+#define FREESPACE
+#ifndef _FLOAT_PRECISION_
 typedef double Real;
-#else // _SP_COMP_
+#else // _FLOAT_PRECISION_
 typedef float Real;
-#endif // _SP_COMP_
-
-#ifdef RL_MPI_CLIENT
-#include "Communicator.h"
-#endif
+#endif // _FLOAT_PRECISION_
 
 //this is all cubism file we need
 #include <ArgumentParser.h>
 #include <Grid.h>
 #include <BlockInfo.h>
 #include <SerializerIO_ImageVTK.h>
-#include <ZBinDumper.h>
+//#include <ZBinDumper.h>
 #include <BlockLab.h>
 #include <Profiler.h>
-#include "Timer.h"
 #include "StencilInfo.h"
-
-#endif

@@ -9,8 +9,7 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#ifndef CubismUP_2D_Simulation_Fluid_h
-#define CubismUP_2D_Simulation_Fluid_h
+#pragma once
 
 #include "Definitions.h"
 //#include "ProcessOperatorsOMP.h"
@@ -27,107 +26,35 @@ class Simulation_Fluid
  protected:
 	ArgumentParser parser;
 	Profiler profiler;
+  SimulationData sim;
 
 	// Serialization
-	bool bPing=false, bRestart=false; // needed for ping-pong scheme
+	bool bPing = false, bRestart = false; // needed for ping-pong scheme
 	string path4serialization;
 
-	// MPI stuff - required for Hypre
-	int rank=0, nprocs=1;
-
-	vector<GenericCoordinator *> pipeline;
-
-	// grid
-	int bpdx, bpdy;
-	FluidGrid * grid = nullptr;
-
-	// simulation status
-	int step=0, nsteps;
-	double dt=0, time=0, endTime;
-
-	// simulation settings
-	double CFL, LCFL;
+	vector<GenericCoordinator*> pipeline;
 
 	// verbose
 	bool verbose=false;
 
-	// output
-	int dumpFreq;
-	double dumpTime=0;
 	string path2file;
 	SerializerIO_ImageVTK<FluidGrid, FluidVTKStreamer> dumper;
 
 	virtual void _diagnostics() = 0;
-	virtual void _ic() = 0;
-	virtual double _nonDimensionalTime() = 0;
 
-	virtual void _dump(double & nextDumpTime)
-	{
-		#ifndef NDEBUG
-		{
-			vector<BlockInfo> vInfo = grid->getBlocksInfo();
-			const int N = vInfo.size();
+	virtual void _dump() {
+		stringstream ss;
+    ss << path2file << "avemaria_";
+    ss << std::setfill('0') << std::setw(7) << sim.step;
+    ss << ".vti";
+		cout << ss.str() << endl;
 
-			#pragma omp parallel for schedule(static)
-			for(int i=0; i<N; i++)
-			{
-				BlockInfo info = vInfo[i];
-				FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-
-				for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-				for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-				{
-					if(std::isnan(b(ix,iy).rho)||std::isnan(b(ix,iy).u)||
-						std::isnan(b(ix,iy).v)||std::isnan(b(ix,iy).p)) cout<<"dump"<<endl;
-
-					if (b(ix,iy).rho <= 0)
-						cout << "dump " << b(ix,iy).rho << "\t" << info.index[0] << " " << info.index[1] << " " << ix << " " << iy << endl;
-
-					assert(b(ix,iy).rho > 0);
-					assert(!std::isnan(b(ix,iy).rho));
-					assert(!std::isnan(b(ix,iy).u));
-					assert(!std::isnan(b(ix,iy).v));
-					assert(!std::isnan(b(ix,iy).p));
-					assert(!std::isnan(b(ix,iy).pOld));
-					assert(!std::isnan(b(ix,iy).tmpU));
-					assert(!std::isnan(b(ix,iy).tmpV));
-					assert(!std::isnan(b(ix,iy).tmp));
-				}
-			}
-		}
-		#endif
-
-		const int sizeX = bpdx * FluidBlock::sizeX;
-		const int sizeY = bpdy * FluidBlock::sizeY;
-		vector<BlockInfo> vInfo = grid->getBlocksInfo();
-
-		const bool timeDump = dumpTime>0. && _nonDimensionalTime()>nextDumpTime;
-		const bool stepDump = dumpFreq>0  && step % dumpFreq == 0;
-		if(stepDump || timeDump)
-		{
-			nextDumpTime += dumpTime;
-
-			//vector<BlockInfo> vInfo = grid->getBlocksInfo();
-			//processOMP<Lab, OperatorVorticityTmp>(0, vInfo,*grid);
-			stringstream ss;
-      ss << path2file << "avemaria_";
-      ss << std::setfill('0') << std::setw(7) << step;
-      ss << ".vti";
-			cout << ss.str() << endl;
-
-			dumper.Write(*grid, ss.str());
-			//_serialize();
-		}
+		dumper.Write( *(sim.grid), ss.str() );
 	}
 
-	virtual void _dump(stringstream&fname)
-	{
-		const int sizeX = bpdx * FluidBlock::sizeX;
-		const int sizeY = bpdy * FluidBlock::sizeY;
-		//vector<BlockInfo> vInfo = grid->getBlocksInfo();
-		//processOMP<Lab, OperatorVorticityTmp>(0, vInfo,*grid);
+	virtual void _dump(stringstream& fname) {
     cout << fname.str() << endl;
-		dumper.Write(*grid, fname.str());
+		dumper.Write( *(sim.grid), fname.str() );
 		_serialize();
 	}
 
@@ -169,11 +96,10 @@ class Simulation_Fluid
 
 	virtual ~Simulation_Fluid()
 	{
-		delete grid;
-		while(!pipeline.empty()) {
+		while( not pipeline.empty() ) {
 			GenericCoordinator * g = pipeline.back();
 			pipeline.pop_back();
-			delete g;
+			if(g not_eq nullptr) delete g;
 		}
 	}
 
@@ -184,29 +110,44 @@ class Simulation_Fluid
 
 		// initialize grid
 		parser.set_strict_mode();
-		bpdx = parser("-bpdx").asInt();
-		bpdy = parser("-bpdy").asInt();
-		grid = new FluidGrid(bpdx,bpdy,1);
-		assert(grid != NULL);
+		const int bpdx = parser("-bpdx").asInt();
+		const int bpdy = parser("-bpdy").asInt();
+		sim.grid = new FluidGrid(bpdx, bpdy, 1);
+		assert( sim.grid not_eq nullptr );
 
 		// simulation ending parameters
 		parser.unset_strict_mode();
-		nsteps = parser("-nsteps").asInt(0);		// nsteps==0   means that this stopping criteria is not active
-		endTime = parser("-tend").asDouble(0);		// endTime==0  means that this stopping criteria is not active
+		sim.nsteps = parser("-nsteps").asInt(0);
+		sim.endTime = parser("-tend").asDouble(0);
 
 		// output parameters
-		dumpFreq = parser("-fdump").asDouble(0);	// dumpFreq==0 means that this dumping frequency (in #steps) is not active
-		dumpTime = parser("-tdump").asDouble(0);	// dumpTime==0 means that this dumping frequency (in time)   is not active
+		sim.dumpFreq = parser("-fdump").asDouble(0);
+		sim.dumpTime = parser("-tdump").asDouble(0);
+
 		path2file = parser("-file").asString("./");
 		path4serialization = parser("-serialization").asString(path2file);
 
-		CFL = parser("-CFL").asDouble(.1);
-		LCFL = parser("-LCFL").asDouble(.1);
+
+    // simulation settings
+		sim.CFL = parser("-CFL").asDouble(.1);
+		sim.lambda = parser("-lambda").asDouble(1e5);
+		sim.dlm = parser("-dlm").asDouble(10.);
+    sim.nu = parser("-nu").asDouble(1e-2);
 
 		verbose = parser("-verbose").asBool(false);
 	}
 
-	virtual void simulate() = 0;
-};
+  virtual bool advance(const double dt) = 0;
+  virtual double calcMaxTimestep() = 0;
 
-#endif
+  void simulate()
+  {
+    while (1) {
+        profiler.push_start("DT");
+        const double dt = calcMaxTimestep();
+        profiler.pop_stop();
+
+        if (advance(dt)) break;
+    }
+  }
+};

@@ -3,47 +3,11 @@ LD ?= g++
 
 nthreads ?= 24
 config ?= production
-bc ?= periodic
-precision ?= double
-poisson ?= fftw
+#precision ?= double
+precision ?= single
 multiphase ?= false
 bs ?= 32
-vertexcentered ?= false
-particles ?= false
-dlm ?= false
-
 smarties ?= false
-
-constnu ?= false
-densitydiff ?= false
-movingframe ?= true
-#movingframe ?= false
-rk2 ?= false
-
-CPPFLAGS+= -w
-
-ifeq "$(bc)" "periodic"
-	CPPFLAGS += -D_PERIODIC_
-endif
-ifeq "$(bc)" "pipe"
-	CPPFLAGS += -D_PIPE_
-endif
-ifeq "$(bc)" "vortex"
-	CPPFLAGS += -D_VORTEX_
-endif
-ifeq "$(bc)" "mixed"
-	CPPFLAGS += -D_MIXED_
-endif
-ifeq "$(bc)" "openbox"
-	CPPFLAGS += -D_OPENBOX_
-endif
-ifeq "$(bc)" "box"
-	CPPFLAGS += -D_BOX_
-endif
-
-ifeq "$(precision)" "single"
-	CPPFLAGS += -D_SP_COMP_
-endif
 
 CPPFLAGS+= -D_BS_=$(bs)
 
@@ -54,40 +18,8 @@ else
 	#LIBS += -fsanitize=address
 endif
 
-ifeq "$(poisson)" "split-fftw"
-	CPPFLAGS += -D_SPLIT_
-endif
-
 ifeq "$(multiphase)" "true"
 	CPPFLAGS += -D_MULTIPHASE_
-endif
-
-ifeq "$(vertexcentered)" "true"
-	CPPFLAGS += -D_VERTEXCENTERED_
-endif
-
-ifeq "$(particles)" "true"
-	CPPFLAGS += -D_PARTICLES_
-endif
-
-ifeq "$(dlm)" "true"
-	CPPFLAGS += -D_DLM_
-endif
-
-ifeq "$(constnu)" "true"
-	CPPFLAGS += -D_CONSTNU_
-endif
-
-ifeq "$(densitydiff)" "true"
-	CPPFLAGS += -D_DENSITYDIFF_
-endif
-
-ifeq "$(rk2)" "true"
-	CPPFLAGS += -D_RK2_
-endif
-
-ifeq "$(movingframe)" "true"
-CPPFLAGS += -D_MOVING_FRAME_
 endif
 
 UNAME_S := $(shell uname -s)
@@ -113,12 +45,16 @@ endif
 
 CPPFLAGS += -std=c++11 -fopenmp -Wall -D_ALIGNBYTES_=32 #-fpermissive
 CPPFLAGS += -DNTHREADS=$(nthreads)
-CPPFLAGS += -I../source/ -I../Cubism/ #-I$(vtk-inc) -I$(fftw-inc)
+CPPFLAGS += -I../source/ -I../Cubism/source/ #-I$(vtk-inc) -I$(fftw-inc)
 CPPFLAGS += -D_USE_FPZIP_  -I../tools/fpzip/inc
-
+CPPFLAGS+= -Wextra -Wfloat-equal -Wundef -Wcast-align -Woverloaded-virtual
+CPPFLAGS+= -Wlogical-op -Wmissing-declarations -Wredundant-decls -Wshadow
+CPPFLAGS+= -Wwrite-strings -Wno-cpp -Wno-unused-parameter
+CPPFLAGS+= -Wno-float-equal
 LDFLAGS = $(CPPFLAGS)
 
 ifeq "$(precision)" "single"
+    CPPFLAGS += -D_FLOAT_PRECISION_
     LIBS += -lfftw3 -lfftw3f -lfftw3f_threads
 endif
 ifeq "$(precision)" "double"
@@ -127,36 +63,35 @@ endif
 
 LIBS += -L../tools/fpzip/lib -lfpzip
 
-
 BUILDDIR = .
 SRC_DIR = $(BUILDDIR)/../source/
-CUBISM_DIR = $(BUILDDIR)/../Cubism/
-OBJECTS = PoissonSolverScalarFFTW.o Sim_FSI_Gravity.o main.o #Profiler.o
+CUBISM_DIR = $(BUILDDIR)/../Cubism/source/
+OBJECTS = Sim_FSI_Gravity.o Definitions.o
 
 ifeq "$(smarties)" "true"
-SMARTIESDIR ?= ../../smarties/source/
-CPPFLAGS += -DRL_MPI_CLIENT -I$(SMARTIESDIR)
+SMARTIESDIR = ../../smarties/source/Communicators/
+#CPPFLAGS += -DRL_MPI_CLIENT
+CPPFLAGS += -I$(SMARTIESDIR)
 OBJECTS += Communicator.o
-VPATH := $(SRC_DIR) $(CUBISM_DIR) $(SMARTIESDIR)
+VPATH := $(SRC_DIR):$(CUBISM_DIR):$(SMARTIESDIR)
+all: blowfish
 else
-VPATH := $(SRC_DIR) $(CUBISM_DIR)
+VPATH := $(SRC_DIR):$(CUBISM_DIR)
+all: simulation
 endif
 
 .DEFAULT: all;
 
-all: simulation #test
+blowfish: main_RL_blowfish.o $(OBJECTS)
+	$(LD) main_RL_blowfish.o $(OBJECTS) -o $@ $(LIBS) $(LDFLAGS)
 
-simulation: $(OBJECTS)
-#	echo Linking
-#	echo OBJECTS = $(OBJECTS)
-#	echo ************************
-	$(LD) $(OBJECTS) -o $@ $(LIBS) $(LDFLAGS)
-#	echo ************************
+simulation: main.o $(OBJECTS)
+	$(LD) main.o $(OBJECTS) -o $@ $(LIBS) $(LDFLAGS)
 
 %.o: %.cpp
-#	echo PRODUCING $@
 	$(CC) $(CPPFLAGS) -c $< -o $@
 
+
 clean:
-	rm -f simulation test
-	rm -f $(OBJECTS) $(OBJECTS_TEST)
+	rm -f simulation blowfish
+	rm -f *.o *.d
