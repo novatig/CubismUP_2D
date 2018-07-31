@@ -27,24 +27,14 @@ class Simulation_Fluid
 	ArgumentParser parser;
 	Profiler profiler;
   SimulationData sim;
-
-	// Serialization
-	bool bPing = false, bRestart = false; // needed for ping-pong scheme
-	string path4serialization;
-
 	vector<GenericCoordinator*> pipeline;
-
-	// verbose
-	bool verbose=false;
-
-	string path2file;
 	SerializerIO_ImageVTK<FluidGrid, FluidVTKStreamer> dumper;
 
 	virtual void _diagnostics() = 0;
 
 	virtual void _dump() {
 		stringstream ss;
-    ss << path2file << "avemaria_";
+    ss << sim.path2file << "avemaria_";
     ss << std::setfill('0') << std::setw(7) << sim.step;
     ss << ".vti";
 		cout << ss.str() << endl;
@@ -60,6 +50,7 @@ class Simulation_Fluid
 
 	void _serialize()
 	{
+    /*
 		stringstream ss;
 		ss << path4serialization << "Serialized-" << bPing << ".dat";
 		cout << ss.str() << endl;
@@ -69,6 +60,7 @@ class Simulation_Fluid
 		//DumpZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
 
 		bPing = !bPing;
+    */
 	}
 
 	void _deserialize()
@@ -103,15 +95,20 @@ class Simulation_Fluid
 		}
 	}
 
+  void reset() {
+    sim.resetAll();
+  }
+
 	virtual void init()
 	{
-		bRestart = parser("-restart").asBool(false);
-		cout << "bRestart is " << bRestart << endl;
+		sim.bRestart = parser("-restart").asBool(false);
+		cout << "bRestart is " << sim.bRestart << endl;
 
 		// initialize grid
 		parser.set_strict_mode();
 		const int bpdx = parser("-bpdx").asInt();
 		const int bpdy = parser("-bpdy").asInt();
+    cout << bpdx<<" "<<bpdy << endl;
 		sim.grid = new FluidGrid(bpdx, bpdy, 1);
 		assert( sim.grid not_eq nullptr );
 
@@ -124,8 +121,8 @@ class Simulation_Fluid
 		sim.dumpFreq = parser("-fdump").asDouble(0);
 		sim.dumpTime = parser("-tdump").asDouble(0);
 
-		path2file = parser("-file").asString("./");
-		path4serialization = parser("-serialization").asString(path2file);
+		sim.path2file = parser("-file").asString("./");
+		sim.path4serialization = parser("-serialization").asString(sim.path2file);
 
 
     // simulation settings
@@ -134,7 +131,7 @@ class Simulation_Fluid
 		sim.dlm = parser("-dlm").asDouble(10.);
     sim.nu = parser("-nu").asDouble(1e-2);
 
-		verbose = parser("-verbose").asBool(false);
+		sim.verbose = parser("-verbose").asBool(true);
 	}
 
   virtual bool advance(const double dt) = 0;

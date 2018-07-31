@@ -5,7 +5,6 @@ nthreads ?= 24
 config ?= production
 #precision ?= double
 precision ?= single
-multiphase ?= false
 bs ?= 32
 smarties ?= false
 
@@ -18,10 +17,6 @@ else
 	#LIBS += -fsanitize=address
 endif
 
-ifeq "$(multiphase)" "true"
-	CPPFLAGS += -D_MULTIPHASE_
-endif
-
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 include make.macos
@@ -29,10 +24,6 @@ endif
 
 ifneq "$(findstring falcon,$(shell hostname))" ""
 include make.falcon
-endif
-
-ifneq "$(findstring brutus,$(shell hostname))" ""
-include make.brutus
 endif
 
 ifneq "$(findstring euler,$(shell hostname))" ""
@@ -68,22 +59,22 @@ SRC_DIR = $(BUILDDIR)/../source/
 CUBISM_DIR = $(BUILDDIR)/../Cubism/source/
 OBJECTS = Sim_FSI_Gravity.o Definitions.o
 
-ifeq "$(smarties)" "true"
+all: simulation
+VPATH := $(SRC_DIR):$(CUBISM_DIR)
+
+ifneq "$(smarties)" "false"
 SMARTIESDIR = ../../smarties/source/Communicators/
-#CPPFLAGS += -DRL_MPI_CLIENT
 CPPFLAGS += -I$(SMARTIESDIR)
 OBJECTS += Communicator.o
-VPATH := $(SRC_DIR):$(CUBISM_DIR):$(SMARTIESDIR)
-all: blowfish
-else
-VPATH := $(SRC_DIR):$(CUBISM_DIR)
-all: simulation
+VPATH := $(VPATH):$(SMARTIESDIR)
 endif
 
 .DEFAULT: all;
 
 blowfish: main_RL_blowfish.o $(OBJECTS)
-	$(LD) main_RL_blowfish.o $(OBJECTS) -o $@ $(LIBS) $(LDFLAGS)
+	ar rs libsimulation.a $^ #$(LIBS) $(LDFLAGS)
+	# TODO: expect user to put SMARTDIR in bashrc
+	cp libsimulation.a ../../smarties/makefiles/libsimulation.a
 
 simulation: main.o $(OBJECTS)
 	$(LD) main.o $(OBJECTS) -o $@ $(LIBS) $(LDFLAGS)
@@ -93,5 +84,5 @@ simulation: main.o $(OBJECTS)
 
 
 clean:
-	rm -f simulation blowfish
+	rm -f simulation blowfish.so
 	rm -f *.o *.d

@@ -19,6 +19,7 @@ class Shape
  protected: // data fields
   SimulationData& sim;
   // general quantities
+  const Real origC[2], origAng;
   Real center[2]; // for single density, this corresponds to centerOfMass
   Real centerOfMass[2];
   Real d_gm[2]; // distance of center of geometry to center of mass
@@ -49,6 +50,29 @@ class Shape
   const Real forcedu;
   const Real forcedv;
 
+  virtual void resetAll() {
+             center[0] = origC[0];
+             center[1] = origC[1];
+       centerOfMass[0] = origC[0];
+       centerOfMass[1] = origC[1];
+    labCenterOfMass[0] = 0;
+    labCenterOfMass[1] = 0;
+    orientation = origAng;
+    M = 0;
+    V = 0;
+    J = 0;
+    u = 0;
+    v = 0;
+    omega = 0;
+    computedu = 0;
+    computedv = 0;
+    computedo = 0;
+    d_gm[0] = 0;
+    d_gm[1] = 0;
+    for(auto & entry : obstacleBlocks) delete entry.second;
+    obstacleBlocks.clear();
+  }
+
  protected:
 
   Real smoothHeaviside(Real rR, Real radius, Real eps) const
@@ -67,8 +91,9 @@ class Shape
 
  public:
   Shape( SimulationData& s, ArgumentParser& p, Real C[2] ) :
-  sim(s), center{C[0],C[1]}, centerOfMass{C[0],C[1]}, d_gm{0,0},
-  orientation( p("-angle").asDouble(0)*M_PI/180 ),
+  sim(s), origC{C[0],C[1]}, origAng( p("-angle").asDouble(0)*M_PI/180 ),
+  center{C[0],C[1]}, centerOfMass{C[0],C[1]},
+  d_gm{0,0}, orientation(origAng),
   rhoS( p("-rhoS").asDouble(1) ),
   bForced( p("-bForced").asBool(false) ),
   bFixed( p("-bFixed").asBool(false) ),

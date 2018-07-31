@@ -267,6 +267,7 @@ struct SimulationData
   double dt = 0;
   double CFL = 0.1;
 
+  bool verbose = true;
 	// output
   // dumpFreq==0 means that this dumping frequency (in #steps) is not active
 	int dumpFreq = 0;
@@ -274,7 +275,13 @@ struct SimulationData
 	double dumpTime = 0;
   double nextDumpTime = 0;
   bool _bDump = false;
+  bool bPing = false;
+  bool bRestart = false;
 
+  string path4serialization;
+  string path2file;
+
+  void resetAll();
   bool bDump()
   {
 		const bool timeDump = dumpTime>0 && time > nextDumpTime;

@@ -17,6 +17,7 @@ using namespace std;
 #include "Communicator.h"
 #include "Sim_FSI_Gravity.h"
 
+#include "mpi.h"
 //
 // All these functions are defined here and not in object itself because
 // Many different tasks, each requiring different state/act/rew descriptors
@@ -28,7 +29,7 @@ using namespace std;
 // range of angles in initial conditions
 
 inline void resetIC(Blowfish* const agent, std::mt19937& gen) {
-  const Real A = 15*M_PI/180; // start between -15 and 15 degrees
+  const Real A = 5*M_PI/180; // start between -15 and 15 degrees
   uniform_real_distribution<Real> dis(-A, A);
   agent->setOrientation(dis(gen));
 }
@@ -70,17 +71,25 @@ inline double getTimeToNextAct(const Blowfish* const agent, const double t) {
   return t + agent->timescale / 4;
 }
 
-int main(int argc, char **argv)
+int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
+//int main(int argc, char **argv)
 {
 	ArgumentParser parser(argc,argv);
 	parser.set_strict_mode();
-	const int socket_id  = parser("-Socket").asInt(-1);
-  printf("Starting communication with RL over socket %d\n", socket_id);
-
   const int nActions = 2;
   const int nStates = 8;
   const unsigned maxLearnStepPerSim = 500; // random number... TODO
-  Communicator communicator(socket_id, nStates, nActions);
+	//const int socket_id  = parser("-Socket").asInt();
+  //printf("Starting communication with RL over socket %d\n", socket_id);
+  //Communicator communicator(socket_id, nStates, nActions);
+  Communicator& communicator = *comm;
+  communicator.update_state_action_dims(nStates, nActions);
+
+	Sim_FSI_Gravity sim(argc, argv);
+	sim.init();
+
+  Blowfish* const agent = dynamic_cast<Blowfish*>( sim.getShape() );
+  if(agent==nullptr) { printf("Obstacle was not a Blowfish!\n"); abort(); }
 
 	char dirname[1024]; dirname[1023] = '\0';
   unsigned sim_id = 0;
@@ -91,12 +100,6 @@ int main(int argc, char **argv)
 		printf("Starting a new sim in directory %s\n", dirname);
 		mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 		chdir(dirname);
-
-		Sim_FSI_Gravity sim(argc, argv);
-		sim.init();
-
-    Blowfish* const agent = dynamic_cast<Blowfish*>( sim.getShape() );
-    if(agent==nullptr) { printf("Obstacle was not a Blowfish!\n"); abort(); }
     resetIC(agent, communicator.gen); // randomize initial conditions
 
     communicator.sendInitState(getState(agent)); //send initial state
@@ -114,8 +117,7 @@ int main(int argc, char **argv)
         const double dt = sim.calcMaxTimestep();
         if ( sim.advance( dt ) ) { // if true sim has ended
           printf("Set -tend 0. This file decides the length of train sim.\n");
-          assert(false);
-          abort();
+          assert(false); fflush(0); abort();
         }
         if ( isTerminal(agent) ) {
           agentOver = true;
@@ -127,17 +129,20 @@ int main(int argc, char **argv)
       const double reward = getReward(agent);
 
       if (agentOver) {
+        printf("Agent failed\n"); fflush(0);
         communicator.sendTermState(state, reward);
         break;
       }
       else
       if (step >= maxLearnStepPerSim) {
+        printf("Sim ended\n"); fflush(0);
         communicator.truncateSeq(state, reward);
         break;
       }
       else communicator.sendState(state, reward);
     } // simulation is done
 
+    sim.reset();
 		chdir("../");
 		sim_id++;
 	}

@@ -94,6 +94,7 @@ double Sim_FSI_Gravity::calcMaxTimestep()
     sim.dt = rampCFL*std::min({dtCFL, dtFourier, dtBody});
   }
   #ifndef RL_TRAIN
+  if(sim.verbose)
     cout << "time, dt (Fourier, CFL, body): "
     <<sim.time<<" "<<sim.dt<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody<<" "<<sim.uinfx<<" "<<sim.uinfy<<endl;
   #endif
@@ -139,7 +140,7 @@ bool Sim_FSI_Gravity::advance(const double dt)
   }
   profiler.pop_stop();
 
-  if (sim.step % 100 == 0) {
+  if (sim.step % 100 == 0 && sim.verbose) {
     profiler.printSummary();
     profiler.reset();
   }

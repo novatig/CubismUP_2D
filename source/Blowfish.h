@@ -21,6 +21,12 @@ class Blowfish : public Shape
   Real flapVel_R = 0, flapVel_L = 0;
   Real flapAcc_R = 0, flapAcc_L = 0;
 
+  void resetAll() {
+    flapAng_R = 0, flapAng_L = 0;
+    flapVel_R = 0, flapVel_L = 0;
+    flapAcc_R = 0, flapAcc_L = 0;
+    Shape::resetAll();
+  }
   const Real radius;
   const Real rhoTop = 1.5; //top half
   const Real rhoBot = 0.5; //bot half
