@@ -27,6 +27,10 @@ ifeq ($(UNAME_S),Darwin)
 include make.macos
 endif
 
+ifneq "$(findstring falcon,$(shell hostname))" ""
+include make.falcon
+endif
+
 ifneq "$(findstring brutus,$(shell hostname))" ""
 include make.brutus
 endif
