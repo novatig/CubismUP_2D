@@ -22,19 +22,26 @@ using namespace std;
 // Many different tasks, each requiring different state/act/rew descriptors
 // could be designed for the same objects (also to fully encapsulate RL).
 //
+// main hyperparameters:
+// number of actions per characteristic time scale
+// max number of actions per simulation
+// range of angles in initial conditions
 
 inline void resetIC(Blowfish* const agent, std::mt19937& gen) {
-  agent->setOrientation(0);
+  const Real A = 15*M_PI/180; // start between -15 and 15 degrees
+  uniform_real_distribution<Real> dis(-A, A);
+  agent->setOrientation(dis(gen));
 }
 inline void setAction(Blowfish* const agent, const vector<double> act) {
   agent->flapAcc_R = act[0]/agent->timescale/agent->timescale;
   agent->flapAcc_L = act[1]/agent->timescale/agent->timescale;
 }
 inline vector<double> getState(const Blowfish* const agent) {
+  const double velscale = agent->radius / agent->timescale;
   const double w = agent->getW() * agent->timescale;
   const double angle = agent->getOrientation();
-  const double u = agent->getU() / agent->velscale;
-  const double v = agent->getV() / agent->velscale;
+  const double u = agent->getU() / velscale;
+  const double v = agent->getV() / velscale;
   const double cosAng = std::cos(angle), sinAng = std::sin(angle);
   const double U = u*cosAng + v*sinAng, V = v*cosAng - u*sinAng;
   const double WR = agent->flapVel_R * agent->timescale;
@@ -45,9 +52,10 @@ inline vector<double> getState(const Blowfish* const agent) {
   return states;
 }
 inline double getReward(const Blowfish* const agent) {
+  const double velscale = agent->radius / agent->timescale;
   const double angle = agent->getOrientation();
-  const double u = agent->getU() / agent->velscale;
-  const double v = agent->getV() / agent->velscale;
+  const double u = agent->getU() / velscale;
+  const double v = agent->getV() / velscale;
   const double cosAng = std::cos(angle);
   const bool ended = cosAng<0;
   const double reward = ended ? -10 : cosAng -std::sqrt(u*u+v*v);
@@ -59,7 +67,7 @@ inline bool isTerminal(const Blowfish* const agent) {
   return cosAng<0;
 }
 inline double getTimeToNextAct(const Blowfish* const agent, const double t) {
-  return agent->timescale * 0.1;
+  return t + agent->timescale / 4;
 }
 
 int main(int argc, char **argv)
@@ -71,6 +79,7 @@ int main(int argc, char **argv)
 
   const int nActions = 2;
   const int nStates = 8;
+  const unsigned maxLearnStepPerSim = 500; // random number... TODO
   Communicator communicator(socket_id, nStates, nActions);
 
 	char dirname[1024]; dirname[1023] = '\0';
@@ -93,7 +102,7 @@ int main(int argc, char **argv)
     communicator.sendInitState(getState(agent)); //send initial state
 
     Real t = 0;
-    bool simIsOver = false;
+    unsigned step = 0;
     bool agentOver = false;
 
     while (true) //simulation loop
@@ -103,11 +112,17 @@ int main(int argc, char **argv)
       while (t < tNextAct)
       {
         const double dt = sim.calcMaxTimestep();
-        if ( sim.advance( dt ) ) { simIsOver = true; }
-        if ( isTerminal(agent) ) { agentOver = true; }
-        if ( simIsOver || agentOver )  break;
+        if ( sim.advance( dt ) ) { // if true sim has ended
+          printf("Set -tend 0. This file decides the length of train sim.\n");
+          assert(false);
+          abort();
+        }
+        if ( isTerminal(agent) ) {
+          agentOver = true;
+          break;
+        }
       }
-
+      step++;
       const vector<double> state = getState(agent);
       const double reward = getReward(agent);
 
@@ -116,7 +131,7 @@ int main(int argc, char **argv)
         break;
       }
       else
-      if (simIsOver) {
+      if (step >= maxLearnStepPerSim) {
         communicator.truncateSeq(state, reward);
         break;
       }

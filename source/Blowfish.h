@@ -32,20 +32,16 @@ class Blowfish : public Shape
 
   const Real attachDist = radius + std::max(finWidth, (Real)sim.getH()*2);
   //Real powerOutput = 0, old_powerOutput = 0;
-  const Real rhoF = 1; //ASSUME RHO FLUID == 1
-  const Real lengthscale = 2*radius;
-  const Real distHalfCM = 4*radius/(3*M_PI);
-  const Real halfarea = 0.5*M_PI*radius*radius;
+  const Real deltaRho = 0.5; //ASSUME RHO FLUID == 1
+  // analytical period of oscillation for small angles
+  const Real timescale = sqrt(3*M_PI*radius/deltaRho/fabs(sim.gravity[1])/8);
   const Real minRho = std::min(rhoTop,rhoBot), maxRho = std::max(rhoTop,rhoBot);
-  const Real forceDw = halfarea*(rhoF-minRho)*std::fabs(sim.gravity[1]);
-  const Real forceUp = halfarea*(maxRho-rhoF)*std::fabs(sim.gravity[1]);
-  const Real torquescale = distHalfCM*(forceDw+forceUp);
-  const Real velscale = std::sqrt(torquescale/lengthscale/lengthscale/rhoF);
-  const Real timescale = lengthscale/velscale;
 
   Blowfish(SimulationData&s, ArgumentParser&p, Real C[2])
   : Shape(s,p,C), radius( p("-radius").asDouble(0.1) )
   {
+    const Real distHalfCM = 4*radius/(3*M_PI);
+    const Real halfarea = 0.5*M_PI*radius*radius;
     // based on weighted average
     const Real CentTop =  distHalfCM;
     const Real MassTop =  halfarea*rhoTop;
@@ -95,37 +91,6 @@ class Blowfish : public Shape
       if(flapVel_L<0) flapVel_L = 0;
       if(flapAcc_L<0) flapAcc_L = 0;
     }
-
-    #if 0
-    // based on weighted average
-    const Real CentTop =  distHalfCM;
-    const Real MassTop =  halfarea*rhoTop;
-    const Real CentBot = -distHalfCM;
-    const Real MassBot =  halfarea*rhoBot;
-    const Real MassFin = finLength*finWidth*rhoFin;
-
-    const Real angAttF1 = orientation -finAngle0;
-    const Real angAttF2 = orientation +finAngle0 +M_PI;
-    const Real angTotF1 = angAttF1  +flapAng_R;
-    const Real angTotF2 = angAttF2  +flapAng_L;
-
-    // compute new centers of fins relative to geometric center
-    const Real CMF1[2] = {
-      attachDist*std::cos(angAttF1) +finLength/2*std::cos(angTotF1),
-      attachDist*std::sin(angAttF1) +finLength/2*std::sin(angTotF1)
-    };
-    const Real CMF2[2] = {
-      attachDist*std::cos(angAttF2) +finLength/2*std::cos(angTotF2),
-      attachDist*std::sin(angAttF2) +finLength/2*std::sin(angTotF2)
-    };
-    //const Real d_gmox = d_gm[0], d_gmoy = d_gm[1];
-    d_gm[0] = (CMF1[0] + CMF2[0])/2;
-    d_gm[1] = -(CentTop*MassTop + CentBot*MassBot + (CMF1[1] + CMF2[1])*MassFin)/(MassTop + MassBot + 2*MassFin);
-    //cout << d_gmox <<" "<< d_gm[0] <<" "<< d_gmoy <<" "<< d_gm[1] << endl;
-
-    center[0] = centerOfMass[0] + std::cos(orientation)*d_gm[0] - std::sin(orientation)*d_gm[1];
-    center[1] = centerOfMass[1] + std::sin(orientation)*d_gm[0] + std::cos(orientation)*d_gm[1];
-    #endif
 
     #ifndef RL_TRAIN
     if(  std::fabs(flapVel_R) + std::fabs(flapAcc_R) + std::fabs(flapVel_L)
