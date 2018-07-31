@@ -265,6 +265,7 @@ class Shape
   {
     Integrals I = integrateObstBlock(vInfo);
     #ifndef RL_TRAIN
+    if(sim.verbose)
     if(fabs(I.u)+fabs(I.v)+fabs(I.a)>numeric_limits<Real>::epsilon())
       printf("Correction of: lin mom [%f %f] ang mom [%f]. Error in CM=[%f %f]\n", I.u, I.v, I.a, I.x-centerOfMass[0], I.y-centerOfMass[1]);
     #endif
@@ -363,8 +364,10 @@ class Shape
     V = _V * std::pow(vInfo[0].h_gridpoint,2);
 
     #ifndef RL_TRAIN
-      printf("CM:[%f %f] C:[%f %f] u:%f v:%f omega:%f M:%f J:%f V:%f\n",
+      if(sim.verbose)
+        printf("CM:[%f %f] C:[%f %f] u:%f v:%f omega:%f M:%f J:%f V:%f\n",
         centerOfMass[0], centerOfMass[1], center[0], center[1], u, v, omega, M, J, V);
+
       {
         ofstream fileSpeed;
       	stringstream ssF;

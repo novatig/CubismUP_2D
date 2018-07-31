@@ -29,7 +29,7 @@ using namespace std;
 // range of angles in initial conditions
 
 inline void resetIC(Blowfish* const agent, std::mt19937& gen) {
-  const Real A = 5*M_PI/180; // start between -15 and 15 degrees
+  const Real A = 10*M_PI/180; // start between -15 and 15 degrees
   uniform_real_distribution<Real> dis(-A, A);
   agent->setOrientation(dis(gen));
 }
@@ -90,7 +90,7 @@ int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
 
   Blowfish* const agent = dynamic_cast<Blowfish*>( sim.getShape() );
   if(agent==nullptr) { printf("Obstacle was not a Blowfish!\n"); abort(); }
-
+  //sim.sim.dumpTime = agent->timescale / 10; // to force dumping
 	char dirname[1024]; dirname[1023] = '\0';
   unsigned sim_id = 0;
 
@@ -115,6 +115,8 @@ int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
       while (t < tNextAct)
       {
         const double dt = sim.calcMaxTimestep();
+        t += dt;
+
         if ( sim.advance( dt ) ) { // if true sim has ended
           printf("Set -tend 0. This file decides the length of train sim.\n");
           assert(false); fflush(0); abort();
@@ -141,7 +143,6 @@ int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
       }
       else communicator.sendState(state, reward);
     } // simulation is done
-
     sim.reset();
 		chdir("../");
 		sim_id++;

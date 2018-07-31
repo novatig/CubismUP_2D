@@ -23,10 +23,11 @@
 
 class Simulation_Fluid
 {
+ public:
+  SimulationData sim;
  protected:
 	ArgumentParser parser;
 	Profiler profiler;
-  SimulationData sim;
 	vector<GenericCoordinator*> pipeline;
 	SerializerIO_ImageVTK<FluidGrid, FluidVTKStreamer> dumper;
 
@@ -131,7 +132,7 @@ class Simulation_Fluid
 		sim.dlm = parser("-dlm").asDouble(10.);
     sim.nu = parser("-nu").asDouble(1e-2);
 
-		sim.verbose = parser("-verbose").asBool(true);
+		sim.verbose = parser("-verbose").asInt(1);
 	}
 
   virtual bool advance(const double dt) = 0;

@@ -90,13 +90,16 @@ double Sim_FSI_Gravity::calcMaxTimestep()
   {
     const double x = (sim.step+1)/100;
     const double logCFL = std::log(sim.CFL);
-    const double rampCFL = std::exp(-5*(1-x) + logCFL * x);
+    const double rampCFL = std::exp(-4.5*(1-x) + logCFL * x);
     sim.dt = rampCFL*std::min({dtCFL, dtFourier, dtBody});
   }
   #ifndef RL_TRAIN
   if(sim.verbose)
     cout << "time, dt (Fourier, CFL, body): "
-    <<sim.time<<" "<<sim.dt<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody<<" "<<sim.uinfx<<" "<<sim.uinfy<<endl;
+    <<sim.time<<" "<<sim.dt
+    //<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody
+    //<<" "<<sim.uinfx<<" "<<sim.uinfy
+    <<endl;
   #endif
 
   return sim.dt;
