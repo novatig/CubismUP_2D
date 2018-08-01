@@ -15,7 +15,7 @@
 #include <vector>
 
 using namespace std;
-#define FREESPACE
+
 #ifndef _FLOAT_PRECISION_
 typedef double Real;
 #else // _FLOAT_PRECISION_

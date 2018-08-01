@@ -64,7 +64,7 @@ void Sim_FSI_Gravity::init()
 
   pipeline.push_back( new CoordinatorComputeForces(sim) );
 
-  #ifndef FREESPACE
+  #ifdef CHEAPFFT
     pipeline.push_back( new CoordinatorFadeOut(sim) );
   #endif
 

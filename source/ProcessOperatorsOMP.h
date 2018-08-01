@@ -70,21 +70,24 @@ inline void processOMP(const SimulationData& sim)
 
 inline double findMaxUOMP(const SimulationData& sim)
 {
-	Real maxU = 0;
+  Real U=0, V=0, u=0, v=0;
   const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
-	#pragma omp parallel for schedule(static) reduction(max:maxU)
-	for(size_t i=0; i<vInfo.size(); i++) {
-		const BlockInfo info = vInfo[i];
-		FluidBlock& b = *(FluidBlock*)info.ptrBlock;
+  #pragma omp parallel for schedule(static) reduction(max:U, V, u, v)
+  for(size_t i=0; i<vInfo.size(); i++) {
+    const BlockInfo& info = vInfo[i];
+    FluidBlock& b = *(FluidBlock*)info.ptrBlock;
 
-		for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-			for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
-				maxU = std::max( maxU, std::fabs( b(ix,iy).u + sim.uinfx ) );
-				maxU = std::max( maxU, std::fabs( b(ix,iy).v + sim.uinfy ) );
-				maxU = std::max( maxU, std::fabs( b(ix,iy).u ) );
-				maxU = std::max( maxU, std::fabs( b(ix,iy).v ) );
-			}
-	}
+    for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+      for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
+        const Real tU = std::fabs(b(ix,iy).u + sim.uinfx);
+        const Real tV = std::fabs(b(ix,iy).v + sim.uinfy);
+        const Real tu = std::fabs(b(ix,iy).u), tv = std::fabs(b(ix,iy).v);
+        U = std::max( U, tU );
+        V = std::max( V, tV );
+        u = std::max( u, tu );
+        v = std::max( v, tv );
+    }
+  }
 
-	return maxU;
+  return std::max( { U, V, u, v } );
 }

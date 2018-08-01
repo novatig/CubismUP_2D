@@ -9,7 +9,7 @@
 #pragma once
 
 #include "GenericCoordinator.h"
-#ifdef FREESPACE
+#ifndef CHEAPFFT
   #include "PoissonSolverScalarFFTW_freespace.h"
 #else
   #include "PoissonSolverScalarFFTW_periodic.h"

@@ -3,18 +3,22 @@ LD ?= g++
 
 nthreads ?= 24
 config ?= production
-#precision ?= double
 precision ?= single
+cheap ?= false
 bs ?= 32
 smarties ?= false
 
 CPPFLAGS+= -D_BS_=$(bs)
 
-ifeq "$(config)" "production"
-	CPPFLAGS += -DNDEBUG -O3 -fstrict-aliasing -march=native -mtune=native -ffast-math -falign-functions=32
+ifeq "$(config)" "debug"
+CPPFLAGS += -g #-fsanitize=address
+#LIBS += -fsanitize=address
 else
-	CPPFLAGS += -g #-fsanitize=address
-	#LIBS += -fsanitize=address
+CPPFLAGS += -DNDEBUG -O3 -fstrict-aliasing -march=native -mtune=native -ffast-math -falign-functions=32
+endif
+
+ifeq "$(cheap)" "true"
+CPPFLAGS += -DCHEAPFFT
 endif
 
 UNAME_S := $(shell uname -s)
@@ -42,7 +46,6 @@ CPPFLAGS+= -Wextra -Wfloat-equal -Wundef -Wcast-align -Woverloaded-virtual
 CPPFLAGS+= -Wlogical-op -Wmissing-declarations -Wredundant-decls -Wshadow
 CPPFLAGS+= -Wwrite-strings -Wno-cpp -Wno-unused-parameter
 CPPFLAGS+= -Wno-float-equal
-LDFLAGS = $(CPPFLAGS)
 
 ifeq "$(precision)" "single"
     CPPFLAGS += -D_FLOAT_PRECISION_
@@ -59,7 +62,6 @@ SRC_DIR = $(BUILDDIR)/../source/
 CUBISM_DIR = $(BUILDDIR)/../Cubism/source/
 OBJECTS = Sim_FSI_Gravity.o Definitions.o
 
-all: simulation
 VPATH := $(SRC_DIR):$(CUBISM_DIR)
 
 ifneq "$(smarties)" "false"
@@ -69,6 +71,9 @@ OBJECTS += Communicator.o
 VPATH := $(VPATH):$(SMARTIESDIR)
 endif
 
+LDFLAGS = $(CPPFLAGS)
+
+all: simulation
 .DEFAULT: all;
 
 blowfish: main_RL_blowfish.o $(OBJECTS)
