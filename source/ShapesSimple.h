@@ -131,6 +131,9 @@ class DiskVarDensity : public Shape
   {
     return 2 * radius;
   }
+  Real getMinRhoS() const override {
+    return std::min(rhoTop, rhoBot);
+  }
 
   void create(const vector<BlockInfo>& vInfo) override;
 
@@ -169,6 +172,9 @@ class EllipseVarDensity : public Shape
 
    Real getCharLength() const override {
      return 2 * std::max(semiAxisX, semiAxisY);
+   }
+   Real getMinRhoS() const override {
+     return std::min(rhoTop, rhoBot);
    }
 
    void create(const vector<BlockInfo>& vInfo) override;

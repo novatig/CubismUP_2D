@@ -24,8 +24,6 @@ class OperatorDivergenceSplit : public GenericLabOperator
   const PoissonSolverScalarFFTW<FluidGrid> * const solver;
 
   static inline Real mean(const Real a, const Real b) {return .5 * (a + b);}
-  //harmonic mean: (why?)
-  //inline Real mean(const Real a, const Real b) const {return 2.*a*b/(a+b);}
 
  public:
   OperatorDivergenceSplit(double _dt, double _rho0,
@@ -165,19 +163,7 @@ class CoordinatorPressure : public GenericCoordinator
  protected:
   const double minRho = sim.minRho();
 
-  //#ifndef _MIXED_
-  //#ifndef _BOX_
-  //#ifndef _OPENBOX_
   PoissonSolverScalarFFTW<FluidGrid> pressureSolver;
-  //#else
-  //  PoissonSolverScalarFFTW_DCT<FluidGrid, StreamerDiv> pressureSolver;
-  //#endif // _OPENBOX_
-  //#else
-  //  PoissonSolverScalarFFTW_DCT<FluidGrid, StreamerDiv> pressureSolver;
-  //#endif // _BOX_
-  //#else
-  //  PoissonSolverScalarFFTW_DCT<FluidGrid, StreamerDiv> pressureSolver;
-  //#endif // _MIXED_
 
   inline void updatePressure()
   {
@@ -214,33 +200,6 @@ class CoordinatorPressure : public GenericCoordinator
     }
   }
 
-  inline void drag()
-  {
-    /*
-    const int N = vInfo.size();
-    Real tmpDragX = 0, tmpDragY = 0;
-
-    #pragma omp parallel
-    {
-      OperatorPressureDrag kernel(0);
-
-      Lab mylab;
-      mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, false);
-
-      #pragma omp for schedule(static) reduction(+:tmpDragX,tmpDragY)
-      for (int i=0; i<N; i++) {
-        BlockInfo info = vInfo[i];
-        mylab.load(info, 0);
-        kernel(mylab, info, *(FluidBlock*)info.ptrBlock);
-        tmpDragX += kernel.getDrag(0);
-        tmpDragY += kernel.getDrag(1);
-      }
-    }
-    shape->dragP[0] = tmpDragX;
-    shape->dragP[1] = tmpDragY;
-    */
-  }
-
  public:
   CoordinatorPressure(SimulationData& s) :
   GenericCoordinator(s), pressureSolver(*(s.grid)) { }
@@ -264,8 +223,6 @@ class CoordinatorPressure : public GenericCoordinator
     pressureSolver.solve();
     computeSplit<OperatorGradPSplit>(dt);
     updatePressure();
-
-    //drag();
 
     check("pressure - end");
   }

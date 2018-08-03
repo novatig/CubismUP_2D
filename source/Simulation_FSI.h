@@ -14,16 +14,13 @@
 #pragma once
 
 #include "Simulation_Fluid.h"
-#include "ShapesSimple.h"
-#include "BlowFish.h"
-#include "StefanFish.h"
 #include <random>
 
 class Simulation_FSI : public Simulation_Fluid
 {
  public:
 
-  Shape* getShape() { return sim.shapes[0]; }
+
 
   Simulation_FSI(const int argc, char ** argv) : Simulation_Fluid(argc,argv) { }
 
@@ -31,40 +28,6 @@ class Simulation_FSI : public Simulation_Fluid
   {
     Simulation_Fluid::init();
 
-    parser.set_strict_mode();
-    const Real axX = parser("-bpdx").asInt();
-    const Real axY = parser("-bpdy").asInt();
-    parser.unset_strict_mode();
-    const Real ext = std::max(axX, axY);
-    Real center[2] = {
-        (Real) parser("-xpos").asDouble(.5*axX/ext),
-        (Real) parser("-ypos").asDouble(.5*axY/ext)
-    };
 
-    Shape* shape = nullptr;
-    const string shapeType = parser("-shape").asString("disk");
-    if (shapeType=="disk")
-      shape = new Disk(             sim, parser, center);
-    else if (shapeType=="halfDisk")
-      shape = new HalfDisk(         sim, parser, center);
-    else if (shapeType=="ellipse")
-      shape = new Ellipse(          sim, parser, center);
-    else if (shapeType=="diskVarDensity")
-      shape = new DiskVarDensity(   sim, parser, center);
-    else if (shapeType=="ellipseVarDensity")
-      shape = new EllipseVarDensity(sim, parser, center);
-    else if (shapeType=="blowfish")
-      shape = new BlowFish(         sim, parser, center);
-    else if (shapeType=="stefanfish")
-      shape = new StefanFish(       sim, parser, center);
-    else
-    {
-      cout << "Error - this shape is not currently implemented! Aborting now\n";
-      abort();
-    }
-    assert(shape not_eq nullptr);
-    sim.shapes.push_back(shape);
-
-    // nothing needs to be done on restart
   }
 };

@@ -10,45 +10,6 @@
 #pragma once
 #include "GenericCoordinator.h"
 
-class OperatorViscousDrag : public GenericLabOperator
-{
- private:
-  const double dt;
-  Real viscousDrag = 0;
-
- public:
-  OperatorViscousDrag(double _dt) : dt(_dt)
-  {
-    stencil = StencilInfo(-1,-1,0, 2,2,1, false, 1, 5);
-    stencil_start[0] = -2; stencil_start[1] = -2; stencil_start[2] = 0;
-    stencil_end[0] = 3; stencil_end[1] = 3; stencil_end[2] = 1;
-  }
-
-  ~OperatorViscousDrag() {}
-
-  template <typename Lab, typename BlockType>
-  void operator()(Lab & lab, const BlockInfo& info, BlockType& o)
-  {
-    const Real prefactor = 1. / (info.h_gridpoint*info.h_gridpoint);
-    viscousDrag = 0;
-    for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-    for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-    {
-      const Real phi  = lab(ix,iy).tmp;
-      const Real phiN = lab(ix,iy+1).tmp;
-      const Real phiS = lab(ix,iy-1).tmp;
-      const Real phiE = lab(ix+1,iy).tmp;
-      const Real phiW = lab(ix-1,iy).tmp;
-      viscousDrag += prefactor * (phiN + phiS + phiE + phiW - 4.*phi);
-    }
-  }
-
-  inline Real getDrag()
-  {
-    return viscousDrag;
-  }
-};
-
 class OperatorDiffusion : public GenericLabOperator
 {
  private:

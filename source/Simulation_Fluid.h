@@ -103,7 +103,6 @@ class Simulation_Fluid
     parser.set_strict_mode();
     const int bpdx = parser("-bpdx").asInt();
     const int bpdy = parser("-bpdy").asInt();
-    cout << bpdx<<" "<<bpdy << endl;
     sim.grid = new FluidGrid(bpdx, bpdy, 1);
     assert( sim.grid not_eq nullptr );
 

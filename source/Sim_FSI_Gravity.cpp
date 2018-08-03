@@ -8,7 +8,7 @@
 
 #include "Sim_FSI_Gravity.h"
 
-#include "ProcessOperatorsOMP.h"
+#include "HelperOperators.h"
 #include "CoordinatorIC.h"
 #include "CoordinatorAdvection.h"
 #include "CoordinatorMultistep.h"
@@ -16,6 +16,11 @@
 #include "CoordinatorShape.h"
 #include "CoordinatorPressure.h"
 #include "CoordinatorGravity.h"
+#include "FactoryFileLineParser.h"
+
+#include "ShapesSimple.h"
+#include "BlowFish.h"
+#include "StefanFish.h"
 
 void Sim_FSI_Gravity::_diagnostics()
 {
@@ -23,7 +28,7 @@ void Sim_FSI_Gravity::_diagnostics()
 }
 
 Sim_FSI_Gravity::Sim_FSI_Gravity(int argc, char ** argv) :
-Simulation_FSI(argc, argv)
+Simulation_Fluid(argc, argv)
 {
   cout << "=================================================================\n";
   cout << "\t\tFlow past a falling obstacle\n";
@@ -32,10 +37,63 @@ Simulation_FSI(argc, argv)
 
 Sim_FSI_Gravity::~Sim_FSI_Gravity() { }
 
+void Sim_FSI_Gravity::createShapes()
+{
+  parser.set_strict_mode();
+  const Real axX = parser("-bpdx").asInt();
+  const Real axY = parser("-bpdy").asInt();
+  const Real ext = std::max(axX, axY);
+  parser.unset_strict_mode();
+
+  stringstream descriptors = stringstream( parser("-shapes").asString("") );
+  string line;
+  unsigned k = 0;
+
+  while (std::getline(descriptors, line)) {
+    istringstream line_stream(line);
+    string objectName;
+    line_stream >> objectName;
+    // Comments and empty lines ignored:
+    if(objectName.empty() or objectName[0]=='#') continue;
+    FactoryFileLineParser ffparser(line_stream);
+    Real center[2] = {
+        (Real) ffparser("-xpos").asDouble(.5*axX/ext),
+        (Real) ffparser("-ypos").asDouble(.5*axY/ext)
+    };
+    //ffparser.print_args();
+    Shape* shape = nullptr;
+    if (objectName=="disk")
+      shape = new Disk(             sim, ffparser, center);
+    else if (objectName=="halfDisk")
+      shape = new HalfDisk(         sim, ffparser, center);
+    else if (objectName=="ellipse")
+      shape = new Ellipse(          sim, ffparser, center);
+    else if (objectName=="diskVarDensity")
+      shape = new DiskVarDensity(   sim, ffparser, center);
+    else if (objectName=="ellipseVarDensity")
+      shape = new EllipseVarDensity(sim, ffparser, center);
+    else if (objectName=="blowfish")
+      shape = new BlowFish(         sim, ffparser, center);
+    else if (objectName=="stefanfish")
+      shape = new StefanFish(       sim, ffparser, center);
+    else {
+      cout << "Error - this shape is not recognized! Aborting now\n";
+      abort();
+    }
+    assert(shape not_eq nullptr);
+    shape->obstacleID = k++;
+    sim.shapes.push_back(shape);
+  }
+  if( sim.shapes.size() ==  0) {
+    std::cout << "Did not create any obstacles. Not supported. Aborting!\n";
+    abort();
+  }
+}
+
 void Sim_FSI_Gravity::init()
 {
-  Simulation_FSI::init();
-
+  Simulation_Fluid::init();
+  createShapes();
   // setup initial conditions
   CoordinatorIC coordIC(sim);
   profiler.push_start(coordIC.getName());

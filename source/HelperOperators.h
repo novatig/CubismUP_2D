@@ -91,3 +91,14 @@ inline double findMaxUOMP(const SimulationData& sim)
 
   return std::max( { U, V, u, v } );
 }
+
+inline void zeroAllTmp(const SimulationData& sim)
+{
+  const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
+  #pragma omp parallel for schedule(static)
+  for(size_t i=0; i<vInfo.size(); i++) {
+    FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+    for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+    for(int ix=0; ix<FluidBlock::sizeX; ++ix) b(ix,iy).tmp = 0;
+  }
+}

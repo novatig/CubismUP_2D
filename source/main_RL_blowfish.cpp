@@ -16,6 +16,7 @@ using namespace std;
 #include "Definitions.h"
 #include "Communicator.h"
 #include "Sim_FSI_Gravity.h"
+#include "BlowFish.h"
 
 #include "mpi.h"
 //
@@ -89,7 +90,7 @@ int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
   Sim_FSI_Gravity sim(argc, argv);
   sim.init();
 
-  BlowFish* const agent = dynamic_cast<BlowFish*>( sim.getShape() );
+  BlowFish* const agent = dynamic_cast<BlowFish*>( sim.getShapes().front() );
   if(agent==nullptr) { printf("Obstacle was not a BlowFish!\n"); abort(); }
   //sim.sim.dumpTime = agent->timescale / 10; // to force dumping
   char dirname[1024]; dirname[1023] = '\0';

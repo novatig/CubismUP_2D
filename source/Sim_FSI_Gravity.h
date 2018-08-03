@@ -10,14 +10,14 @@
 
 #pragma once
 
-#include "Simulation_FSI.h"
+#include "Simulation_Fluid.h"
 
-class Sim_FSI_Gravity : public Simulation_FSI
+class Sim_FSI_Gravity : public Simulation_Fluid
 {
  protected:
 
   void _diagnostics();
-
+  void createShapes();
   // should this stuff be moved? - serialize method will do that
   //void _dumpSettings(ostream& outStream);
 
@@ -30,7 +30,7 @@ public:
   double calcMaxTimestep() override;
 
   bool advance(const double DT) override;
-
+  const vector<Shape*>& getShapes() { return sim.shapes; }
   #if 0
   Real uOld = 0, vOld = 0;
   double maxA = 0;

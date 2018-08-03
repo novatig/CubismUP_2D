@@ -19,8 +19,9 @@ class CoordinatorGravity : public GenericCoordinator
  public:
   CoordinatorGravity(SimulationData& s) : GenericCoordinator(s) { }
 
-  inline void addHydrostaticPressure(const Real dt)
+  void operator()(const double dt)
   {
+    check("gravity - start");
     #pragma omp parallel for schedule(static)
     for(size_t i=0; i<vInfo.size(); i++)
     {
@@ -33,23 +34,6 @@ class CoordinatorGravity : public GenericCoordinator
         b(ix,iy).v += dt*gravity[1]*(1 - b(ix,iy).invRho);
       }
     }
-  }
-
-  void operator()(const double dt)
-  {
-    check("gravity - start");
-    addHydrostaticPressure(dt);
-    /*
-    BlockInfo * ary = &vInfo.front();
-    const int N = vInfo.size();
-    #pragma omp parallel
-    {
-      OperatorGravity kernel(gravity, dt);
-      #pragma omp for schedule(static)
-      for (int i=0; i<N; i++)
-        kernel(ary[i], *(FluidBlock*)ary[i].ptrBlock);
-    }
-    */
     check("gravity - end");
   }
 

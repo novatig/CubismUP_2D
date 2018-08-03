@@ -11,15 +11,14 @@
 class GenericOperator
 {
 public:
-	virtual void operator()(const BlockInfo& info, FluidBlock& block) const = 0;
+  virtual void operator()(const BlockInfo& info, FluidBlock& block) const = 0;
 };
 
 class GenericLabOperator
 {
 public:
   StencilInfo stencil;
-	int stencil_start[3];
-	int stencil_end[3];
-
-	// cannot put the templated operator here!
+  int stencil_start[3];
+  int stencil_end[3];
+  // cannot put the templated operator here!
 };

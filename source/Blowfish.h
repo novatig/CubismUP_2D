@@ -53,6 +53,9 @@ class BlowFish : public Shape
   {
     return 2 * radius;
   }
+  Real getMinRhoS() const override {
+    return std::min( {rhoTop, rhoBot, rhoFin} );
+  }
 
   void outputSettings(ostream &outStream) const override
   {

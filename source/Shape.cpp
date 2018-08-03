@@ -14,6 +14,8 @@
 #include "Shape.h"
 #include "OperatorComputeForces.h"
 
+Real Shape::getMinRhoS() const { return rhoS; }
+
 void Shape::updatePosition(double dt)
 {
   // update centerOfMass - this is the reference point from which we compute the center
@@ -206,8 +208,7 @@ void Shape::computeVelocities()
     {
       ofstream fileSpeed;
       stringstream ssF;
-      ssF<<"velocity_0.dat";
-
+      ssF<<"velocity_"<<obstacleID<<".dat";
       fileSpeed.open(ssF.str().c_str(), ios::app);
       if(sim.step==0)
         fileSpeed<<"time dt CMx CMy angle u v omega M J accx accy"<<std::endl;
@@ -317,14 +318,11 @@ void Shape::characteristic_function()
   for(size_t i=0; i<vInfo.size(); i++) {
     FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
     const auto pos = obstacleBlocks.find(vInfo[i].blockID);
-    if(pos == obstacleBlocks.end())
-      for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-      for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-        b(ix,iy).tmp = 0;
-    else
-      for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-      for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-        b(ix,iy).tmp = pos->second->chi[iy][ix];
+    if(pos == obstacleBlocks.end()) continue;
+
+    for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+    for(int ix=0; ix<FluidBlock::sizeX; ++ix)
+      b(ix,iy).tmp = pos->second->chi[iy][ix];
   }
 }
 
@@ -388,7 +386,7 @@ void Shape::computeForces()
   #ifndef RL_TRAIN
   if (sim._bDump) {
     char buf[500];
-    sprintf(buf, "surface_0_%07d.raw", sim.step);
+    sprintf(buf, "surface_%01d_%07d.raw", obstacleID, sim.step);
     FILE * pFile = fopen (buf, "wb");
     for(auto & block : obstacleBlocks) block.second->print(pFile);
     fflush(pFile);
@@ -399,8 +397,8 @@ void Shape::computeForces()
     ofstream fileForce;
     ofstream filePower;
     stringstream ssF, ssP;
-    ssF<<"forceValues_0.dat";
-    ssP<<"powerValues_0.dat"; //obstacleID
+    ssF<<"forceValues_"<<obstacleID<<".dat";
+    ssP<<"powerValues_"<<obstacleID<<".dat"; //obstacleID
 
     fileForce.open(ssF.str().c_str(), ios::app);
     if(sim.step==0)

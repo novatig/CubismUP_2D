@@ -1,9 +1,10 @@
 #include "Definitions.h"
 #include "Shape.h"
 #include "CoordinatorIC.h"
+#include "HelperOperators.h"
 
 void SimulationData::resetAll() {
-  shapes[0]->resetAll();
+  for(const auto& shape : shapes) shape->resetAll();
   this->time = 0;
   step = 0;
   uinfx = 0;
@@ -17,26 +18,31 @@ void SimulationData::resetAll() {
 void SimulationData::registerDump()
 {
   nextDumpTime += dumpTime;
-  shapes[0]->characteristic_function();
+  for(const auto& shape : shapes) shape->characteristic_function();
 }
 double SimulationData::minRho() const
 {
   double minR = 1; // fluid is 1
-  minR = std::min( (double) shapes[0]->getMinRhoS(), minR );
+  for(const auto& shape : shapes)
+    minR = std::min( (double) shape->getMinRhoS(), minR );
   return minR;
 }
 double SimulationData::maxSpeed() const
 {
   double maxS = 0;
-  maxS = std::max(maxS, (double) std::fabs( shapes[0]->getU() ) );
-  maxS = std::max(maxS, (double) std::fabs( shapes[0]->getV() ) );
+  for(const auto& shape : shapes) {
+    maxS = std::max(maxS, (double) std::fabs( shape->getU() ) );
+    maxS = std::max(maxS, (double) std::fabs( shape->getV() ) );
+  }
   return maxS;
 }
 double SimulationData::maxRelSpeed() const
 {
   double maxS = 0;
-  maxS = std::max(maxS, (double) std::fabs(shapes[0]->getU() + uinfx ));
-  maxS = std::max(maxS, (double) std::fabs(shapes[0]->getV() + uinfy ));
+  for(const auto& shape : shapes) {
+    maxS = std::max(maxS, (double) std::fabs(shape->getU() + uinfx ));
+    maxS = std::max(maxS, (double) std::fabs(shape->getV() + uinfy ));
+  }
   return maxS;
 }
 SimulationData::~SimulationData()

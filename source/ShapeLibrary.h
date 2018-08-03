@@ -114,11 +114,12 @@ struct FillBlocks_HalfCylinder
     return _is_touching(min_pos,max_pos);
   }
 
-  inline Real distanceTocylinder(const Real x, const Real y) const
-  {
-    const Real Y = - x*sinang + y*cosang;
-    if(Y>0) return -Y;
-    else return radius - std::sqrt(x*x+y*y); // pos inside, neg outside
+  inline Real distanceTocylinder(const Real x, const Real y) const {
+    const Real X =   x*cosang + y*sinang;
+    if(X>0) return -X;
+    //const Real Y = - x*sinang + y*cosang; /// For default orientation
+    //if(Y>0) return -Y;                    /// pointing downwards.
+    else return radius - std::sqrt(x*x+y*y); // (pos inside, neg outside)
   }
 
   void operator()(const BlockInfo& info, FluidBlock& block, ObstacleBlock * const obstblock) const;

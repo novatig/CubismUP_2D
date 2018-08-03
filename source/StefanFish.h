@@ -15,7 +15,7 @@ class StefanFish: public Fish
   // std::array<Real ,6> baseline_points;
   // std::array<Real ,6> baseline_values;
   // Real tau;
-  Real adjTh = 0, adjDy = 0, oldINST = 0;
+  Real adjTh = 0, adjDy = 0;
   const Real followX, followY;
   const bool bCorrectTrajectory;
  public:

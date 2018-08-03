@@ -7,7 +7,8 @@ mkdir -p $BASEPATH
 FOLDERNAME=${BASEPATH}/$1
 
 OPTIONS="-bpdx 16 -bpdy 4 -tdump 0.1 -nu 0.00008 -tend 10"
-OBJECTS='stefanfish L=0.2 xpos=0.7
+OBJECTS='stefanfish L=0.2 xpos=0.25 bFixed=1
+stefanfish L=0.2 xpos=0.55 bFixed=1
 '
 
 export LD_LIBRARY_PATH=/cluster/home/novatig/VTK-7.1.0/Build/lib/:$LD_LIBRARY_PATH

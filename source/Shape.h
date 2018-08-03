@@ -40,6 +40,7 @@ class Shape
   std::map<int,ObstacleBlock*> obstacleBlocks;
 
  public: // data fields
+  unsigned obstacleID = 0;
   Real dragP[2] = {0,0};
   Real dragV = 0;
   const Real rhoS;
@@ -168,10 +169,7 @@ class Shape
     orientation = angle;
   }
 
-  virtual inline Real getMinRhoS() const
-  {
-    return rhoS;
-  }
+  virtual Real getMinRhoS() const;
 
   virtual void outputSettings(ostream &outStream) const;
 

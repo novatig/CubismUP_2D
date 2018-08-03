@@ -41,7 +41,7 @@ class CurvatureFish : public FishData
       writeMidline2File(0, "initialCheck");
     }
 
-  void _correctTrajectory(const Real dtheta, const Real vtheta, const Real time, Real dt);
+  void _correctTrajectory(const Real dtheta, const Real time, Real dt);
 
   void _correctAmplitude(Real dAmp, Real vAmp, const Real time, const Real dt);
 
@@ -63,15 +63,14 @@ class CurvatureFish : public FishData
   }
 };
 
-void CurvatureFish::_correctTrajectory(const Real dtheta, const Real vtheta, const Real time, Real dt)
+void CurvatureFish::_correctTrajectory(const Real dtheta, const Real t, Real dt)
 {
-  velPID = vtheta;
   valPID = dtheta;
   dt = std::max(std::numeric_limits<Real>::epsilon(),dt);
   std::array<Real, 6> tmp_curv;
   tmp_curv.fill(dtheta);
   //adjustScheduler.transition(time,time,time+2*dt,tmp_curv, true);
-  adjustScheduler.transition(time, time-2*dt, time+2*dt, tmp_curv, true);
+  adjustScheduler.transition(t, t-2*dt, t+2*dt, tmp_curv, true);
 }
 
 void CurvatureFish::_correctAmplitude(Real dAmp, Real vAmp, const Real time, const Real dt)
@@ -210,6 +209,7 @@ StefanFish::StefanFish(SimulationData&s,ArgumentParser&p,Real C[2]):Fish(s,p,C),
   printf("CurvatureFish %d %f %f %f\n",myFish->Nm, length, Tperiod, phaseShift);
 }
 
+static inline Real sgn(const Real val) { return (0 < val) - (val < 0); }
 void StefanFish::create(const vector<BlockInfo>& vInfo)
 {
   CurvatureFish* const cFish = dynamic_cast<CurvatureFish*>( myFish );
@@ -217,17 +217,17 @@ void StefanFish::create(const vector<BlockInfo>& vInfo)
 
   if (bCorrectTrajectory) {
     assert(followX < 0 && followY < 0);
-    const Real AngDiff  = std::atan2(v, u);
-    const Real dInt = AngDiff - adjTh;
+    const Real AngDiff  = std::atan2(-v, -u);
     adjTh = (Tperiod-sim.dt) * adjTh + sim.dt * AngDiff;
     const Real INST = (AngDiff*omega>0) ? AngDiff*std::fabs(omega) : 0;
-    // instanteneous PID depends on omega, and we do not have dOmega/dt
-    // therefore we just do finite differences to find its derivative
-    const Real dINST = (INST - oldINST)/sim.dt;
-    oldINST = INST;
-    const Real PID  = 0.1*adjTh + 0.01* INST;
-    const Real dPID = 0.1*dInt  + 0.01*dINST;
-    cFish->_correctTrajectory(PID, dPID, sim.time, sim.dt);
+    const Real PID  = 0.1*adjTh + 0.1*INST;
+    ofstream filePID;
+    stringstream ssF; ssF<<"PID_"<<obstacleID<<".dat";
+    filePID.open(ssF.str().c_str(), ios::app);
+    filePID<<adjTh<<" "<<INST<<endl;
+    filePID.close();
+    cFish->_correctTrajectory(PID, sim.time, sim.dt);
   }
+
   Fish::create(vInfo);
 }

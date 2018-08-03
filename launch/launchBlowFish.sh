@@ -1,13 +1,15 @@
-#module load gcc
-
-export OMP_NUM_THREADS=4
+NTHREADS=$([[ $(uname) = 'Darwin' ]] && sysctl -n hw.physicalcpu_max || lscpu -p | egrep -v '^#' | sort -u -t, -k 2,4 | wc -l)
+export OMP_NUM_THREADS=${NTHREADS}
 
 BASEPATH=../runs/
-#BASEPATH=/cluster/scratch/eceva/CubismUP_2D
+#BASEPATH=/cluster/scratch/novatig/CubismUP_2D
 mkdir -p $BASEPATH
 FOLDERNAME=${BASEPATH}/$1
 
-OPTIONS="-bpdx 8 -bpdy 8 -tdump 0.05 -shape blowfish -radius 0.15 -nu 0.002 -tend 10 -rhoS 0.5 -angle 0.01"
+OPTIONS="-bpdx 8 -bpdy 8 -tdump 0.05 -nu 0.00008 -tend 10"
+OBJECTS='blowfish radius=0.2 angle=0.01
+'
+
 export LD_LIBRARY_PATH=/cluster/home/novatig/VTK-7.1.0/Build/lib/:$LD_LIBRARY_PATH
 export DYLD_LIBRARY_PATH=/usr/local/Cellar/vtk/8.1.1/lib/:$DYLD_LIBRARY_PATH
 
@@ -15,5 +17,5 @@ mkdir -p ${FOLDERNAME}
 cp ../makefiles/simulation ${FOLDERNAME}
 cd ${FOLDERNAME}
 
-./simulation ${OPTIONS}
+./simulation ${OPTIONS} -shapes "${OBJECTS}"
 #valgrind  --num-callers=100  --tool=memcheck  --leak-check=yes  --track-origins=yes --show-reachable=yes ./simulation -tend 10 ${OPTIONS}
