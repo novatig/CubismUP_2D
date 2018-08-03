@@ -23,16 +23,16 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-	cout<<"=======================================================================================\n";
-	cout<<"\tCubismUP 2D (velocity-pressure 2D incompressible Navier-Stokes)\n";
-	cout<<"=======================================================================================\n";
+  cout<<"=======================================================================================\n";
+  cout<<"\tCubismUP 2D (velocity-pressure 2D incompressible Navier-Stokes)\n";
+  cout<<"=======================================================================================\n";
 
-	ArgumentParser parser(argc,argv);
-	parser.set_strict_mode();
+  ArgumentParser parser(argc,argv);
+  parser.set_strict_mode();
 
-	Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(argc, argv);
-	sim->init();
-	sim->simulate();
+  Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(argc, argv);
+  sim->init();
+  sim->simulate();
 
-	return 0;
+  return 0;
 }

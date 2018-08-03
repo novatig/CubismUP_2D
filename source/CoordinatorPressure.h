@@ -67,9 +67,10 @@ class OperatorDivergenceSplit : public GenericLabOperator
       const Real fE = (1-rho0*mean(phiE.invRho,phi.invRho))*(pE - p );
       const Real fW = (1-rho0*mean(phiW.invRho,phi.invRho))*(p  - pW);
 
-      const Real divUfac = factor * (phiE.u-phiW.u + phiN.v-phiS.v);
+      const Real divVel =           (phiE.u   -phiW.u    + phiN.v   -phiS.v);
+      const Real divDef = phi.tmp * (phiE.tmpU-phiW.tmpU + phiN.tmpV-phiS.tmpV);
       const Real hatPfac =  invH2 * (fE - fW + fN - fS);
-      solver->_cub2fftw(offset, iy, ix, divUfac + hatPfac);
+      solver->_cub2fftw(offset, iy, ix, factor*(divVel-divDef) + hatPfac);
     }
   }
 };
@@ -249,6 +250,15 @@ class CoordinatorPressure : public GenericCoordinator
     // need an interface that is the same for all solvers - this way the defines can be removed more cleanly
 
     check("pressure - start");
+    #pragma omp parallel for schedule(static)
+    for(size_t i=0; i<vInfo.size(); i++) {
+      FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+      for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+      for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
+        b(ix,iy).tmpU = 0; b(ix,iy).tmpV = 0;
+      }
+    }
+    for( const auto& shape : sim.shapes ) shape->deformation_velocities();
 
     computeSplit<OperatorDivergenceSplit>(dt);
     pressureSolver.solve();

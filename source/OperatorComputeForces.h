@@ -5,7 +5,7 @@
 struct OperatorComputeForces
 {
   const int stencil_start[3] = {-1, -1, 0}, stencil_end[3] = {2, 2, 1};
-	StencilInfo stencil;
+  StencilInfo stencil;
   const Real NU, *vel_unit, *CM;
 
   OperatorComputeForces(const Real nu, const Real* vunit, const Real* cm) : NU(nu), vel_unit(vunit), CM(cm)

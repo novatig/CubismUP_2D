@@ -85,7 +85,6 @@ double Sim_FSI_Gravity::calcMaxTimestep()
   sim.dt = std::min( sim.dt, sim.CFL*dtBody );
 
   if(sim.dlm > 1) sim.lambda = sim.dlm / sim.dt;
-
   if (sim.step < 100)
   {
     const double x = (sim.step+1)/100;
@@ -114,6 +113,7 @@ bool Sim_FSI_Gravity::advance(const double dt)
   {
     profiler.push_start(pipeline[c]->getName());
     (*pipeline[c])(sim.dt);
+    //_dump(pipeline[c]->getName());
     profiler.pop_stop();
     // stringstream ss;
     // ss << path2file << "avemaria_" << pipeline[c]->getName() << "_";

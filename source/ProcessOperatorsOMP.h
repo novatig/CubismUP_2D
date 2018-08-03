@@ -15,38 +15,38 @@
 template<typename Lab>
 inline double findMaxA(const SimulationData& sim)
 {
-	Real maxA = 0;
+  Real maxA = 0;
   const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
 
-	const int stencil_start[3] = {-1,-1, 0};
-	const int stencil_end[3]   = { 2, 2, 1};
+  const int stencil_start[3] = {-1,-1, 0};
+  const int stencil_end[3]   = { 2, 2, 1};
 
- 	#pragma omp parallel
-	{
-		Lab lab;
-		lab.prepare(*(sim.grid), stencil_start, stencil_end, true);
+   #pragma omp parallel
+  {
+    Lab lab;
+    lab.prepare(*(sim.grid), stencil_start, stencil_end, true);
 
-		#pragma omp for schedule(static) reduction(max:maxA)
-		for(size_t i=0; i<vInfo.size(); i++) {
-			lab.load(vInfo[i], 0);
+    #pragma omp for schedule(static) reduction(max:maxA)
+    for(size_t i=0; i<vInfo.size(); i++) {
+      lab.load(vInfo[i], 0);
 
-			const BlockInfo info = vInfo[i];
-			const FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-			const Real inv2h = info.h_gridpoint;
+      const BlockInfo info = vInfo[i];
+      const FluidBlock& b = *(FluidBlock*)info.ptrBlock;
+      const Real inv2h = info.h_gridpoint;
 
-			for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-				for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-				{
-					Real dudx = std::fabs((lab(ix+1,iy  ).u-lab(ix-1,iy  ).u) * inv2h );
-					Real dudy = std::fabs((lab(ix  ,iy+1).u-lab(ix  ,iy-1).u) * inv2h );
-					Real dvdx = std::fabs((lab(ix+1,iy  ).v-lab(ix-1,iy  ).v) * inv2h );
-					Real dvdy = std::fabs((lab(ix  ,iy+1).v-lab(ix  ,iy-1).v) * inv2h );
-					maxA = std::max(std::max(dudx,dudy),std::max(dvdx,dvdy));
-				}
-		}
-	}
+      for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+        for(int ix=0; ix<FluidBlock::sizeX; ++ix)
+        {
+          Real dudx = std::fabs((lab(ix+1,iy  ).u-lab(ix-1,iy  ).u) * inv2h );
+          Real dudy = std::fabs((lab(ix  ,iy+1).u-lab(ix  ,iy-1).u) * inv2h );
+          Real dvdx = std::fabs((lab(ix+1,iy  ).v-lab(ix-1,iy  ).v) * inv2h );
+          Real dvdy = std::fabs((lab(ix  ,iy+1).v-lab(ix  ,iy-1).v) * inv2h );
+          maxA = std::max(std::max(dudx,dudy),std::max(dvdx,dvdy));
+        }
+    }
+  }
 
-	return maxA;
+  return maxA;
 }
 
 // -gradp, divergence, advection
@@ -54,18 +54,18 @@ template<typename Lab, typename Kernel>
 inline void processOMP(const SimulationData& sim)
 {
   const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
-	#pragma omp parallel
-	{
-		Kernel kernel(sim.dt);
-		Lab mylab;
-		mylab.prepare(sim.grid, kernel.stencil_start, kernel.stencil_end, true);
+  #pragma omp parallel
+  {
+    Kernel kernel(sim.dt);
+    Lab mylab;
+    mylab.prepare(sim.grid, kernel.stencil_start, kernel.stencil_end, true);
 
-		#pragma omp for schedule(static)
-		for(size_t i=0; i<vInfo.size(); i++) {
-			mylab.load(vInfo[i], 0);
-			kernel(mylab, vInfo[i], *(FluidBlock*)vInfo[i].ptrBlock);
-		}
-	}
+    #pragma omp for schedule(static)
+    for(size_t i=0; i<vInfo.size(); i++) {
+      mylab.load(vInfo[i], 0);
+      kernel(mylab, vInfo[i], *(FluidBlock*)vInfo[i].ptrBlock);
+    }
+  }
 }
 
 inline double findMaxUOMP(const SimulationData& sim)

@@ -1,5 +1,5 @@
-
 #pragma once
+
 #include <vector> //surface vector
 #include <cstring> //memset
 #include <stdio.h> //print

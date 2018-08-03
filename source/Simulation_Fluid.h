@@ -2,8 +2,8 @@
 //  Simulation_Fluid.h
 //  CubismUP_2D
 //
-//	Base class for fluid simulations from which any fluid simulation case should inherit
-//	Contains the base structure and interface that any fluid simulation class should have
+//  Base class for fluid simulations from which any fluid simulation case should inherit
+//  Contains the base structure and interface that any fluid simulation class should have
 //
 //  Created by Christian Conti on 3/25/15.
 //  Copyright (c) 2015 ETHZ. All rights reserved.
@@ -26,114 +26,108 @@ class Simulation_Fluid
  public:
   SimulationData sim;
  protected:
-	ArgumentParser parser;
-	Profiler profiler;
-	vector<GenericCoordinator*> pipeline;
-	SerializerIO_ImageVTK<FluidGrid, FluidVTKStreamer> dumper;
+  ArgumentParser parser;
+  Profiler profiler;
+  vector<GenericCoordinator*> pipeline;
+  SerializerIO_ImageVTK<FluidGrid, FluidVTKStreamer> dumper;
 
-	virtual void _diagnostics() = 0;
+  virtual void _diagnostics() = 0;
 
-	virtual void _dump() {
-		stringstream ss;
-    ss << sim.path2file << "avemaria_";
+  virtual void _dump(string fname = "") {
+    stringstream ss;
+    ss << sim.path2file << "avemaria_" << fname;
     ss << std::setfill('0') << std::setw(7) << sim.step;
     ss << ".vti";
-		cout << ss.str() << endl;
+    cout << ss.str() << endl;
 
-		dumper.Write( *(sim.grid), ss.str() );
-	}
+    dumper.Write( *(sim.grid), ss.str() );
+  }
 
-	virtual void _dump(stringstream& fname) {
-    cout << fname.str() << endl;
-		dumper.Write( *(sim.grid), fname.str() );
-		_serialize();
-	}
-
-	void _serialize()
-	{
+  void _serialize()
+  {
     /*
-		stringstream ss;
-		ss << path4serialization << "Serialized-" << bPing << ".dat";
-		cout << ss.str() << endl;
+    stringstream ss;
+    ss << path4serialization << "Serialized-" << bPing << ".dat";
+    cout << ss.str() << endl;
 
-		stringstream serializedGrid;
-		serializedGrid << "SerializedGrid-" << bPing << ".grid";
-		//DumpZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
+    stringstream serializedGrid;
+    serializedGrid << "SerializedGrid-" << bPing << ".grid";
+    //DumpZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
 
-		bPing = !bPing;
+    bPing = !bPing;
     */
-	}
+  }
 
-	void _deserialize()
-	{
-		/*
-		stringstream ss0, ss1, ss;
-		struct stat st0, st1;
-		ss0 << path4serialization << "Serialized-0.dat";
-		ss1 << path4serialization << "Serialized-1.dat";
-		stat(ss0.str().c_str(), &st0);
-		stat(ss1.str().c_str(), &st1);
+  void _deserialize()
+  {
+    /*
+    stringstream ss0, ss1, ss;
+    struct stat st0, st1;
+    ss0 << path4serialization << "Serialized-0.dat";
+    ss1 << path4serialization << "Serialized-1.dat";
+    stat(ss0.str().c_str(), &st0);
+    stat(ss1.str().c_str(), &st1);
 
-		grid = new FluidGrid(bpdx,bpdy,1);
-		assert(grid != NULL);
-		{
-			stringstream serializedGrid;
-			serializedGrid << "SerializedGrid-" << bPing << ".grid";
-			ReadZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
-		}
-		*/
-	}
+    grid = new FluidGrid(bpdx,bpdy,1);
+    assert(grid != NULL);
+    {
+      stringstream serializedGrid;
+      serializedGrid << "SerializedGrid-" << bPing << ".grid";
+      ReadZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
+    }
+    */
+  }
 
  public:
-	Simulation_Fluid(const int argc, char ** argv) : parser(argc,argv) { }
+  Simulation_Fluid(const int argc, char ** argv) : parser(argc,argv) { }
 
-	virtual ~Simulation_Fluid()
-	{
-		while( not pipeline.empty() ) {
-			GenericCoordinator * g = pipeline.back();
-			pipeline.pop_back();
-			if(g not_eq nullptr) delete g;
-		}
-	}
+  virtual ~Simulation_Fluid()
+  {
+    while( not pipeline.empty() ) {
+      GenericCoordinator * g = pipeline.back();
+      pipeline.pop_back();
+      if(g not_eq nullptr) delete g;
+    }
+  }
 
   void reset() {
     sim.resetAll();
   }
 
-	virtual void init()
-	{
-		sim.bRestart = parser("-restart").asBool(false);
-		cout << "bRestart is " << sim.bRestart << endl;
+  virtual void init()
+  {
+    sim.bRestart = parser("-restart").asBool(false);
+    cout << "bRestart is " << sim.bRestart << endl;
 
-		// initialize grid
-		parser.set_strict_mode();
-		const int bpdx = parser("-bpdx").asInt();
-		const int bpdy = parser("-bpdy").asInt();
+    // initialize grid
+    parser.set_strict_mode();
+    const int bpdx = parser("-bpdx").asInt();
+    const int bpdy = parser("-bpdy").asInt();
     cout << bpdx<<" "<<bpdy << endl;
-		sim.grid = new FluidGrid(bpdx, bpdy, 1);
-		assert( sim.grid not_eq nullptr );
+    sim.grid = new FluidGrid(bpdx, bpdy, 1);
+    assert( sim.grid not_eq nullptr );
 
-		// simulation ending parameters
-		parser.unset_strict_mode();
-		sim.nsteps = parser("-nsteps").asInt(0);
-		sim.endTime = parser("-tend").asDouble(0);
+    // simulation ending parameters
+    parser.unset_strict_mode();
+    sim.nsteps = parser("-nsteps").asInt(0);
+    sim.endTime = parser("-tend").asDouble(0);
 
-		// output parameters
-		sim.dumpFreq = parser("-fdump").asDouble(0);
-		sim.dumpTime = parser("-tdump").asDouble(0);
+    // output parameters
+    sim.dumpFreq = parser("-fdump").asDouble(0);
+    sim.dumpTime = parser("-tdump").asDouble(0);
 
-		sim.path2file = parser("-file").asString("./");
-		sim.path4serialization = parser("-serialization").asString(sim.path2file);
+    sim.path2file = parser("-file").asString("./");
+    sim.path4serialization = parser("-serialization").asString(sim.path2file);
 
 
     // simulation settings
-		sim.CFL = parser("-CFL").asDouble(.1);
-		sim.lambda = parser("-lambda").asDouble(1e5);
-		sim.dlm = parser("-dlm").asDouble(10.);
+    sim.CFL = parser("-CFL").asDouble(.1);
+    sim.lambda = parser("-lambda").asDouble(1e5);
+    sim.dlm = parser("-dlm").asDouble(10.);
     sim.nu = parser("-nu").asDouble(1e-2);
 
-		sim.verbose = parser("-verbose").asInt(1);
-	}
+    sim.verbose = parser("-verbose").asInt(1);
+  }
 
   virtual bool advance(const double dt) = 0;
   virtual double calcMaxTimestep() = 0;
