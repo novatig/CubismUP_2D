@@ -16,8 +16,9 @@ class FishData;
 
 class Fish: public Shape
 {
- protected:
+ public:
   const Real length, Tperiod, phaseShift;
+ protected:
   Real area_internal = 0, J_internal = 0;
   Real CoM_internal[2] ={0,0}, vCoM_internal[2] ={0,0};
   Real theta_internal = 0, angvel_internal = 0, angvel_internal_prev = 0;

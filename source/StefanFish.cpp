@@ -45,7 +45,7 @@ class CurvatureFish : public FishData
 
   void _correctAmplitude(Real dAmp, Real vAmp, const Real time, const Real dt);
 
-  void execute(const Real time, const Real l_tnext, const vector<Real>& input);
+  void execute(const Real time, const Real l_tnext, const vector<double>& input);
 
   ~CurvatureFish() {
     _dealloc(rK); _dealloc(vK); _dealloc(rC); _dealloc(vC);
@@ -89,17 +89,18 @@ void CurvatureFish::_correctAmplitude(Real dAmp, Real vAmp, const Real time, con
   //curvScheduler.transition(time, time-dt, time+dt, curvature_values);
 }
 
-void CurvatureFish::execute(const Real time, const Real l_tnext, const vector<Real>& input)
+void CurvatureFish::execute(const Real t,const Real lTact,const vector<double>&a)
 {
-  if (input.size()>1) {
-    baseScheduler.Turn(input[0], l_tnext);
+  assert(t >= lTact);
+  if (a.size()>1) {
+    baseScheduler.Turn(a[0], lTact);
     //first, shift time to  previous turn node
-    timeshift += (l_tnext-time0)/l_Tp;
-    time0 = l_tnext;
-    l_Tp = Tperiod*(1.+input[1]);
-  } else if (input.size()>0) {
-    printf("Turning by %g at time %g with period %g.\n", input[0], time, l_tnext);
-    baseScheduler.Turn(input[0], l_tnext);
+    timeshift += (lTact-time0)/l_Tp;
+    time0 = lTact;
+    l_Tp = Tperiod*(1+a[1]);
+  } else if (a.size()>0) {
+    printf("Turning by %g at time %g with period %g.\n", a[0], t, lTact);
+    baseScheduler.Turn(a[0], lTact);
   }
 }
 
@@ -130,18 +131,17 @@ void CurvatureFish::computeMidline(const Real time, const Real dt)
       const Real darg = 2*M_PI* _1oT;
       const Real arg  = 2*M_PI*(_1oT*(time-time0) +timeshift
                                 -rS[i]*_1oL/waveLength) + M_PI*phaseShift;
-      rK[i] = amplitudeFactor*  rC[i]*(std::sin(arg)     +rB[i]+_rA)*controlFac;
-      vK[i] = amplitudeFactor*( vC[i]*(std::sin(arg)     +rB[i]+_rA)*controlFac
-                               +rC[i]*(std::cos(arg)*darg+vB[i]+_vA)*controlFac
-                               +rC[i]*(std::sin(arg)
-                               +rB[i] + _rA)*controlVel);
+      rK[i] = amplitudeFactor* rC[i]*(std::sin(arg)     +rB[i]+_rA)*controlFac;
+      vK[i] = amplitudeFactor*(vC[i]*(std::sin(arg)     +rB[i]+_rA)*controlFac
+                              +rC[i]*(std::cos(arg)*darg+vB[i]+_vA)*controlFac
+                              +rC[i]*(std::sin(arg)     +rB[i]+_rA)*controlVel);
     }
   } else {
     for(int i=0; i<Nm; i++) {
       const Real darg = 2*M_PI* _1oT;
       const Real arg  = 2*M_PI*(_1oT*(time-time0) +timeshift
                                 -rS[i]*_1oL/waveLength) + M_PI*phaseShift;
-      rK[i] = amplitudeFactor* rC[i]*(std::sin(arg)       + rB[i] + rA[i]);
+      rK[i] = amplitudeFactor*  rC[i]*(std::sin(arg)      + rB[i] + rA[i]);
       vK[i] = amplitudeFactor* (vC[i]*(std::sin(arg)      + rB[i] + rA[i])
                               + rC[i]*(std::cos(arg)*darg + vB[i] + vA[i]));
     }
@@ -230,4 +230,24 @@ void StefanFish::create(const vector<BlockInfo>& vInfo)
   }
 
   Fish::create(vInfo);
+}
+
+void StefanFish::act(const Real lTact, const vector<double>& a) const {
+  CurvatureFish* const cFish = dynamic_cast<CurvatureFish*>( myFish );
+  oldrCurv = lastCurv;
+  lastCurv = a[0];
+  if(a.size()>0) lastTact = a[1];
+  cFish->execute(sim.time, lTact, a);
+}
+
+double StefanFish::getLearnTPeriod() const {
+  return myFish->l_Tp;
+}
+double StefanFish::getPhase(const double t) const {
+  const double Tp = myFish->l_Tp;
+  const double T0 = myFish->time0;
+  const double Ts = myFish->timeshift;
+  const double arg  = 2*M_PI*((t-T0)/Tp +Ts) + M_PI*phaseShift;
+  const double phase = std::fmod(arg, 2*M_PI);
+  return (phase<0) ? 2*M_PI + phase : phase;
 }

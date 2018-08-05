@@ -23,6 +23,7 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
+  for(int i=0; i<argc; i++) {printf("%s\n",argv[i]); fflush(0);}
   cout<<"=======================================================================================\n";
   cout<<"\tCubismUP 2D (velocity-pressure 2D incompressible Navier-Stokes)\n";
   cout<<"=======================================================================================\n";

@@ -18,7 +18,15 @@ class StefanFish: public Fish
   Real adjTh = 0, adjDy = 0;
   const Real followX, followY;
   const bool bCorrectTrajectory;
+
  public:
+  mutable double lastTact = 0;
+  mutable double lastCurv = 0;
+  mutable double oldrCurv = 0;
+  void act(const Real lTact, const vector<double>& a) const;
+  double getLearnTPeriod() const;
+  double getPhase(const double t) const;
+
   StefanFish(SimulationData&s, ArgumentParser&p, Real C[2]);
   void create(const vector<BlockInfo>& vInfo) override;
 };

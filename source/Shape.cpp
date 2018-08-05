@@ -354,34 +354,29 @@ void Shape::computeForces()
   compute_surface(finalize, vInfo);
 
   //additive quantities:
-  Real perimeter = 0, forcex = 0, forcey = 0, forcex_P = 0, forcey_P = 0, forcex_V = 0, forcey_V = 0, torque = 0, torque_P = 0, torque_V = 0, drag = 0, thrust = 0, Pout = 0, PoutBnd = 0, defPower = 0, defPowerBnd = 0, circulation = 0;
+  perimeter = 0; forcex = 0; forcey = 0; forcex_P = 0;
+  forcey_P = 0; forcex_V = 0; forcey_V = 0; torque = 0;
+  torque_P = 0; torque_V = 0; drag = 0; thrust = 0;
+  Pout = 0; PoutBnd = 0; defPower = 0; defPowerBnd = 0; circulation = 0;
 
   for (auto & block : obstacleBlocks)
   {
     circulation += block.second->circulation;
-    perimeter   += block.second->perimeter;
-    forcex      += block.second->forcex;
-    forcey      += block.second->forcey;
-    forcex_P    += block.second->forcex_P;
-    forcey_P    += block.second->forcey_P;
-    forcex_V    += block.second->forcex_V;
-    forcey_V    += block.second->forcey_V;
-    torque      += block.second->torque;
-    torque_P    += block.second->torque_P;
-    torque_V    += block.second->torque_V;
-    drag        += block.second->drag;
-    thrust      += block.second->thrust;
-    Pout        += block.second->Pout;
-    PoutBnd     += block.second->PoutBnd;
-    defPower    += block.second->defPower;
-    defPowerBnd += block.second->defPowerBnd;
+    perimeter += block.second->perimeter; torque   += block.second->torque;
+    forcex   += block.second->forcex;     forcey   += block.second->forcey;
+    forcex_P += block.second->forcex_P;   forcey_P += block.second->forcey_P;
+    forcex_V += block.second->forcex_V;   forcey_V += block.second->forcey_V;
+    torque_P += block.second->torque_P;   torque_V += block.second->torque_V;
+    drag     += block.second->drag;       thrust   += block.second->thrust;
+    Pout += block.second->Pout; defPowerBnd += block.second->defPowerBnd;
+    PoutBnd += block.second->PoutBnd; defPower += block.second->defPower;
   }
 
   //derived quantities:
-  Real Pthrust    = thrust*vel_norm;
-  Real Pdrag      =   drag*vel_norm;
-  Real EffPDef    = Pthrust/(Pthrust-min(defPower,(Real)0.));
-  Real EffPDefBnd = Pthrust/(Pthrust-    defPowerBnd);
+  Pthrust    = thrust*vel_norm;
+  Pdrag      =   drag*vel_norm;
+  EffPDef    = Pthrust/(Pthrust-min(defPower,(Real)0.));
+  EffPDefBnd = Pthrust/(Pthrust-    defPowerBnd);
 
   #ifndef RL_TRAIN
   if (sim._bDump) {

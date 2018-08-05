@@ -19,8 +19,10 @@
 
 class Shape
 {
- protected: // data fields
+ public: // data fields
   SimulationData& sim;
+  unsigned obstacleID = 0;
+  std::map<int,ObstacleBlock*> obstacleBlocks;
   // general quantities
   const Real origC[2], origAng;
   Real center[2]; // for single density, this corresponds to centerOfMass
@@ -37,12 +39,12 @@ class Shape
   Real computedu = 0;
   Real computedv = 0;
   Real computedo = 0;
-  std::map<int,ObstacleBlock*> obstacleBlocks;
 
- public: // data fields
-  unsigned obstacleID = 0;
-  Real dragP[2] = {0,0};
-  Real dragV = 0;
+  Real perimeter=0, forcex=0, forcey=0, forcex_P=0, forcey_P=0;
+  Real forcex_V=0, forcey_V=0, torque=0, torque_P=0, torque_V=0;
+  Real drag=0, thrust=0, circulation=0, Pout=0, PoutBnd=0, defPower=0;
+  Real defPowerBnd=0, Pthrust=0, Pdrag=0, EffPDef=0, EffPDefBnd=0;
+
   const Real rhoS;
   const bool bForced;
   const bool bFixed;

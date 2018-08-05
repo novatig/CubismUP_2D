@@ -22,6 +22,18 @@
 #include "BlowFish.h"
 #include "StefanFish.h"
 
+#include <regex>
+#include <algorithm>
+#include <iterator>
+
+static inline vector<string> splitter(string& content) {
+    vector<string> split_content;
+    const regex pattern(R"(\\n)");
+    copy( sregex_token_iterator(content.begin(), content.end(), pattern, -1),
+    sregex_token_iterator(), back_inserter(split_content) );
+    return split_content;
+}
+
 void Sim_FSI_Gravity::_diagnostics()
 {
   //shape->_diagnostics(sim);
@@ -46,44 +58,57 @@ void Sim_FSI_Gravity::createShapes()
   parser.unset_strict_mode();
 
   stringstream descriptors = stringstream( parser("-shapes").asString("") );
-  string line;
+  string lines;
   unsigned k = 0;
 
-  while (std::getline(descriptors, line)) {
-    istringstream line_stream(line);
-    string objectName;
-    line_stream >> objectName;
-    // Comments and empty lines ignored:
-    if(objectName.empty() or objectName[0]=='#') continue;
-    FactoryFileLineParser ffparser(line_stream);
-    Real center[2] = {
-        (Real) ffparser("-xpos").asDouble(.5*axX/ext),
-        (Real) ffparser("-ypos").asDouble(.5*axY/ext)
-    };
-    //ffparser.print_args();
-    Shape* shape = nullptr;
-    if (objectName=="disk")
-      shape = new Disk(             sim, ffparser, center);
-    else if (objectName=="halfDisk")
-      shape = new HalfDisk(         sim, ffparser, center);
-    else if (objectName=="ellipse")
-      shape = new Ellipse(          sim, ffparser, center);
-    else if (objectName=="diskVarDensity")
-      shape = new DiskVarDensity(   sim, ffparser, center);
-    else if (objectName=="ellipseVarDensity")
-      shape = new EllipseVarDensity(sim, ffparser, center);
-    else if (objectName=="blowfish")
-      shape = new BlowFish(         sim, ffparser, center);
-    else if (objectName=="stefanfish")
-      shape = new StefanFish(       sim, ffparser, center);
-    else {
-      cout << "Error - this shape is not recognized! Aborting now\n";
-      abort();
+  while (std::getline(descriptors, lines))
+  {
+    // Two options! Either we have list of lines each containing a description
+    // of an obstacle (like factory files or CUP3D factory-descriptor)
+    // Or we have an argument list that looks like -shapes foo\nbar. Splitter
+    // will create a vector of strings, the first containing foo and the second
+    // bar so that they can be parsed separately. Reason being that in many
+    // situations \n will not be read as line escape but as backslash n.
+    const vector<string> vlines = splitter(lines);
+    for (const string line: vlines)
+    {
+      istringstream line_stream(line);
+      string objectName;
+      cout << line << endl;
+      line_stream >> objectName;
+      // Comments and empty lines ignored:
+      if(objectName.empty() or objectName[0]=='#') continue;
+      FactoryFileLineParser ffparser(line_stream);
+      Real center[2] = {
+          (Real) ffparser("-xpos").asDouble(.5*axX/ext),
+          (Real) ffparser("-ypos").asDouble(.5*axY/ext)
+      };
+      //ffparser.print_args();
+      Shape* shape = nullptr;
+      if (objectName=="disk")
+        shape = new Disk(             sim, ffparser, center);
+      else if (objectName=="halfDisk")
+        shape = new HalfDisk(         sim, ffparser, center);
+      else if (objectName=="ellipse")
+        shape = new Ellipse(          sim, ffparser, center);
+      else if (objectName=="diskVarDensity")
+        shape = new DiskVarDensity(   sim, ffparser, center);
+      else if (objectName=="ellipseVarDensity")
+        shape = new EllipseVarDensity(sim, ffparser, center);
+      else if (objectName=="blowfish")
+        shape = new BlowFish(         sim, ffparser, center);
+      else if (objectName=="stefanfish")
+        shape = new StefanFish(       sim, ffparser, center);
+      else {
+        cout << "Error - this shape is not recognized! Aborting now\n";
+        abort();
+      }
+      assert(shape not_eq nullptr);
+      shape->obstacleID = k++;
+      sim.shapes.push_back(shape);
     }
-    assert(shape not_eq nullptr);
-    shape->obstacleID = k++;
-    sim.shapes.push_back(shape);
   }
+
   if( sim.shapes.size() ==  0) {
     std::cout << "Did not create any obstacles. Not supported. Aborting!\n";
     abort();

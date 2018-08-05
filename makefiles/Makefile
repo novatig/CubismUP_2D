@@ -11,7 +11,8 @@ smarties ?= false
 CPPFLAGS+= -D_BS_=$(bs)
 
 ifeq "$(config)" "debug"
-CPPFLAGS += -g #-fsanitize=address
+CPPFLAGS += -g
+#CPPFLAGS += -fsanitize=address
 #LIBS += -fsanitize=address
 else
 CPPFLAGS += -DNDEBUG -O3 -fstrict-aliasing -march=native -mtune=native -ffast-math -falign-functions=32
@@ -76,6 +77,10 @@ LDFLAGS = $(CPPFLAGS)
 all: simulation
 .DEFAULT: all;
 
+leadFollow: main_RL_2fish.o $(OBJECTS)
+	ar rs libsimulation.a $^ #$(LIBS) $(LDFLAGS)
+	# TODO: expect user to put SMARTDIR in bashrc
+	cp libsimulation.a ../../smarties/makefiles/libsimulation.a
 blowfish: main_RL_blowfish.o $(OBJECTS)
 	ar rs libsimulation.a $^ #$(LIBS) $(LDFLAGS)
 	# TODO: expect user to put SMARTDIR in bashrc
@@ -89,5 +94,5 @@ simulation: main.o $(OBJECTS)
 
 
 clean:
-	rm -f simulation blowfish.so
+	rm -f simulation libsimulation.a
 	rm -f *.o *.d
