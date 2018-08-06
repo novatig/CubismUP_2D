@@ -126,6 +126,8 @@ class Simulation_Fluid
     sim.nu = parser("-nu").asDouble(1e-2);
 
     sim.verbose = parser("-verbose").asInt(1);
+    sim.muteAll = parser("-muteAll").asInt(0);//stronger silence, not even files
+    if(sim.muteAll) sim.verbose = 0;
   }
 
   virtual bool advance(const double dt) = 0;

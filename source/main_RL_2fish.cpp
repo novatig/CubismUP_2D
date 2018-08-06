@@ -31,8 +31,8 @@ using namespace std;
 
 inline void resetIC(
   StefanFish* const a, const Shape*const p, std::mt19937& gen) {
-  uniform_real_distribution<Real> disA(-10./180*M_PI, 10./180*M_PI);
-  uniform_real_distribution<Real> disX(-0.5, 0.5),  disY(-0.1, 0.1);
+  uniform_real_distribution<Real> disA(-20./180*M_PI, 20./180*M_PI);
+  uniform_real_distribution<Real> disX(-0.5, 0.5),  disY(-0.5, 0.5);
   Real C[2] = { p->centerOfMass[0] + (2+disX(gen))*a->length,
                 p->centerOfMass[1] +    disY(gen) *a->length };
   a->setCenterOfMass(C);
@@ -69,7 +69,6 @@ inline double getTimeToNextAct(const StefanFish* const agent, const double t) {
 }
 
 int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
-//int main(int argc, char **argv)
 {
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
   cout<<endl;
@@ -80,11 +79,16 @@ int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
   const int nStates = 10;
   const unsigned maxLearnStepPerSim = 500; // random number... TODO
   //const unsigned maxLearnStepPerSim = 1; // random number... TODO
-  //const int socket_id  = parser("-Socket").asInt();
-  //printf("Starting communication with RL over socket %d\n", socket_id);
-  //Communicator communicator(socket_id, nStates, nActions);
+
   Communicator& communicator = *comm;
   communicator.update_state_action_dims(nStates, nActions);
+  // Tell smarties that action space should be bounded.
+  // First action modifies curvature, only makes sense between -1 and 1
+  // Second action affects Tp = (1+act[1])*Tperiod_0 (eg. halved if act[1]=-.5).
+  // If too small Re=L^2*Tp/nu would increase too much, we allow it to
+  //  double at most, therefore we set the bounds between -0.5 and 0.5.
+  vector<double> upper_action_bound{1, 0.5}, lower_action_bound{-1, -0.5};
+  comm.set_action_scales(upper_action_bound, lower_action_bound, true);
 
   Sim_FSI_Gravity sim(argc, argv);
   sim.init();

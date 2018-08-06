@@ -221,11 +221,13 @@ void StefanFish::create(const vector<BlockInfo>& vInfo)
     adjTh = (Tperiod-sim.dt) * adjTh + sim.dt * AngDiff;
     const Real INST = (AngDiff*omega>0) ? AngDiff*std::fabs(omega) : 0;
     const Real PID  = 0.1*adjTh + 0.1*INST;
-    ofstream filePID;
-    stringstream ssF; ssF<<"PID_"<<obstacleID<<".dat";
-    filePID.open(ssF.str().c_str(), ios::app);
-    filePID<<adjTh<<" "<<INST<<endl;
-    filePID.close();
+    if(not sim.muteAll) {
+      ofstream filePID;
+      stringstream ssF; ssF<<"PID_"<<obstacleID<<".dat";
+      filePID.open(ssF.str().c_str(), ios::app);
+      filePID<<adjTh<<" "<<INST<<endl;
+      filePID.close();
+    }
     cFish->_correctTrajectory(PID, sim.time, sim.dt);
   }
 

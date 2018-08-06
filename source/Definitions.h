@@ -268,6 +268,7 @@ struct SimulationData
   double CFL = 0.1;
 
   bool verbose = true;
+  bool muteAll = false;
   // output
   // dumpFreq==0 means that this dumping frequency (in #steps) is not active
   int dumpFreq = 0;

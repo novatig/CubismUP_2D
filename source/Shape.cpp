@@ -204,7 +204,7 @@ void Shape::computeVelocities()
     if(sim.verbose)
       printf("CM:[%f %f] C:[%f %f] u:%f v:%f omega:%f M:%f J:%f V:%f\n",
       centerOfMass[0], centerOfMass[1], center[0], center[1], u, v, omega, M, J, V);
-
+    if(not sim.muteAll)
     {
       ofstream fileSpeed;
       stringstream ssF;
@@ -379,7 +379,7 @@ void Shape::computeForces()
   EffPDefBnd = Pthrust/(Pthrust-    defPowerBnd);
 
   #ifndef RL_TRAIN
-  if (sim._bDump) {
+  if (sim._bDump && not sim.muteAll) {
     char buf[500];
     sprintf(buf, "surface_%01d_%07d.raw", obstacleID, sim.step);
     FILE * pFile = fopen (buf, "wb");
@@ -387,7 +387,7 @@ void Shape::computeForces()
     fflush(pFile);
     fclose(pFile);
   }
-
+  if(not sim.muteAll)
   {
     ofstream fileForce;
     ofstream filePower;
