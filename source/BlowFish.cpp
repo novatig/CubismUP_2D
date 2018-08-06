@@ -35,6 +35,13 @@ BlowFish::BlowFish(SimulationData&s, ArgumentParser&p, Real C[2])
   //cout << "Created BlowFish"
 }
 
+void BlowFish::resetAll() {
+  flapAng_R = 0; flapAng_L = 0;
+  flapVel_R = 0; flapVel_L = 0;
+  flapAcc_R = 0; flapAcc_L = 0;
+  Shape::resetAll();
+}
+
 void BlowFish::updatePosition(double dt)
 {
   Shape::updatePosition(dt);

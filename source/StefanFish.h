@@ -27,6 +27,7 @@ class StefanFish: public Fish
   double getLearnTPeriod() const;
   double getPhase(const double t) const;
 
+  void resetAll() override;
   StefanFish(SimulationData&s, ArgumentParser&p, Real C[2]);
   void create(const vector<BlockInfo>& vInfo) override;
 };

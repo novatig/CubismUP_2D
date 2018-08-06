@@ -35,6 +35,7 @@ class Fish: public Shape
   Real getCharLength() const override {
     return length;
   }
+  virtual void resetAll() override;
   void updatePosition(double dt) override;
   virtual void create(const vector<BlockInfo>& vInfo) override;
 };

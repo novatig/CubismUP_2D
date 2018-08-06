@@ -175,6 +175,12 @@ void Fish::updatePosition(double dt) {
   Shape::updatePosition(dt);
   theta_internal -= dt*angvel_internal; // negative: we subtracted this angvel
 }
+void Fish::resetAll() {
+  CoM_internal[0] = 0; CoM_internal[1] = 0;
+  vCoM_internal[0] = 0; vCoM_internal[1] = 0;
+  theta_internal = 0; angvel_internal = 0; angvel_internal_prev = 0;
+  Shape::resetAll();
+}
 
 Fish::~Fish() {
   if(myFish not_eq nullptr) {
