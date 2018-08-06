@@ -88,7 +88,7 @@ int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
   // If too small Re=L^2*Tp/nu would increase too much, we allow it to
   //  double at most, therefore we set the bounds between -0.5 and 0.5.
   vector<double> upper_action_bound{1, 0.5}, lower_action_bound{-1, -0.5};
-  comm.set_action_scales(upper_action_bound, lower_action_bound, true);
+  communicator.set_action_scales(upper_action_bound, lower_action_bound, true);
 
   Sim_FSI_Gravity sim(argc, argv);
   sim.init();
