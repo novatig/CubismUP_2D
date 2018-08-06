@@ -56,8 +56,8 @@ void Sim_FSI_Gravity::createShapes()
   const Real axY = parser("-bpdy").asInt();
   const Real ext = std::max(axX, axY);
   parser.unset_strict_mode();
-
-  stringstream descriptors = stringstream( parser("-shapes").asString("") );
+  const string shapeArg = parser("-shapes").asString("");
+  stringstream descriptors( shapeArg );
   string lines;
   unsigned k = 0;
 

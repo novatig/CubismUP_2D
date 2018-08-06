@@ -163,7 +163,7 @@ void CurvatureFish::computeMidline(const Real time, const Real dt)
 
 StefanFish::StefanFish(SimulationData&s,ArgumentParser&p,Real C[2]):Fish(s,p,C),
  followX(p("-followX").asDouble(-1)), followY(p("-followY").asDouble(-1)),
- bCorrectTrajectory(p("-pid").asInt(1))
+ bCorrectTrajectory(p("-pid").asInt(0))
 {
  #if 0
   // parse tau
