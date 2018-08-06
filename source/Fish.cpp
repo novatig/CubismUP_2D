@@ -180,6 +180,7 @@ void Fish::resetAll() {
   vCoM_internal[0] = 0; vCoM_internal[1] = 0;
   theta_internal = 0; angvel_internal = 0; angvel_internal_prev = 0;
   Shape::resetAll();
+  myFish->resetAll();
 }
 
 Fish::~Fish() {

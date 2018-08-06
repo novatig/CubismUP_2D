@@ -29,6 +29,11 @@ FishData::~FishData() {
   // if(upperSkin not_eq nullptr) { delete upperSkin; upperSkin=nullptr; }
   // if(lowerSkin not_eq nullptr) { delete lowerSkin; lowerSkin=nullptr; }
 }
+void FishData::resetAll() {
+  l_Tp = Tperiod;
+  timeshift = 0;
+  time0 = 0;
+}
 
 void FishData::writeMidline2File(const int step_id, string filename) {
   char buf[500];

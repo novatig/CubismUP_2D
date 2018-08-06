@@ -40,6 +40,7 @@ class CurvatureFish : public FishData
       _computeWidth();
       writeMidline2File(0, "initialCheck");
     }
+  void resetAll() override;
 
   void _correctTrajectory(const Real dtheta, const Real time, Real dt);
 
@@ -62,6 +63,15 @@ class CurvatureFish : public FishData
            (wt * (L-s)/(L-st))));
   }
 };
+
+void CurvatureFish::resetAll() {
+  controlFac = -1; valPID = 0;
+  controlVel  = 0; velPID = 0;
+  curvScheduler.resetAll();
+  baseScheduler.resetAll();
+  adjustScheduler.resetAll();
+  FishData::resetAll();
+}
 
 void CurvatureFish::_correctTrajectory(const Real dtheta, const Real t, Real dt)
 {

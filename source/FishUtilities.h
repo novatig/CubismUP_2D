@@ -185,6 +185,13 @@ struct ParameterScheduler
     restartstream >> parameters_t0[i] >> parameters_t1[i] >> dparameters_t0[i];
     restartstream.close();
   }
+  virtual void resetAll() {
+     parameters_t0 = std::array<Real, Npoints>();
+     parameters_t1 = std::array<Real, Npoints>();
+    dparameters_t0 = std::array<Real, Npoints>();
+    t0 = -1;
+    t1 =  0;
+  }
 
   ParameterScheduler()
   {
