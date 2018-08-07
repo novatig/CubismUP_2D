@@ -9,11 +9,8 @@
 #pragma once
 
 #include "GenericCoordinator.h"
-#ifndef CHEAPFFT
-  #include "PoissonSolverScalarFFTW_freespace.h"
-#else
-  #include "PoissonSolverScalarFFTW_periodic.h"
-#endif
+#include "PoissonSolverScalarFFTW_freespace.h"
+#include "PoissonSolverScalarFFTW_periodic.h"
 
 //#define _HYDROSTATIC_
 class OperatorDivergenceSplit : public GenericLabOperator
@@ -21,13 +18,13 @@ class OperatorDivergenceSplit : public GenericLabOperator
  private:
   const double dt;
   const Real rho0;
-  const PoissonSolverScalarFFTW<FluidGrid> * const solver;
+  const PoissonSolverBase * const solver;
 
   static inline Real mean(const Real a, const Real b) {return .5 * (a + b);}
 
  public:
   OperatorDivergenceSplit(double _dt, double _rho0,
-    const PoissonSolverScalarFFTW<FluidGrid> * const ps) :
+    const PoissonSolverBase * const ps) :
     dt(_dt), rho0(_rho0), solver(ps)
   {
     stencil = StencilInfo(-1,-1,0, 2,2,1, false, 5, 0,1,4,6,7);
@@ -81,7 +78,7 @@ class OperatorGradPSplit : public GenericLabOperator
 
  public:
   OperatorGradPSplit(double _dt, double _rho0,
-    const PoissonSolverScalarFFTW<FluidGrid> * const ps) : rho0(_rho0), dt(_dt)
+    const PoissonSolverBase * const ps) : rho0(_rho0), dt(_dt)
   {
     stencil = StencilInfo(-1,-1,0, 2,2,1, false, 3, 5,6,7);
     stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
@@ -121,49 +118,15 @@ class OperatorGradPSplit : public GenericLabOperator
   }
 };
 
-class OperatorPressureDrag : public GenericLabOperator
-{
- private:
-  const double dt;
-  Real pressureDrag[2] = {0, 0};
-
- public:
-  OperatorPressureDrag(double _dt) : dt(_dt)
-  {
-    stencil = StencilInfo(-1,-1,0, 2,2,1, false, 1, 6);
-    stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
-    stencil_end[0] = 2; stencil_end[1] = 2; stencil_end[2] = 1;
-  }
-
-  ~OperatorPressureDrag() {}
-
-  template <typename Lab, typename BlockType>
-  void operator()(Lab & lab, const BlockInfo& info, BlockType& o)
-  {
-    const Real prefactor = -.5 / (info.h_gridpoint);
-    pressureDrag[0] = 0;
-    pressureDrag[1] = 0;
-
-    for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-    for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
-      pressureDrag[0] += prefactor * (lab(ix+1,iy  ).p - lab(ix-1,iy  ).p);
-      pressureDrag[1] += prefactor * (lab(ix  ,iy+1).p - lab(ix  ,iy-1).p);
-    }
-  }
-
-  inline Real getDrag(int component)
-  {
-    return pressureDrag[component];
-  }
-};
-
 template <typename Lab>
 class CoordinatorPressure : public GenericCoordinator
 {
  protected:
   const double minRho = sim.minRho();
-
-  PoissonSolverScalarFFTW<FluidGrid> pressureSolver;
+  const bool bFS;
+  const PoissonSolverBase * const pressureSolver =
+   bFS? static_cast<PoissonSolverBase*>(new PoissonSolverFreespace(sim.grid))
+      : static_cast<PoissonSolverBase*>(new PoissonSolverPeriodic( sim.grid));
 
   inline void updatePressure()
   {
@@ -187,7 +150,7 @@ class CoordinatorPressure : public GenericCoordinator
   {
     #pragma omp parallel
     {
-      Operator kernel(dt, minRho, &pressureSolver);
+      Operator kernel(dt, minRho, pressureSolver);
       Lab mylab;
       mylab.prepare(*(sim.grid), kernel.stencil_start, kernel.stencil_end, false);
 
@@ -201,8 +164,8 @@ class CoordinatorPressure : public GenericCoordinator
   }
 
  public:
-  CoordinatorPressure(SimulationData& s) :
-  GenericCoordinator(s), pressureSolver(*(s.grid)) { }
+  CoordinatorPressure(SimulationData& s) : GenericCoordinator(s),
+  bFS(s.bFreeSpace) {}
 
   void operator()(const double dt)
   {
@@ -220,7 +183,7 @@ class CoordinatorPressure : public GenericCoordinator
     for( const auto& shape : sim.shapes ) shape->deformation_velocities();
 
     computeSplit<OperatorDivergenceSplit>(dt);
-    pressureSolver.solve();
+    pressureSolver->solve();
     computeSplit<OperatorGradPSplit>(dt);
     updatePressure();
 
@@ -230,5 +193,8 @@ class CoordinatorPressure : public GenericCoordinator
   string getName()
   {
     return "Pressure";
+  }
+  virtual ~CoordinatorPressure() {
+    delete pressureSolver;
   }
 };

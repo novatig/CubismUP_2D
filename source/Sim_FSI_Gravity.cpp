@@ -147,9 +147,8 @@ void Sim_FSI_Gravity::init()
 
   pipeline.push_back( new CoordinatorComputeForces(sim) );
 
-  #ifdef CHEAPFFT
+  if(not sim.bFreeSpace)
     pipeline.push_back( new CoordinatorFadeOut(sim) );
-  #endif
 
   cout << "Coordinator/Operator ordering:\n";
   for (size_t c=0; c<pipeline.size(); c++)
