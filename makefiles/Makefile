@@ -26,6 +26,9 @@ ifneq "$(findstring falcon,$(shell hostname))" ""
 include make.falcon
 endif
 
+ifeq "$(findstring eu-,$(shell hostname))" "eu-"
+include make.euler
+endif
 ifneq "$(findstring euler,$(shell hostname))" ""
 include make.euler
 endif
@@ -34,20 +37,21 @@ ifneq "$(findstring daint,$(shell hostname))" ""
 include make.daint
 endif
 
-CPPFLAGS += -std=c++11 -fopenmp -Wall -D_ALIGNBYTES_=32=
+CPPFLAGS += -std=c++11 -fopenmp -Wall -D_ALIGNBYTES_=32
 CPPFLAGS += -DNTHREADS=$(nthreads)
 CPPFLAGS += -I../source/ -I../Cubism/source/
 CPPFLAGS+= -Wextra -Wfloat-equal -Wundef -Wcast-align -Woverloaded-virtual
 CPPFLAGS+= -Wlogical-op -Wmissing-declarations -Wredundant-decls -Wshadow
 CPPFLAGS+= -Wwrite-strings -Wno-cpp -Wno-unused-parameter
 CPPFLAGS+= -Wno-float-equal
+LIBS += -fopenmp
 
 ifeq "$(precision)" "single"
     CPPFLAGS += -D_FLOAT_PRECISION_
-    LIBS += -lfftw3 -lfftw3f -lfftw3f_threads
+    LIBS += -lfftw3f -lfftw3f_threads
 endif
 ifeq "$(precision)" "double"
-    LIBS += -lfftw3 -lfftw3_threads
+    LIBS += -lfftw3  -lfftw3_threads
 endif
 
 BUILDDIR = .
@@ -64,7 +68,6 @@ OBJECTS += Communicator.o
 VPATH := $(VPATH):$(SMARTIESDIR)
 endif
 
-LDFLAGS = $(CPPFLAGS)
 
 all: simulation
 .DEFAULT: all;
@@ -79,7 +82,7 @@ blowfish: main_RL_blowfish.o $(OBJECTS)
 	cp libsimulation.a ../../smarties/makefiles/libsimulation.a
 
 simulation: main.o $(OBJECTS)
-	$(LD) main.o $(OBJECTS) -o $@ $(LIBS) $(LDFLAGS)
+	$(LD) main.o $(OBJECTS) -o $@ $(LIBS)
 
 %.o: %.cpp
 	$(CC) $(CPPFLAGS) -c $< -o $@

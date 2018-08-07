@@ -1,30 +1,14 @@
 CC=g++
 LD=g++
 
-#VTK_DIR=/cluster/home/novatig/VTK-7.1.0
-#VTK_LIB_DIR=/cluster/home/novatig/VTK-7.1.0/Build/lib/
-#CPPFLAGS+= -I$(TBB_INC_DIR) -I$(VTK_DIR)/Common/ExecutionModel/
-#CPPFLAGS+= -I$(VTK_DIR)/Common/DataModel/ -I$(VTK_DIR)/IO/XML/
-#CPPFLAGS+= -I$(VTK_DIR)/IO/Core/ -I$(VTK_DIR)/IO/Legacy/
-#CPPFLAGS+= -I$(VTK_DIR)/Common/Core/ -I$(VTK_DIR)/Common/ExecutionModel/
-#CPPFLAGS+= -I$(VTK_DIR)/Common/DataModel/ -I$(VTK_DIR)/Build/IO/XML/
-#CPPFLAGS+= -I$(VTK_DIR)/Build/IO/Core/ -I$(VTK_DIR)/Build/IO/Legacy/
-#CPPFLAGS+= -I$(VTK_DIR)/Build/Common/Core/ -I$(VTK_DIR)/Build/Utilities/KWIML/
-#CPPFLAGS+= -I$(VTK_DIR)/Utilities/KWIML/vtkkwiml/include/
-#CPPFLAGS+= -I$(VTK_DIR)/Build/Common/DataModel/ -I$(VTK_DIR)/Imaging/Sources/
-#CPPFLAGS+= -I$(VTK_DIR)/Build/Common/ExecutionModel/ -I$(VTK_DIR)/Build/Imaging/Sources/
+ifeq "0" "1"
+VTKVER=-8.1
+VTKDIR=/cluster/home/novatig/VTK-8.1.1/build/
+LIBS    += -L$(VTKDIR)lib/ -I$(VTKDIR)include/vtk-8.1/
+#export LD_LIBRARY_PATH:=$(VTKDIR)lib/:$(LD_LIBRARY_PATH)
+CPPFLAGS+= -I$(VTKDIR)include/vtk-8.1/ -DUSE_VTK
+LIBS+= -lvtkCommonCore$(VTKVER) \
+       -lvtkCommonDataModel$(VTKVER) \
+       -lvtkIOXML$(VTKVER)
+endif
 
-#export LD_LIBRARY_PATH:=$(VTK_LIB_DIR):$(LD_LIBRARY_PATH)
-#LIBS += -L$(VTK_LIB_DIR) \
-         -lvtkCommonCore-7.1 \
-         -lvtkCommonSystem-7.1 \
-         -lvtkCommonMath-7.1 \
-         -lvtkCommonDataModel-7.1 \
-         -lvtkCommonComputationalGeometry-7.1 \
-         -lvtkIOCore-7.1 \
-         -lvtkIOAMR-7.1 \
-         -lvtkIOXML-7.1 \
-         -lvtkIOXMLParser-7.1 \
-         -lvtkIOLegacy-7.1 \
-         -lvtkIOImport-7.1 \
-         -lvtkIOExport-7.1
