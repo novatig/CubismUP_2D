@@ -80,7 +80,7 @@ void CurvatureFish::_correctTrajectory(const Real dtheta, const Real t, Real dt)
   std::array<Real, 6> tmp_curv;
   tmp_curv.fill(dtheta);
   //adjustScheduler.transition(time,time,time+2*dt,tmp_curv, true);
-  adjustScheduler.transition(t, t-2*dt, t+2*dt, tmp_curv, true);
+  adjustScheduler.transition(t, t-10*dt, t+10*dt, tmp_curv, true);
 }
 
 void CurvatureFish::_correctAmplitude(Real dAmp, Real vAmp, const Real time, const Real dt)
@@ -154,6 +154,10 @@ void CurvatureFish::computeMidline(const Real time, const Real dt)
       rK[i] = amplitudeFactor*  rC[i]*(std::sin(arg)      + rB[i] + rA[i]);
       vK[i] = amplitudeFactor* (vC[i]*(std::sin(arg)      + rB[i] + rA[i])
                               + rC[i]*(std::cos(arg)*darg + vB[i] + vA[i]));
+      assert(not std::isnan(rK[i]));
+      assert(not std::isinf(rK[i]));
+      assert(not std::isnan(vK[i]));
+      assert(not std::isinf(vK[i]));
     }
   }
 

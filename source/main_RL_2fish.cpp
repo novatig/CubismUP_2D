@@ -68,8 +68,12 @@ inline double getTimeToNextAct(const StefanFish* const agent, const double t) {
   return t + agent->getLearnTPeriod() / 2;
 }
 
-int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
-{
+int app_main(
+  Communicator*const comm, // communicator with smarties
+  MPI_Comm mpicom,         // mpi_comm that mpi-based apps can use
+  int argc, char**argv,    // arguments read from app's runtime settings file
+  const unsigned numSteps  // number of time steps to run before exit
+) {
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
   cout<<endl;
   cout<<endl; fflush(0);
@@ -77,7 +81,7 @@ int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
   parser.set_strict_mode();
   const int nActions = 2;
   const int nStates = 10;
-  const unsigned maxLearnStepPerSim = 500; // random number... TODO
+  const unsigned maxLearnStepPerSim = 200; // random number... TODO
   //const unsigned maxLearnStepPerSim = 1; // random number... TODO
 
   Communicator& communicator = *comm;
@@ -87,7 +91,7 @@ int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
   // Second action affects Tp = (1+act[1])*Tperiod_0 (eg. halved if act[1]=-.5).
   // If too small Re=L^2*Tp/nu would increase too much, we allow it to
   //  double at most, therefore we set the bounds between -0.5 and 0.5.
-  vector<double> upper_action_bound{1, 0.5}, lower_action_bound{-1, -0.5};
+  vector<double> upper_action_bound{0.75, 0.25}, lower_action_bound{-0.75, -0.25};
   communicator.set_action_scales(upper_action_bound, lower_action_bound, true);
 
   Sim_FSI_Gravity sim(argc, argv);
@@ -98,11 +102,12 @@ int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
   if(agent==nullptr) { printf("Agent was not a StefanFish!\n"); abort(); }
   //sim.sim.dumpTime = agent->timescale / 10; // to force dumping
   char dirname[1024]; dirname[1023] = '\0';
-  unsigned sim_id = 0;
+  unsigned sim_id = 0, tot_steps = 0;
 
-  while(true) // train loop
+  // Terminate loop if reached max number of time steps. Never terminate if 0
+  while( numSteps == 0 || tot_steps<numSteps ) // train loop
   {
-    sprintf(dirname, "run_%u/", sim_id);
+    sprintf(dirname, "run_%08u/", sim_id);
     printf("Starting a new sim in directory %s\n", dirname);
     mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     chdir(dirname);
@@ -113,7 +118,6 @@ int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
     bool agentOver = false;
 
     communicator.sendInitState(getState(agent,object,t)); //send initial state
-
 
     while (true) //simulation loop
     {
@@ -134,6 +138,7 @@ int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
         }
       }
       step++;
+      tot_steps++;
       const vector<double> state = getState(agent,object,t);
       const double reward = getReward(agent,object);
 

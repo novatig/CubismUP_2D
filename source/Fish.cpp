@@ -156,6 +156,8 @@ void Fish::create(const vector<BlockInfo>& vInfo)
     }
   }
 
+  // clear vSegments
+  for(auto & entry : vSegments) { assert(entry not_eq nullptr); delete entry; }
   // 9.
   //here chi contains signed distance from only this fish, rest of chi field is in tmp
   //obstBlock->chi is the squared signed distance

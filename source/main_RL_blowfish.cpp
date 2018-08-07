@@ -72,9 +72,12 @@ inline double getTimeToNextAct(const BlowFish* const agent, const double t) {
   return t + agent->timescale / 4;
 }
 
-int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
-//int main(int argc, char **argv)
-{
+int app_main(
+  Communicator*const comm, // communicator with smarties
+  MPI_Comm mpicom,         // mpi_comm that mpi-based apps can use
+  int argc, char**argv,    // arguments read from app's runtime settings file
+  const unsigned numSteps  // number of time steps to run before exit
+) {
   ArgumentParser parser(argc,argv);
   parser.set_strict_mode();
   const int nActions = 2;
@@ -94,11 +97,12 @@ int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
   if(agent==nullptr) { printf("Obstacle was not a BlowFish!\n"); abort(); }
   //sim.sim.dumpTime = agent->timescale / 10; // to force dumping
   char dirname[1024]; dirname[1023] = '\0';
-  unsigned sim_id = 0;
+  unsigned sim_id = 0, tot_steps = 0;
 
-  while(true) // train loop
+  // Terminate loop if reached max number of time steps. Never terminate if 0
+  while( numSteps == 0 || tot_steps<numSteps ) // train loop
   {
-    sprintf(dirname, "run_%u/", sim_id);
+    sprintf(dirname, "run_%08u/", sim_id);
     printf("Starting a new sim in directory %s\n", dirname);
     mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     chdir(dirname);
@@ -129,6 +133,7 @@ int app_main(Communicator*const comm, MPI_Comm mpicom, int argc, char**argv)
         }
       }
       step++;
+      tot_steps++;
       const vector<double> state = getState(agent);
       const double reward = getReward(agent);
 
