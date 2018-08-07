@@ -4,7 +4,6 @@ LD ?= g++
 nthreads ?= 24
 config ?= production
 precision ?= single
-cheap ?= false
 bs ?= 32
 smarties ?= false
 
@@ -16,10 +15,6 @@ CPPFLAGS += -g
 #LIBS += -fsanitize=address
 else
 CPPFLAGS += -DNDEBUG -O3 -fstrict-aliasing -march=native -mtune=native -ffast-math -falign-functions=32
-endif
-
-ifeq "$(cheap)" "true"
-CPPFLAGS += -DCHEAPFFT
 endif
 
 UNAME_S := $(shell uname -s)
@@ -39,10 +34,9 @@ ifneq "$(findstring daint,$(shell hostname))" ""
 include make.daint
 endif
 
-CPPFLAGS += -std=c++11 -fopenmp -Wall -D_ALIGNBYTES_=32 #-fpermissive
+CPPFLAGS += -std=c++11 -fopenmp -Wall -D_ALIGNBYTES_=32=
 CPPFLAGS += -DNTHREADS=$(nthreads)
-CPPFLAGS += -I../source/ -I../Cubism/source/ #-I$(vtk-inc) -I$(fftw-inc)
-CPPFLAGS += -D_USE_FPZIP_  -I../tools/fpzip/inc
+CPPFLAGS += -I../source/ -I../Cubism/source/
 CPPFLAGS+= -Wextra -Wfloat-equal -Wundef -Wcast-align -Woverloaded-virtual
 CPPFLAGS+= -Wlogical-op -Wmissing-declarations -Wredundant-decls -Wshadow
 CPPFLAGS+= -Wwrite-strings -Wno-cpp -Wno-unused-parameter
@@ -55,8 +49,6 @@ endif
 ifeq "$(precision)" "double"
     LIBS += -lfftw3 -lfftw3_threads
 endif
-
-LIBS += -L../tools/fpzip/lib -lfpzip
 
 BUILDDIR = .
 SRC_DIR = $(BUILDDIR)/../source/

@@ -26,7 +26,9 @@ typedef float Real;
 #include <ArgumentParser.h>
 #include <Grid.h>
 #include <BlockInfo.h>
+#ifdef USE_VTK
 #include <SerializerIO_ImageVTK.h>
+#endif
 //#include <ZBinDumper.h>
 #include <BlockLab.h>
 #include <Profiler.h>

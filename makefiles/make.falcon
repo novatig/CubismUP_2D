@@ -4,12 +4,12 @@ LD=g++
 VTK_INC_DIR=/usr/include/vtk/
 VTK_LIB_DIR=/usr/lib64/vtk/
 
-CPPFLAGS += -D_VTK62_
+CPPFLAGS += -DUSE_VTK
 CPPFLAGS+= -I$(VTK_INC_DIR)
 
 export LD_LIBRARY_PATH:=$(VTK_LIB_DIR):$(LD_LIBRARY_PATH)
 
-LIBS += -L$(VTK_LIB_DIR) -lz \
+LIBS += -L$(VTK_LIB_DIR) \
         -lvtkCommonCore \
         -lvtkCommonSystem \
         -lvtkCommonMath \

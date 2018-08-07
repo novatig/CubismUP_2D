@@ -29,18 +29,20 @@ class Simulation_Fluid
   ArgumentParser parser;
   Profiler profiler;
   vector<GenericCoordinator*> pipeline;
-  SerializerIO_ImageVTK<FluidGrid, FluidVTKStreamer> dumper;
-
+  #ifdef USE_VTK
+    SerializerIO_ImageVTK<FluidGrid, FluidVTKStreamer> dumper;
+  #endif
   virtual void _diagnostics() = 0;
 
   virtual void _dump(string fname = "") {
-    stringstream ss;
-    ss << sim.path2file << "avemaria_" << fname;
-    ss << std::setfill('0') << std::setw(7) << sim.step;
-    ss << ".vti";
-    cout << ss.str() << endl;
-
-    dumper.Write( *(sim.grid), ss.str() );
+    #ifdef USE_VTK
+      stringstream ss;
+      ss << sim.path2file << "avemaria_" << fname;
+      ss << std::setfill('0') << std::setw(7) << sim.step;
+      ss << ".vti";
+      cout << ss.str() << endl;
+      dumper.Write( *(sim.grid), ss.str() );
+    #endif
   }
 
   void _serialize()
@@ -117,7 +119,7 @@ class Simulation_Fluid
 
     sim.path2file = parser("-file").asString("./");
     sim.path4serialization = parser("-serialization").asString(sim.path2file);
-
+    sim.bFreeSpace = parser("-bFreeSpace").asInt(1);
 
     // simulation settings
     sim.CFL = parser("-CFL").asDouble(.1);

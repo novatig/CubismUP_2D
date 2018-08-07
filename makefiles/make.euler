@@ -1,24 +1,21 @@
 CC=g++
 LD=g++
-LIBS += -lmpi -lmpicxx -lmpich -lsz
 
-CPPFLAGS += -D_VTK62_
-#
-VTK_DIR=/cluster/home/novatig/VTK-7.1.0
-VTK_LIB_DIR=/cluster/home/novatig/VTK-7.1.0/Build/lib/
-CPPFLAGS+= -I$(TBB_INC_DIR) -I$(VTK_DIR)/Common/ExecutionModel/ 
-CPPFLAGS+= -I$(VTK_DIR)/Common/DataModel/ -I$(VTK_DIR)/IO/XML/ 
-CPPFLAGS+= -I$(VTK_DIR)/IO/Core/ -I$(VTK_DIR)/IO/Legacy/
-CPPFLAGS+= -I$(VTK_DIR)/Common/Core/ -I$(VTK_DIR)/Common/ExecutionModel/ 
-CPPFLAGS+= -I$(VTK_DIR)/Common/DataModel/ -I$(VTK_DIR)/Build/IO/XML/ 
-CPPFLAGS+= -I$(VTK_DIR)/Build/IO/Core/ -I$(VTK_DIR)/Build/IO/Legacy/
-CPPFLAGS+= -I$(VTK_DIR)/Build/Common/Core/ -I$(VTK_DIR)/Build/Utilities/KWIML/
-CPPFLAGS+= -I$(VTK_DIR)/Utilities/KWIML/vtkkwiml/include/
-CPPFLAGS+= -I$(VTK_DIR)/Build/Common/DataModel/ -I$(VTK_DIR)/Imaging/Sources/ 
-CPPFLAGS+= -I$(VTK_DIR)/Build/Common/ExecutionModel/ -I$(VTK_DIR)/Build/Imaging/Sources/
+#VTK_DIR=/cluster/home/novatig/VTK-7.1.0
+#VTK_LIB_DIR=/cluster/home/novatig/VTK-7.1.0/Build/lib/
+#CPPFLAGS+= -I$(TBB_INC_DIR) -I$(VTK_DIR)/Common/ExecutionModel/
+#CPPFLAGS+= -I$(VTK_DIR)/Common/DataModel/ -I$(VTK_DIR)/IO/XML/
+#CPPFLAGS+= -I$(VTK_DIR)/IO/Core/ -I$(VTK_DIR)/IO/Legacy/
+#CPPFLAGS+= -I$(VTK_DIR)/Common/Core/ -I$(VTK_DIR)/Common/ExecutionModel/
+#CPPFLAGS+= -I$(VTK_DIR)/Common/DataModel/ -I$(VTK_DIR)/Build/IO/XML/
+#CPPFLAGS+= -I$(VTK_DIR)/Build/IO/Core/ -I$(VTK_DIR)/Build/IO/Legacy/
+#CPPFLAGS+= -I$(VTK_DIR)/Build/Common/Core/ -I$(VTK_DIR)/Build/Utilities/KWIML/
+#CPPFLAGS+= -I$(VTK_DIR)/Utilities/KWIML/vtkkwiml/include/
+#CPPFLAGS+= -I$(VTK_DIR)/Build/Common/DataModel/ -I$(VTK_DIR)/Imaging/Sources/
+#CPPFLAGS+= -I$(VTK_DIR)/Build/Common/ExecutionModel/ -I$(VTK_DIR)/Build/Imaging/Sources/
 
-export LD_LIBRARY_PATH:=$(VTK_LIB_DIR):$(LD_LIBRARY_PATH)
-LIBS += -L$(VTK_LIB_DIR)  -lz \
+#export LD_LIBRARY_PATH:=$(VTK_LIB_DIR):$(LD_LIBRARY_PATH)
+#LIBS += -L$(VTK_LIB_DIR) \
          -lvtkCommonCore-7.1 \
          -lvtkCommonSystem-7.1 \
          -lvtkCommonMath-7.1 \
@@ -31,9 +28,3 @@ LIBS += -L$(VTK_LIB_DIR)  -lz \
          -lvtkIOLegacy-7.1 \
          -lvtkIOImport-7.1 \
          -lvtkIOExport-7.1
-#vtk-inc = /cluster/home/cconti/libraries/VTK_5.10.1_gcc4.8.2/include/vtk-5.10/
-#vtk-lib = /cluster/home/cconti/libraries/VTK_5.10.1_gcc4.8.2/lib/vtk-5.10/
-#fftw-inc = /cluster/home/cconti/libraries/fftw-3.3.4/include/
-#fftw-lib = /cluster/home/cconti/libraries/fftw-3.3.4/lib/
-#hypre-inc = /cluster/home/cconti/libraries/hypre-2.10.0b/src/hypre/include/ 
-#hypre-lib = /cluster/home/cconti/libraries/hypre-2.10.0b/src/hypre/lib/

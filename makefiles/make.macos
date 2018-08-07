@@ -5,10 +5,10 @@ SMARTIESDIR = /Users/novatig/code/smarties/source/
 VTKVER=-8.1
 VTKDIR=/usr/local/Cellar/vtk/8.1.1/
 CPPFLAGS+= -I$(VTKDIR)include/vtk$(VTKVER)/
-CPPFLAGS += -D_VTK62_
+CPPFLAGS += -DUSE_VTK
 
 export LD_LIBRARY_PATH:=$(VTK_LIB_DIR):$(LD_LIBRARY_PATH)
-LIBS += -L$(VTKDIR)lib/ -lz \
+LIBS += -L$(VTKDIR)lib/ \
          -lvtkCommonCore$(VTKVER) \
          -lvtkCommonSystem$(VTKVER) \
          -lvtkCommonMath$(VTKVER) \
