@@ -15,6 +15,9 @@
 #include "OperatorComputeForces.h"
 
 Real Shape::getMinRhoS() const { return rhoS; }
+bool Shape::bVariableDensity() const {
+  return std::fabs(rhoS-1.0) > numeric_limits<Real>::epsilon();
+}
 
 void Shape::updatePosition(double dt)
 {
@@ -254,61 +257,38 @@ void Shape::penalize()
 
 void Shape::diagnostics()
 {
-  /*
   const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
-  Real cX=0, cY=0, cmX=0, cmY=0, fx=0, fy=0, pMin=10, pMax=0, mass=0, volS=0, volF=0;
-  const double dh = sim.getH();
+  Real _a=0,_m=0,_x=0,_y=0,_t=0;
+  #pragma omp parallel for schedule(dynamic) reduction(+:_a,_m,_x,_y,_t)
+  for(size_t i=0; i<vInfo.size(); i++) {
+      const auto pos = obstacleBlocks.find(vInfo[i].blockID);
+      if(pos == obstacleBlocks.end()) continue;
+      FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
 
-  #pragma omp parallel for reduction(max : pMax) reduction (min : pMin) reduction(+ : cX,cY,volF,cmX,cmY,fx,fy,mass,volS)
-  for(int i=0; i<vInfo.size(); i++) {
-    FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-    const auto pos = obstacleBlocks.find(vInfo[i].blockID);
-
-    for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-    for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
-      double p[2] = {0,0};
-      vInfo[i].pos(p, ix, iy);
-      const Real chi = pos==obstacleBlocks.end()?0 : pos->second->chi[iy][ix];
-      const Real rhochi = pos->second->rho[iy][ix] * chi;
-      cmX += p[0] * rhochi; cX += p[0] * chi; fx += (b(ix,iy).u-uBody)*chi;
-      cmY += p[1] * rhochi; cY += p[1] * chi; fy += (b(ix,iy).v-vBody)*chi;
-      mass += rhochi; volS += chi; volF += (1-chi);
-      pMin = min(pMin,(double)b(ix,iy).p);
-      pMax = max(pMax,(double)b(ix,iy).p);
-    }
+      for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+      for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
+        const Real Xs = pos->second->chi[iy][ix];
+        if (Xs <= 0) continue;
+        Real p[2];
+        vInfo[i].pos(p, ix, iy);
+        p[0]-=centerOfMass[0];
+        p[1]-=centerOfMass[1];
+        const Real*const udef = pos->second->udef[iy][ix];
+        const Real uDiff = b(ix,iy).u - (u -omega*p[1] +udef[0]);
+        const Real vDiff = b(ix,iy).v - (v +omega*p[0] +udef[1]);
+        _a += Xs;
+        _m += Xs / b(ix,iy).invRho;
+        _x += uDiff*Xs;
+        _y += vDiff*Xs;
+        _t += (p[0]*vDiff-p[1]*uDiff)*Xs;
+      }
   }
-
-  cmX /= mass; cX /= volS; fx *= dh*dh*lambda;
-  cmY /= mass; cY /= volS; fy *= dh*dh*lambda;
-  const Real rhoSAvg = mass/volS, length = getCharLength();
-  const Real speed = std::sqrt ( uBody * uBody + vBody * vBody);
-  const Real cDx = 2*fx/(speed*speed*length);
-  const Real cDy = 2*fy/(speed*speed*length);
-  const Real Re_uBody = getCharLength()*speed/nu;
-  const Real theta = getOrientation();
-  volS *= dh*dh; volF *= dh*dh;
-  Real CO[2], CM[2], labpos[2];
-  getLabPosition(labpos);
-  getCentroid(CO);
-  getCenterOfMass(CM);
-  stringstream ss;
-  ss << "./diagnostics_0.dat";
-  ofstream myfile(ss.str(), fstream::app);
-  if (!step)
-  myfile<<"step time CO[0] CO[1] CM[0] CM[1] centroidX centroidY centerMassX centerMassY labpos[0] labpos[1] theta uBody[0] uBody[1] omegaBody Re_uBody cDx cDy rhoSAvg"<<endl;
-
-  cout<<step<<" "<<time<<" "<<CO[0]<<" "<<CO[1]<<" "<<CM[0]<<" "<<CM[1]
-    <<" " <<cX<<" "<<cY<<" "<<cmX<<" "<<cmY<<" "<<labpos[0]<<" "<<labpos[1]
-    <<" "<<theta<<" "<<uBody<<" "<<vBody<<" "<<omegaBody<<" "<<Re_uBody
-    <<" "<<cDx<<" "<<cDy<<" "<<rhoSAvg<<" "<<fx<<" "<<fy<<endl;
-
-  myfile<<step<<" "<<time<<" "<<CO[0]<<" "<<CO[1]<<" "<<CM[0]<<" "<<CM[1]
-    <<" " <<cX<<" "<<cY<<" "<<cmX<<" "<<cmY<<" "<<labpos[0]<<" "<<labpos[1]
-    <<" "<<theta<<" "<<uBody<<" "<<vBody<<" "<<omegaBody<<" "<<Re_uBody
-    <<" "<<cDx<<" "<<cDy<<" "<<rhoSAvg<<" "<<fx<<" "<<fy<<endl;
-
-  myfile.close();
-  */
+  const double dV = std::pow(vInfo[0].h_gridpoint, 2);
+  area_penal   = _a * dV;
+  mass_penal   = _m * dV;
+  forcex_penal = _x * dV * sim.lambda;
+  forcey_penal = _y * dV * sim.lambda;
+  torque_penal = _t * dV * sim.lambda;
 }
 
 void Shape::characteristic_function()
@@ -397,9 +377,9 @@ void Shape::computeForces()
 
     fileForce.open(ssF.str().c_str(), ios::app);
     if(sim.step==0)
-      fileForce<<"time Fx Fy FxPres FyPres FxVisc FyVisc tau tauPres tauVisc drag thrust perimeter circulation"<<std::endl;
+      fileForce<<"time Fx Fy FxPres FyPres FxVisc FyVisc tau tauPres tauVisc drag thrust perimeter circulation area_penal mass_penal forcex_penal forcey_penal torque_penal"<<std::endl;
 
-    fileForce<<sim.time<<" "<<forcex<<" "<<forcey<<" "<<forcex_P<<" "<<forcey_P<<" "<<forcex_V <<" "<<forcey_V<<" "<<torque <<" "<<torque_P<<" "<<torque_V<<" "<<drag<<" "<<thrust<<" "<<perimeter<<" "<<circulation<<endl;
+    fileForce<<sim.time<<" "<<forcex<<" "<<forcey<<" "<<forcex_P<<" "<<forcey_P<<" "<<forcex_V <<" "<<forcey_V<<" "<<torque <<" "<<torque_P<<" "<<torque_V<<" "<<drag<<" "<<thrust<<" "<<perimeter<<" "<<circulation<<" "<<area_penal<<" "<<mass_penal<<" "<<forcex_penal<<" "<<forcey_penal<<" "<<torque_penal<<endl;
     fileForce.close();
 
     filePower.open(ssP.str().c_str(), ios::app);

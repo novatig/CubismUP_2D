@@ -11,15 +11,8 @@
 #include <vector>
 #include <cmath>
 #include <sstream>
-using namespace std;
 
-#include "Definitions.h"
-
-#include "Simulation_Fluid.h"
-#include "Sim_FSI_Gravity.h"
-//#include "Sim_RayleighTaylor.h"
-//#include "Sim_Bubble.h"
-//#include "Sim_Jet.h"
+#include "Simulation.h"
 
 int main(int argc, char **argv)
 {
@@ -31,7 +24,7 @@ int main(int argc, char **argv)
   ArgumentParser parser(argc,argv);
   parser.set_strict_mode();
 
-  Sim_FSI_Gravity* sim = new Sim_FSI_Gravity(argc, argv);
+  Simulation* sim = new Simulation(argc, argv);
   sim->init();
   sim->simulate();
 

@@ -365,6 +365,7 @@ struct SimulationData
   bool verbose = true;
   bool muteAll = false;
   bool bFreeSpace = true;
+  bool bVariableDensity = false;
   // output
   // dumpFreq==0 means that this dumping frequency (in #steps) is not active
   int dumpFreq = 0;
@@ -396,6 +397,7 @@ struct SimulationData
   double minRho() const;
   double maxSpeed() const;
   double maxRelSpeed() const;
+  void checkVariableDensity();
   double getH() const
   {
     return grid->getBlocksInfo().front().h_gridpoint; // yikes

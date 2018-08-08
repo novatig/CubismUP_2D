@@ -27,6 +27,12 @@ double SimulationData::minRho() const
     minR = std::min( (double) shape->getMinRhoS(), minR );
   return minR;
 }
+void SimulationData::checkVariableDensity()
+{
+  bVariableDensity = false;
+  for(const auto& shape : shapes)
+    bVariableDensity = bVariableDensity || shape->bVariableDensity();
+}
 double SimulationData::maxSpeed() const
 {
   double maxS = 0;

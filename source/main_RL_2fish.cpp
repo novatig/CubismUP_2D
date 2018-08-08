@@ -11,11 +11,9 @@
 #include <vector>
 #include <cmath>
 #include <sstream>
-using namespace std;
 
-#include "Definitions.h"
 #include "Communicator.h"
-#include "Sim_FSI_Gravity.h"
+#include "Simulation.h"
 #include "StefanFish.h"
 
 #include "mpi.h"

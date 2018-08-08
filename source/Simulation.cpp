@@ -6,7 +6,14 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#include "Sim_FSI_Gravity.h"
+#include "Simulation.h"
+
+#ifdef USE_VTK
+#include <SerializerIO_ImageVTK.h>
+#else
+#include <HDF5Dumper.h>
+#endif
+//#include <ZBinDumper.h>
 
 #include "HelperOperators.h"
 #include "CoordinatorIC.h"
@@ -34,23 +41,77 @@ static inline vector<string> splitter(string& content) {
     return split_content;
 }
 
-void Sim_FSI_Gravity::_diagnostics()
-{
-  //shape->_diagnostics(sim);
+void Simulation::dump(string fname) {
+  stringstream ss;
+  ss << sim.path2file << "avemaria_" << fname;
+  ss << std::setfill('0') << std::setw(7) << sim.step;
+  ss << ".vti";
+  cout << ss.str() << endl;
+  #ifdef USE_VTK
+    SerializerIO_ImageVTK<FluidGrid, FluidVTKStreamer> dumper;
+    dumper.Write( *(sim.grid), ss.str() );
+  #else
+    DumpHDF5<FluidGrid,StreamerVelocityVector>(*(sim.grid), sim.step, sim.time, ss.str(), sim.path4serialization);
+    if(sim.bVariableDensity)
+      DumpHDF5<FluidGrid,StreamerPressure>(*(sim.grid), sim.step, sim.time, ss.str(), sim.path4serialization);
+    if(sim.bVariableDensity)
+      DumpHDF5<FluidGrid,StreamerRho>(*(sim.grid), sim.step, sim.time, ss.str(), sim.path4serialization);
+  #endif
+  //DumpZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
+  //ReadZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
 }
 
-Sim_FSI_Gravity::Sim_FSI_Gravity(int argc, char ** argv) :
-Simulation_Fluid(argc, argv)
+Simulation::Simulation(int argc, char ** argv) : parser(argc,argv)
 {
   cout << "=================================================================\n";
   cout << "\t\tFlow past a falling obstacle\n";
   cout << "=================================================================\n";
 }
 
-Sim_FSI_Gravity::~Sim_FSI_Gravity() { }
+Simulation::~Simulation() {
+  while( not pipeline.empty() ) {
+    GenericCoordinator * g = pipeline.back();
+    pipeline.pop_back();
+    if(g not_eq nullptr) delete g;
+  }
+}
 
-void Sim_FSI_Gravity::createShapes()
-{
+void Simulation::parseRuntime() {
+  sim.bRestart = parser("-restart").asBool(false);
+  cout << "bRestart is " << sim.bRestart << endl;
+
+  // initialize grid
+  parser.set_strict_mode();
+  const int bpdx = parser("-bpdx").asInt();
+  const int bpdy = parser("-bpdy").asInt();
+  sim.grid = new FluidGrid(bpdx, bpdy, 1);
+  assert( sim.grid not_eq nullptr );
+
+  // simulation ending parameters
+  parser.unset_strict_mode();
+  sim.nsteps = parser("-nsteps").asInt(0);
+  sim.endTime = parser("-tend").asDouble(0);
+
+  // output parameters
+  sim.dumpFreq = parser("-fdump").asDouble(0);
+  sim.dumpTime = parser("-tdump").asDouble(0);
+
+  sim.path2file = parser("-file").asString("./");
+  sim.path4serialization = parser("-serialization").asString(sim.path2file);
+  sim.bFreeSpace = parser("-bFreeSpace").asInt(1);
+
+  // simulation settings
+  sim.CFL = parser("-CFL").asDouble(.1);
+  sim.lambda = parser("-lambda").asDouble(1e5);
+  sim.dlm = parser("-dlm").asDouble(10.);
+  sim.nu = parser("-nu").asDouble(1e-2);
+
+  sim.verbose = parser("-verbose").asInt(1);
+  sim.muteAll = parser("-muteAll").asInt(0);//stronger silence, not even files
+  if(sim.muteAll) sim.verbose = 0;
+}
+
+void Simulation::createShapes() {
   parser.set_strict_mode();
   const Real axX = parser("-bpdx").asInt();
   const Real axY = parser("-bpdy").asInt();
@@ -113,12 +174,15 @@ void Sim_FSI_Gravity::createShapes()
     std::cout << "Did not create any obstacles. Not supported. Aborting!\n";
     abort();
   }
+
+  //now that shapes are created, we know whether we need variable rho solver:
+  sim.checkVariableDensity();
 }
 
-void Sim_FSI_Gravity::init()
-{
-  Simulation_Fluid::init();
+void Simulation::init() {
+  parseRuntime();
   createShapes();
+
   // setup initial conditions
   CoordinatorIC coordIC(sim);
   profiler.push_start(coordIC.getName());
@@ -128,25 +192,19 @@ void Sim_FSI_Gravity::init()
   pipeline.clear();
 
   pipeline.push_back( new CoordinatorComputeShape(sim) );
-
   pipeline.push_back( new CoordinatorVelocities(sim) );
-
   pipeline.push_back( new CoordinatorPenalization(sim) );
 
   #if 1 // in one sweep advect, diffuse, add hydrostatic
     pipeline.push_back( new CoordinatorMultistep<Lab>(sim) );
   #else
     pipeline.push_back( new CoordinatorAdvection<Lab>(sim) );
-
     pipeline.push_back( new CoordinatorDiffusion<Lab>(sim) );
-
     pipeline.push_back( new CoordinatorGravity(sim) );
   #endif
 
   pipeline.push_back( new CoordinatorPressure<Lab>(sim) );
-
   pipeline.push_back( new CoordinatorComputeForces(sim) );
-
   if(not sim.bFreeSpace)
     pipeline.push_back( new CoordinatorFadeOut(sim) );
 
@@ -155,8 +213,16 @@ void Sim_FSI_Gravity::init()
     cout << "\t" << pipeline[c]->getName() << endl;
 }
 
-double Sim_FSI_Gravity::calcMaxTimestep()
-{
+void Simulation::simulate() {
+  while (1) {
+    profiler.push_start("DT");
+    const double dt = calcMaxTimestep();
+    profiler.pop_stop();
+    if (advance(dt)) break;
+  }
+}
+
+double Simulation::calcMaxTimestep() {
   const Real maxU = findMaxUOMP( sim ); assert(maxU>=0);
   const double h = sim.getH();
   const double dtFourier = h*h/sim.nu, dtCFL = maxU<2.2e-16? 1 : h/maxU;
@@ -167,8 +233,7 @@ double Sim_FSI_Gravity::calcMaxTimestep()
   sim.dt = std::min( sim.dt, sim.CFL*dtBody );
 
   if(sim.dlm > 1) sim.lambda = sim.dlm / sim.dt;
-  if (sim.step < 100)
-  {
+  if (sim.step < 100) {
     const double x = (sim.step+1)/100;
     const double logCFL = std::log(sim.CFL);
     const double rampCFL = std::exp(-4.5*(1-x) + logCFL * x);
@@ -186,42 +251,29 @@ double Sim_FSI_Gravity::calcMaxTimestep()
   return sim.dt;
 }
 
-bool Sim_FSI_Gravity::advance(const double dt)
-{
+bool Simulation::advance(const double dt) {
   assert(dt>2.2e-16);
   const bool bDump = sim.bDump();
 
-  for (size_t c=0; c<pipeline.size(); c++)
-  {
+  for (size_t c=0; c<pipeline.size(); c++) {
     profiler.push_start(pipeline[c]->getName());
     (*pipeline[c])(sim.dt);
-    //_dump(pipeline[c]->getName());
     profiler.pop_stop();
     // stringstream ss;
     // ss << path2file << "avemaria_" << pipeline[c]->getName() << "_";
     // ss << std::setfill('0') << std::setw(7) << step << ".vti";
     //      cout << ss.str() << endl;
-    //      _dump(ss);
+    //      dump(ss);
   }
 
   sim.time += sim.dt;
   sim.step++;
 
-  // compute diagnostics
-  #ifndef RL_TRAIN
-  if (sim.step % 10 == 0)
-  {
-    profiler.push_start("Diagnostics");
-    _diagnostics();
-    profiler.pop_stop();
-  }
-  #endif
-
   //dump some time steps every now and then
   profiler.push_start("Dump");
   if(bDump) {
     sim.registerDump();
-    _dump();
+    dump();
   }
   profiler.pop_stop();
 

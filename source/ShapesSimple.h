@@ -134,6 +134,12 @@ class DiskVarDensity : public Shape
   Real getMinRhoS() const override {
     return std::min(rhoTop, rhoBot);
   }
+  bool bVariableDensity() const override {
+    assert(std::fabs(rhoTop-rhoBot)>numeric_limits<Real>::epsilon());
+    const bool bTop = std::fabs(rhoTop-1.0) > numeric_limits<Real>::epsilon();
+    const bool bBot = std::fabs(rhoBot-1.0) > numeric_limits<Real>::epsilon();
+    return bTop || bBot;
+  }
 
   void create(const vector<BlockInfo>& vInfo) override;
 
@@ -175,6 +181,12 @@ class EllipseVarDensity : public Shape
    }
    Real getMinRhoS() const override {
      return std::min(rhoTop, rhoBot);
+   }
+   bool bVariableDensity() const override {
+     assert(std::fabs(rhoTop-rhoBot)>numeric_limits<Real>::epsilon());
+     const bool bTop = std::fabs(rhoTop-1.0) > numeric_limits<Real>::epsilon();
+     const bool bBot = std::fabs(rhoBot-1.0) > numeric_limits<Real>::epsilon();
+     return bTop || bBot;
    }
 
    void create(const vector<BlockInfo>& vInfo) override;

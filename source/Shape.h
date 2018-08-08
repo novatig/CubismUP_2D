@@ -39,6 +39,11 @@ class Shape
   Real computedu = 0;
   Real computedv = 0;
   Real computedo = 0;
+  Real area_penal = 0;
+  Real mass_penal = 0;
+  Real forcex_penal = 0;
+  Real forcey_penal = 0;
+  Real torque_penal = 0;
 
   Real perimeter=0, forcex=0, forcey=0, forcex_P=0, forcey_P=0;
   Real forcex_V=0, forcey_V=0, torque=0, torque_P=0, torque_V=0;
@@ -172,7 +177,7 @@ class Shape
   }
 
   virtual Real getMinRhoS() const;
-
+  virtual bool bVariableDensity() const;
   virtual void outputSettings(ostream &outStream) const;
 
   struct Integrals {

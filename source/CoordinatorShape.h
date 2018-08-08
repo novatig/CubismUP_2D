@@ -107,7 +107,10 @@ class CoordinatorComputeForces : public GenericCoordinator
   void operator()(const double dt)
   {
     check("forces - start");
-    for( const auto& shape : sim.shapes ) shape->computeForces();
+    for( const auto& shape : sim.shapes ) {
+      shape->diagnostics();
+      shape->computeForces();
+    }
     check("forces - end");
   }
 

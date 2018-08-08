@@ -51,6 +51,12 @@ class BlowFish : public Shape
   Real getMinRhoS() const override {
     return std::min( {rhoTop, rhoBot, rhoFin} );
   }
+  bool bVariableDensity() const override {
+    assert(std::fabs(rhoTop-rhoBot)>numeric_limits<Real>::epsilon());
+    const bool bTop = std::fabs(rhoTop-1.0) > numeric_limits<Real>::epsilon();
+    const bool bBot = std::fabs(rhoBot-1.0) > numeric_limits<Real>::epsilon();
+    return bTop || bBot;
+  }
 
   void outputSettings(ostream &outStream) const override
   {
