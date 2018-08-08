@@ -35,13 +35,17 @@ class Simulation_Fluid
   virtual void _diagnostics() = 0;
 
   virtual void _dump(string fname = "") {
+    stringstream ss;
+    ss << sim.path2file << "avemaria_" << fname;
+    ss << std::setfill('0') << std::setw(7) << sim.step;
+    ss << ".vti";
+    cout << ss.str() << endl;
     #ifdef USE_VTK
-      stringstream ss;
-      ss << sim.path2file << "avemaria_" << fname;
-      ss << std::setfill('0') << std::setw(7) << sim.step;
-      ss << ".vti";
-      cout << ss.str() << endl;
       dumper.Write( *(sim.grid), ss.str() );
+    #else
+      DumpHDF5<FluidGrid,StreamerVelocityVector>(*(sim.grid), sim.step, sim.time, ss.str(), sim.path4serialization);
+      DumpHDF5<FluidGrid,StreamerPressure>(*(sim.grid), sim.step, sim.time, ss.str(), sim.path4serialization);
+      DumpHDF5<FluidGrid,StreamerRho>(*(sim.grid), sim.step, sim.time, ss.str(), sim.path4serialization);
     #endif
   }
 

@@ -28,6 +28,8 @@ typedef float Real;
 #include <BlockInfo.h>
 #ifdef USE_VTK
 #include <SerializerIO_ImageVTK.h>
+#else
+#include <HDF5Dumper.h>
 #endif
 //#include <ZBinDumper.h>
 #include <BlockLab.h>

@@ -224,6 +224,101 @@ class BlockLabOpen: public BlockLab<BlockType,allocator>
     }
 };
 
+
+struct StreamerChi
+{
+    static const int NCHANNELS = 1;
+    static const int CLASS = 0;
+
+    template <typename TBlock, typename T>
+    static inline void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS])
+    {
+      output[0] = b(ix,iy,iz).chi;
+    }
+    static std::string prefix()
+    {
+      return std::string("chi_");
+    }
+
+    static const char * getAttributeName() { return "Scalar"; }
+};
+
+struct StreamerVelocityVector
+{
+    static const int NCHANNELS = 3;
+    static const int CLASS = 0;
+    // Write
+    template <typename TBlock, typename T>
+    static inline void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS])
+    {
+        output[0] = b(ix,iy,iz).u;
+        output[1] = b(ix,iy,iz).v;
+        output[2] = b(ix,iy,iz).tmp;
+    }
+    // Read
+    template <typename TBlock, typename T>
+    static inline void operate(TBlock& b, const T input[NCHANNELS], const int ix, const int iy, const int iz)
+    {
+        b(ix,iy,iz).u = input[0];
+        b(ix,iy,iz).v = input[1];
+    }
+    static std::string prefix()
+    {
+      return std::string("vel_");
+    }
+    static const char * getAttributeName() { return "Vector"; }
+};
+
+struct StreamerTmpVector
+{
+    static const int NCHANNELS = 3;
+    static const int CLASS = 0;
+    // Write
+    template <typename TBlock, typename T>
+    static inline void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS])
+    {
+        output[0] = b(ix,iy,iz).tmpU;
+        output[1] = b(ix,iy,iz).tmpV;
+        output[2] = b(ix,iy,iz).tmp;
+    }
+    static std::string prefix()
+    {
+      return std::string("tmp_");
+    }
+    static const char * getAttributeName() { return "Vector"; }
+};
+
+struct StreamerPressure
+{
+    static const int NCHANNELS = 1;
+    static const int CLASS = 0;
+    template <typename TBlock, typename T>
+    static inline void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS])
+    {
+      output[0] = b(ix,iy,iz).p;
+    }
+    static std::string prefix()
+    {
+      return std::string("pres_");
+    }
+    static const char * getAttributeName() { return "Scalar"; }
+};
+struct StreamerRho
+{
+    static const int NCHANNELS = 1;
+    static const int CLASS = 0;
+    template <typename TBlock, typename T>
+    static inline void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS])
+    {
+      output[0] = b(ix,iy,iz).invRho;
+    }
+    static std::string prefix()
+    {
+      return std::string("invRho_");
+    }
+    static const char * getAttributeName() { return "Scalar"; }
+};
+
 typedef Grid<FluidBlock, std::allocator> FluidGrid;
 
 //#ifndef _MIXED_

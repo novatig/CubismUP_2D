@@ -2,6 +2,8 @@ CC=g++-8
 LD=g++-8
 
 SMARTIESDIR = /Users/novatig/code/smarties/source/
+
+ifeq "0" "1"
 VTKVER=-8.1
 VTKDIR=/usr/local/Cellar/vtk/8.1.1/
 CPPFLAGS+= -I$(VTKDIR)include/vtk$(VTKVER)/
@@ -11,3 +13,4 @@ CPPFLAGS += -DUSE_VTK
 LIBS+= -L$(VTKDIR)lib/ -lvtkCommonCore$(VTKVER) \
        -lvtkCommonDataModel$(VTKVER) \
        -lvtkIOXML$(VTKVER)
+endif
