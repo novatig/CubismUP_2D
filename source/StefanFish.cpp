@@ -243,7 +243,7 @@ void StefanFish::create(const vector<BlockInfo>& vInfo)
     const Real PID  = 0.1*adjTh + 0.1*INST;
     if(not sim.muteAll) {
       ofstream filePID;
-      stringstream ssF; ssF<<"PID_"<<obstacleID<<".dat";
+      stringstream ssF; ssF<<sim.path2file<<"PID_"<<obstacleID<<".dat";
       filePID.open(ssF.str().c_str(), ios::app);
       filePID<<adjTh<<" "<<INST<<endl;
       filePID.close();
