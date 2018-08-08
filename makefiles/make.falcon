@@ -1,5 +1,13 @@
 CC=g++
 LD=g++
 
+ifeq "0" "1"
+
 CPPFLAGS += -DUSE_VTK -I/usr/include/vtk/
 LIBS += -L/usr/lib64/vtk/ -lvtkCommonCore -lvtkCommonDataModel -lvtkIOXML
+
+else
+
+LIBS+= -lhdf5
+
+endif

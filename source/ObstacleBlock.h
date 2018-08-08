@@ -127,15 +127,14 @@ struct ObstacleBlock
     P = new Real[n_surfPoints];
   }
 
-  void print(FILE* pFile)
+  void print(ofstream& pFile)
   {
     assert(filled);
     for(size_t i=0; i<n_surfPoints; i++) {
       float buf[]={(float)pX[i], (float)pY[i], (float)P[i], (float)fX[i],
         (float)fY[i], (float)vx[i], (float)vy[i], (float)vxDef[i],
         (float)vyDef[i], (float)surface[i]->dchidx, (float)surface[i]->dchidy};
-      fwrite (buf, sizeof(float), 11, pFile);
-      fflush(pFile);
+      pFile.write((char*)buf, sizeof(float)*11);
     }
   }
 };

@@ -211,7 +211,7 @@ void Shape::computeVelocities()
     {
       ofstream fileSpeed;
       stringstream ssF;
-      ssF<<sim.path2file<<"velocity_"<<obstacleID<<".dat";
+      ssF<<sim.path2file<<"/velocity_"<<obstacleID<<".dat";
       fileSpeed.open(ssF.str().c_str(), ios::app);
       if(sim.step==0)
         fileSpeed<<"time dt CMx CMy angle u v omega M J accx accy"<<std::endl;
@@ -359,21 +359,21 @@ void Shape::computeForces()
   EffPDefBnd = Pthrust/(Pthrust-    defPowerBnd);
 
   #ifndef RL_TRAIN
-  if (sim._bDump && not sim.muteAll) {
-    char buf[500];
-    sprintf(buf, "%ssurface_%01d_%07d.raw", sim.path2file.c_str(), obstacleID, sim.step);
-    FILE * pFile = fopen (buf, "wb");
+  if (sim._bDump && not sim.muteAll)
+  {
+    stringstream ssF; ssF<<sim.path2file<<"/surface_"<<obstacleID
+      <<"_"<<std::setfill('0')<<std::setw(7)<<sim.step<<".raw";
+    ofstream pFile(ssF.str().c_str(), ofstream::binary);
     for(auto & block : obstacleBlocks) block.second->print(pFile);
-    fflush(pFile);
-    fclose(pFile);
+    pFile.close();
   }
   if(not sim.muteAll)
   {
     ofstream fileForce;
     ofstream filePower;
     stringstream ssF, ssP;
-    ssF<<sim.path2file<<"forceValues_"<<obstacleID<<".dat";
-    ssP<<sim.path2file<<"powerValues_"<<obstacleID<<".dat"; //obstacleID
+    ssF<<sim.path2file<<"/forceValues_"<<obstacleID<<".dat";
+    ssP<<sim.path2file<<"/powerValues_"<<obstacleID<<".dat"; //obstacleID
 
     fileForce.open(ssF.str().c_str(), ios::app);
     if(sim.step==0)
