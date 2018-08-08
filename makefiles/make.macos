@@ -11,4 +11,6 @@ VTKD=/usr/local/Cellar/vtk/8.1.1/
 CPPFLAGS+= -I$(VTKDIR)include/vtk$(VTKVER)/ -DUSE_VTK
 LIBS+= -L$(VTKD)lib/ -lvtkCommonCore$(VTKV) -lvtkCommonDataModel$(VTKV) -lvtkIOXML$(VTKV)
 
+else
+LIBS+=-lhdf5
 endif

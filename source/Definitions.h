@@ -46,29 +46,34 @@ struct FluidVTKStreamer
 
 struct FluidBlock
 {
-    //these identifiers are required by cubism!
-    static const int sizeX = _BS_;
-    static const int sizeY = _BS_;
-    static const int sizeZ = 1;
-    typedef FluidElement ElementType;
-    FluidElement data[1][sizeY][sizeX];
+  //these identifiers are required by cubism!
+  static const int sizeX = _BS_;
+  static const int sizeY = _BS_;
+  static const int sizeZ = 1;
+  typedef FluidElement ElementType;
+  FluidElement data[1][sizeY][sizeX];
 
-    //required from Grid.h
-    void clear()
-    {
-        FluidElement * entry = &data[0][0][0];
-        const int N = sizeX*sizeY;
+  //required from Grid.h
+  void clear()
+  {
+      FluidElement * entry = &data[0][0][0];
+      const int N = sizeX*sizeY;
 
-        for(int i=0; i<N; ++i)
-            entry[i].clear();
-    }
+      for(int i=0; i<N; ++i)
+          entry[i].clear();
+  }
 
-    FluidElement& operator()(int ix, int iy=0, int iz=0)
-    {
-        assert(ix>=0); assert(ix<sizeX);
-        assert(iy>=0); assert(iy<sizeY);
+  FluidElement& operator()(int ix, int iy=0, int iz=0) {
+      assert(ix>=0); assert(ix<sizeX);
+      assert(iy>=0); assert(iy<sizeY);
 
-        return data[0][iy][ix];
+      return data[0][iy][ix];
+  }
+  const FluidElement& operator()(int ix, int iy=0, int iz=0) const {
+      assert(ix>=0); assert(ix<sizeX);
+      assert(iy>=0); assert(iy<sizeY);
+
+      return data[0][iy][ix];
   }
 
   template <typename Streamer>
@@ -251,16 +256,16 @@ struct StreamerVelocityVector
     template <typename TBlock, typename T>
     static inline void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS])
     {
-        output[0] = b(ix,iy,iz).u;
-        output[1] = b(ix,iy,iz).v;
-        output[2] = b(ix,iy,iz).tmp;
+        output[0] = b(ix,iy).u;
+        output[1] = b(ix,iy).v;
+        output[2] = b(ix,iy).tmp;
     }
     // Read
     template <typename TBlock, typename T>
     static inline void operate(TBlock& b, const T input[NCHANNELS], const int ix, const int iy, const int iz)
     {
-        b(ix,iy,iz).u = input[0];
-        b(ix,iy,iz).v = input[1];
+        b(ix,iy).u = input[0];
+        b(ix,iy).v = input[1];
     }
     static std::string prefix()
     {
@@ -277,9 +282,9 @@ struct StreamerTmpVector
     template <typename TBlock, typename T>
     static inline void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS])
     {
-        output[0] = b(ix,iy,iz).tmpU;
-        output[1] = b(ix,iy,iz).tmpV;
-        output[2] = b(ix,iy,iz).tmp;
+        output[0] = b(ix,iy).tmpU;
+        output[1] = b(ix,iy).tmpV;
+        output[2] = b(ix,iy).tmp;
     }
     static std::string prefix()
     {
@@ -295,7 +300,7 @@ struct StreamerPressure
     template <typename TBlock, typename T>
     static inline void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS])
     {
-      output[0] = b(ix,iy,iz).p;
+      output[0] = b(ix,iy).p;
     }
     static std::string prefix()
     {
@@ -310,7 +315,7 @@ struct StreamerRho
     template <typename TBlock, typename T>
     static inline void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS])
     {
-      output[0] = b(ix,iy,iz).invRho;
+      output[0] = b(ix,iy).invRho;
     }
     static std::string prefix()
     {

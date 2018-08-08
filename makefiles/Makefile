@@ -62,10 +62,10 @@ OBJECTS = Simulation.o Definitions.o Shape.o ShapeLibrary.o ShapesSimple.o BlowF
 VPATH := $(SRC_DIR):$(CUBISM_DIR)
 
 ifneq "$(smarties)" "false"
-SMARTIESDIR ?= ../../smarties/source/Communicators/
-CPPFLAGS += -I$(SMARTIESDIR)
+SMARTIESDIR ?= ../../smarties/source/
+CPPFLAGS += -I$(SMARTIESDIR)/Communicators/
 OBJECTS += Communicator.o
-VPATH := $(VPATH):$(SMARTIESDIR)
+VPATH := $(VPATH):$(SMARTIESDIR)/Communicators/
 endif
 
 

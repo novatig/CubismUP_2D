@@ -28,7 +28,7 @@ const bool bVerboseProfiling = false;
 
 class ProfileAgent
 {
-  //	typedef tbb::tick_count ClockTime;
+//	typedef tbb::tick_count ClockTime;
 	typedef timeval ClockTime;
 
 	enum ProfileAgentState{ ProfileAgentState_Created, ProfileAgentState_Started, ProfileAgentState_Stopped};
@@ -61,7 +61,7 @@ class ProfileAgent
 		m_state = ProfileAgentState_Created;
 	}
 
- public:
+public:
 
 	ProfileAgent():m_tStart(), m_tEnd(), m_state(ProfileAgentState_Created),
 	m_dAccumulatedTime(0), m_nMeasurements(0), m_nMoney(0) {}
@@ -108,12 +108,12 @@ struct ProfileSummaryItem
 
 class Profiler
 {
- protected:
+protected:
 
 	std::map<std::string, ProfileAgent*> m_mapAgents;
 	std::stack<std::string> m_mapStoppedAgents;
 
- public:
+public:
 	void push_start(std::string sAgentName)
 	{
 		if (m_mapStoppedAgents.size() > 0)
@@ -200,6 +200,7 @@ class Profiler
 
 	void reset()
 	{
+		printf("reset\n");
 		for(std::map<std::string, ProfileAgent*>::const_iterator it = m_mapAgents.begin(); it != m_mapAgents.end(); it++)
 			it->second->_reset();
 	}

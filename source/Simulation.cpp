@@ -11,6 +11,7 @@
 #ifdef USE_VTK
 #include <SerializerIO_ImageVTK.h>
 #else
+#define _USE_HDF_
 #include <HDF5Dumper.h>
 #endif
 //#include <ZBinDumper.h>
@@ -43,19 +44,19 @@ static inline vector<string> splitter(string& content) {
 
 void Simulation::dump(string fname) {
   stringstream ss;
-  ss << sim.path2file << "avemaria_" << fname;
-  ss << std::setfill('0') << std::setw(7) << sim.step;
-  ss << ".vti";
-  cout << ss.str() << endl;
+  ss<<"avemaria_"<<fname<<std::setfill('0')<<std::setw(7)<<sim.step;
   #ifdef USE_VTK
     SerializerIO_ImageVTK<FluidGrid, FluidVTKStreamer> dumper;
-    dumper.Write( *(sim.grid), ss.str() );
+    dumper.Write( *(sim.grid), sim.path4serialization + ss.str() + ".vti" );
   #else
-    DumpHDF5<FluidGrid,StreamerVelocityVector>(*(sim.grid), sim.step, sim.time, ss.str(), sim.path4serialization);
+    DumpHDF5<FluidGrid,StreamerVelocityVector>(*(sim.grid), sim.step, sim.time,
+      StreamerVelocityVector::prefix() + ss.str(), sim.path4serialization);
     if(sim.bVariableDensity)
-      DumpHDF5<FluidGrid,StreamerPressure>(*(sim.grid), sim.step, sim.time, ss.str(), sim.path4serialization);
+      DumpHDF5<FluidGrid,StreamerPressure>(*(sim.grid), sim.step, sim.time,
+      StreamerPressure::prefix() + ss.str(), sim.path4serialization);
     if(sim.bVariableDensity)
-      DumpHDF5<FluidGrid,StreamerRho>(*(sim.grid), sim.step, sim.time, ss.str(), sim.path4serialization);
+      DumpHDF5<FluidGrid,StreamerRho>(*(sim.grid), sim.step, sim.time,
+      StreamerRho::prefix() + ss.str(), sim.path4serialization);
   #endif
   //DumpZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
   //ReadZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);

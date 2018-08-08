@@ -8,5 +8,6 @@ VTKD=/cluster/home/novatig/VTK-8.1.1/build/
 
 CPPFLAGS+= -I$(VTKDIR)include/vtk-8.1/ -DUSE_VTK
 LIBS+= -L$(VTKD)lib/ -lvtkCommonCore$(VTKV) -lvtkCommonDataModel$(VTKV) -lvtkIOXML$(VTKV)
-
+else
+LIBS+= -lhdf5
 endif

@@ -10,6 +10,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <sstream>
 
 #ifdef _USE_HDF_
 #include <hdf5.h>
@@ -25,13 +26,21 @@ typedef double hdf5Real;
 
 #include "BlockInfo.h"
 
+// The following requirements for the data Streamer are required:
+// Streamer::NCHANNELS        : Number of data elements (1=Scalar, 3=Vector, 9=Tensor)
+// Streamer::operate          : Data access methods for read and write
+// Streamer::getAttributeName : Attribute name of the date ("Scalar", "Vector", "Tensor")
+
 template<typename TGrid, typename Streamer>
 void DumpHDF5(const TGrid &grid, const int iCounter, const Real absTime, const std::string f_name, const std::string dump_path=".", const bool bXMF=true)
 {
 #ifdef _USE_HDF_
     typedef typename TGrid::BlockType B;
 
-    char filename[256];
+    // f_name is the base filename without file type extension
+    std::ostringstream filename;
+    filename << dump_path << "/" << f_name;
+
     herr_t status;
     hid_t file_id, dataset_id, fspace_id, fapl_id, mspace_id;
 
@@ -54,30 +63,29 @@ void DumpHDF5(const TGrid &grid, const int iCounter, const Real absTime, const s
     const unsigned int eZ = B::sizeZ;
 
     hsize_t count[4] = {
-        grid.getBlocksPerDimension(2)*B::sizeZ,
-        grid.getBlocksPerDimension(1)*B::sizeY,
-        grid.getBlocksPerDimension(0)*B::sizeX, NCHANNELS};
+        (hsize_t) grid.getBlocksPerDimension(2)*B::sizeZ,
+        (hsize_t) grid.getBlocksPerDimension(1)*B::sizeY,
+        (hsize_t) grid.getBlocksPerDimension(0)*B::sizeX,
+        (hsize_t) NCHANNELS};
 
     hsize_t dims[4] = {
-        grid.getBlocksPerDimension(2)*B::sizeZ,
-        grid.getBlocksPerDimension(1)*B::sizeY,
-        grid.getBlocksPerDimension(0)*B::sizeX, NCHANNELS};
+        (hsize_t) grid.getBlocksPerDimension(2)*B::sizeZ,
+        (hsize_t) grid.getBlocksPerDimension(1)*B::sizeY,
+        (hsize_t) grid.getBlocksPerDimension(0)*B::sizeX,
+        (hsize_t) NCHANNELS};
 
     hsize_t offset[4] = {0, 0, 0, 0};
 
-    const std::string fullname = Streamer::prefix()+f_name;
-    sprintf(filename, "%s/%s.h5", dump_path.c_str(), fullname.c_str());
-
     H5open();
     fapl_id = H5Pcreate(H5P_FILE_ACCESS);
-    file_id = H5Fcreate(filename, H5F_ACC_TRUNC, H5P_DEFAULT, fapl_id);
+    file_id = H5Fcreate((filename.str()+".h5").c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, fapl_id);
     status = H5Pclose(fapl_id); if(status<0) H5Eprint1(stdout);
 
 #pragma omp parallel for
-    for(int i=0; i<(int)vInfo_local.size(); i++)
+    for(size_t i=0; i<vInfo_local.size(); i++)
     {
         BlockInfo& info = vInfo_local[i];
-        const unsigned int idx[3] = {info.index[0], info.index[1], info.index[2]};
+        const int idx[3] = {info.index[0], info.index[1], info.index[2]};
         B & b = *(B*)info.ptrBlock;
 
         for(unsigned int iz=sZ; iz<eZ; iz++)
@@ -85,8 +93,8 @@ void DumpHDF5(const TGrid &grid, const int iCounter, const Real absTime, const s
                 for(unsigned int ix=sX; ix<eX; ix++)
                 {
                     hdf5Real output[NCHANNELS];
-                    for(unsigned int i=0; i<NCHANNELS; ++i)
-                        output[i] = 0;
+                    for(unsigned int k=0; k<NCHANNELS; ++k)
+                        output[k] = 0;
 
                     Streamer::operate(b, ix, iy, iz, (hdf5Real*)output);
 
@@ -96,8 +104,8 @@ void DumpHDF5(const TGrid &grid, const int iCounter, const Real absTime, const s
 
                     hdf5Real * const ptr = array_all + NCHANNELS*(gx + NX * (gy + NY * gz));
 
-                    for(unsigned int i=0; i<NCHANNELS; ++i)
-                        ptr[i] = output[i];
+                    for(unsigned int k=0; k<NCHANNELS; ++k)
+                        ptr[k] = output[k];
                 }
     }
 
@@ -129,10 +137,8 @@ void DumpHDF5(const TGrid &grid, const int iCounter, const Real absTime, const s
 
     if (bXMF)
     {
-        char wrapper[256];
-        sprintf(wrapper, "%s/%s.xmf", dump_path.c_str(), fullname.c_str());
         FILE *xmf = 0;
-        xmf = fopen(wrapper, "w");
+        xmf = fopen((filename.str()+".xmf").c_str(), "w");
         fprintf(xmf, "<?xml version=\"1.0\" ?>\n");
         fprintf(xmf, "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n");
         fprintf(xmf, "<Xdmf Version=\"2.0\">\n");
@@ -152,7 +158,7 @@ void DumpHDF5(const TGrid &grid, const int iCounter, const Real absTime, const s
 
         fprintf(xmf, "     <Attribute Name=\"data\" AttributeType=\"%s\" Center=\"Node\">\n", Streamer::getAttributeName());
         fprintf(xmf, "       <DataItem Dimensions=\"%d %d %d %d\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n", (int)dims[0], (int)dims[1], (int)dims[2], (int)dims[3]);
-        fprintf(xmf, "        %s:/data\n",(fullname+".h5").c_str());
+        fprintf(xmf, "        %s:/data\n",(filename.str()+".h5").c_str());
         fprintf(xmf, "       </DataItem>\n");
         fprintf(xmf, "     </Attribute>\n");
 
@@ -173,45 +179,47 @@ void ReadHDF5(TGrid &grid, const std::string f_name, const std::string read_path
 #ifdef _USE_HDF_
     typedef typename TGrid::BlockType B;
 
-    char filename[256];
+    // f_name is the base filename without file type extension
+    std::ostringstream filename;
+    filename << read_path << "/" << f_name;
+
     herr_t status;
     hid_t file_id, dataset_id, fspace_id, fapl_id, mspace_id;
 
-    const int NX = grid.getBlocksPerDimension(0)*B::sizeX;
-    const int NY = grid.getBlocksPerDimension(1)*B::sizeY;
-    const int NZ = grid.getBlocksPerDimension(2)*B::sizeZ;
-    static const int NCHANNELS = Streamer::NCHANNELS;
+    static const unsigned int NCHANNELS = Streamer::NCHANNELS;
+    const unsigned int NX = grid.getBlocksPerDimension(0)*B::sizeX;
+    const unsigned int NY = grid.getBlocksPerDimension(1)*B::sizeY;
+    const unsigned int NZ = grid.getBlocksPerDimension(2)*B::sizeZ;
 
     hdf5Real * array_all = new hdf5Real[NX * NY * NZ * NCHANNELS];
 
     std::vector<BlockInfo> vInfo_local = grid.getBlocksInfo();
 
-    const int sX = 0;
-    const int sY = 0;
-    const int sZ = 0;
+    const unsigned int sX = 0;
+    const unsigned int sY = 0;
+    const unsigned int sZ = 0;
 
-    const int eX = B::sizeX;
-    const int eY = B::sizeY;
-    const int eZ = B::sizeZ;
+    const unsigned int eX = B::sizeX;
+    const unsigned int eY = B::sizeY;
+    const unsigned int eZ = B::sizeZ;
 
     hsize_t count[4] = {
-        grid.getBlocksPerDimension(2)*B::sizeZ,
-        grid.getBlocksPerDimension(1)*B::sizeY,
-        grid.getBlocksPerDimension(0)*B::sizeX, NCHANNELS};
+        (hsize_t) grid.getBlocksPerDimension(2)*B::sizeZ,
+        (hsize_t) grid.getBlocksPerDimension(1)*B::sizeY,
+        (hsize_t) grid.getBlocksPerDimension(0)*B::sizeX,
+        (hsize_t) NCHANNELS};
 
     hsize_t dims[4] = {
-        grid.getBlocksPerDimension(2)*B::sizeZ,
-        grid.getBlocksPerDimension(1)*B::sizeY,
-        grid.getBlocksPerDimension(0)*B::sizeX, NCHANNELS};
+        (hsize_t) grid.getBlocksPerDimension(2)*B::sizeZ,
+        (hsize_t) grid.getBlocksPerDimension(1)*B::sizeY,
+        (hsize_t) grid.getBlocksPerDimension(0)*B::sizeX,
+        (hsize_t) NCHANNELS};
 
     hsize_t offset[4] = {0, 0, 0, 0};
 
-    const std::string fullname = Streamer::prefix()+f_name;
-    sprintf(filename, "%s/%s.h5", read_path.c_str(), fullname.c_str());
-
     H5open();
     fapl_id = H5Pcreate(H5P_FILE_ACCESS);
-    file_id = H5Fopen(filename, H5F_ACC_RDONLY, fapl_id);
+    file_id = H5Fopen((filename.str()+".h5").c_str(), H5F_ACC_RDONLY, fapl_id);
     status = H5Pclose(fapl_id); if(status<0) H5Eprint1(stdout);
 
     dataset_id = H5Dopen2(file_id, "data", H5P_DEFAULT);
@@ -224,7 +232,7 @@ void ReadHDF5(TGrid &grid, const std::string f_name, const std::string read_path
     status = H5Dread(dataset_id, HDF_REAL, mspace_id, fspace_id, fapl_id, array_all); if(status<0) H5Eprint1(stdout);
 
 #pragma omp parallel for
-    for(int i=0; i<vInfo_local.size(); i++)
+    for(size_t i=0; i<vInfo_local.size(); i++)
     {
         BlockInfo& info = vInfo_local[i];
         const int idx[3] = {info.index[0], info.index[1], info.index[2]};
@@ -234,9 +242,9 @@ void ReadHDF5(TGrid &grid, const std::string f_name, const std::string read_path
             for(int iy=sY; iy<eY; iy++)
                 for(int ix=sX; ix<eX; ix++)
                 {
-                    const int gx = idx[0]*B::sizeX + ix;
-                    const int gy = idx[1]*B::sizeY + iy;
-                    const int gz = idx[2]*B::sizeZ + iz;
+                    const unsigned int gx = idx[0]*B::sizeX + ix;
+                    const unsigned int gy = idx[1]*B::sizeY + iy;
+                    const unsigned int gz = idx[2]*B::sizeZ + iz;
 
                     hdf5Real * const ptr_input = array_all + NCHANNELS*(gx + NX * (gy + NY * gz));
 
