@@ -73,15 +73,8 @@ int app_main(
   const unsigned numSteps  // number of time steps to run before exit
 ) {
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
-  cout<<endl;
-  cout<<endl; fflush(0);
-  ArgumentParser parser(argc,argv);
-  parser.set_strict_mode();
-  const int nActions = 2;
-  const int nStates = 10;
+  const int nActions = 2, nStates = 10;
   const unsigned maxLearnStepPerSim = 200; // random number... TODO
-  //const unsigned maxLearnStepPerSim = 1; // random number... TODO
-
   Communicator& communicator = *comm;
   communicator.update_state_action_dims(nStates, nActions);
   // Tell smarties that action space should be bounded.
@@ -89,10 +82,10 @@ int app_main(
   // Second action affects Tp = (1+act[1])*Tperiod_0 (eg. halved if act[1]=-.5).
   // If too small Re=L^2*Tp/nu would increase too much, we allow it to
   //  double at most, therefore we set the bounds between -0.5 and 0.5.
-  vector<double> upper_action_bound{0.75, 0.25}, lower_action_bound{-0.75, -0.25};
+  vector<double> upper_action_bound{0.75, 0.25}, lower_action_bound{-.75, -.25};
   communicator.set_action_scales(upper_action_bound, lower_action_bound, true);
 
-  Sim_FSI_Gravity sim(argc, argv);
+  Simulation sim(argc, argv);
   sim.init();
 
   Shape * const object = sim.getShapes()[0];
@@ -109,6 +102,7 @@ int app_main(
     printf("Starting a new sim in directory %s\n", dirname);
     mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     chdir(dirname);
+    sim.reset();
     resetIC(agent, object, communicator.gen); // randomize initial conditions
 
     double t = 0, tNextAct = 0;
@@ -153,7 +147,6 @@ int app_main(
       }
       else communicator.sendState(state, reward);
     } // simulation is done
-    sim.reset();
     chdir("../");
     sim_id++;
   }

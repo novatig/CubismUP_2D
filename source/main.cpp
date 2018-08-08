@@ -17,9 +17,9 @@
 int main(int argc, char **argv)
 {
   for(int i=0; i<argc; i++) {printf("%s\n",argv[i]); fflush(0);}
-  cout<<"=======================================================================================\n";
-  cout<<"\tCubismUP 2D (velocity-pressure 2D incompressible Navier-Stokes)\n";
-  cout<<"=======================================================================================\n";
+  cout<<"===================================================================\n";
+  cout<<"  CubismUP 2D (velocity-pressure 2D incompressible Navier-Stokes)  \n";
+  cout<<"===================================================================\n";
 
   ArgumentParser parser(argc,argv);
   parser.set_strict_mode();

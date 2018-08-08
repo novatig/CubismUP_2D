@@ -62,7 +62,7 @@ OBJECTS = Simulation.o Definitions.o Shape.o ShapeLibrary.o ShapesSimple.o BlowF
 VPATH := $(SRC_DIR):$(CUBISM_DIR)
 
 ifneq "$(smarties)" "false"
-SMARTIESDIR = ../../smarties/source/Communicators/
+SMARTIESDIR ?= ../../smarties/source/Communicators/
 CPPFLAGS += -I$(SMARTIESDIR)
 OBJECTS += Communicator.o
 VPATH := $(VPATH):$(SMARTIESDIR)
@@ -73,13 +73,10 @@ all: simulation
 .DEFAULT: all;
 
 leadFollow: main_RL_2fish.o $(OBJECTS)
-	ar rs libsimulation.a $^ #$(LIBS) $(LDFLAGS)
-	# TODO: expect user to put SMARTDIR in bashrc
-	cp libsimulation.a ../../smarties/makefiles/libsimulation.a
+	ar rs libsimulation.a $^
+
 blowfish: main_RL_blowfish.o $(OBJECTS)
-	ar rs libsimulation.a $^ #$(LIBS) $(LDFLAGS)
-	# TODO: expect user to put SMARTDIR in bashrc
-	cp libsimulation.a ../../smarties/makefiles/libsimulation.a
+	ar rs libsimulation.a $^
 
 simulation: main.o $(OBJECTS)
 	$(LD) main.o $(OBJECTS) -o $@ $(LIBS)

@@ -76,19 +76,13 @@ int app_main(
   int argc, char**argv,    // arguments read from app's runtime settings file
   const unsigned numSteps  // number of time steps to run before exit
 ) {
-  ArgumentParser parser(argc,argv);
-  parser.set_strict_mode();
-  const int nActions = 2;
-  const int nStates = 8;
+  for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
+  const int nActions = 2, nStates = 8;
   const unsigned maxLearnStepPerSim = 500; // random number... TODO
-  //const unsigned maxLearnStepPerSim = 1; // random number... TODO
-  //const int socket_id  = parser("-Socket").asInt();
-  //printf("Starting communication with RL over socket %d\n", socket_id);
-  //Communicator communicator(socket_id, nStates, nActions);
   Communicator& communicator = *comm;
   communicator.update_state_action_dims(nStates, nActions);
 
-  Sim_FSI_Gravity sim(argc, argv);
+  Simulation sim(argc, argv);
   sim.init();
 
   BlowFish* const agent = dynamic_cast<BlowFish*>( sim.getShapes()[0] );
@@ -104,6 +98,7 @@ int app_main(
     printf("Starting a new sim in directory %s\n", dirname);
     mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     chdir(dirname);
+    sim.reset();
     resetIC(agent, communicator.gen); // randomize initial conditions
 
     communicator.sendInitState(getState(agent)); //send initial state
@@ -148,7 +143,6 @@ int app_main(
       }
       else communicator.sendState(state, reward);
     } // simulation is done
-    sim.reset();
     chdir("../");
     sim_id++;
   }

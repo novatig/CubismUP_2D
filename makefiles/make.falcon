@@ -1,24 +1,5 @@
 CC=g++
 LD=g++
 
-VTK_INC_DIR=/usr/include/vtk/
-VTK_LIB_DIR=/usr/lib64/vtk/
-
-CPPFLAGS += -DUSE_VTK
-CPPFLAGS+= -I$(VTK_INC_DIR)
-
-export LD_LIBRARY_PATH:=$(VTK_LIB_DIR):$(LD_LIBRARY_PATH)
-
-LIBS += -L$(VTK_LIB_DIR) \
-        -lvtkCommonCore \
-        -lvtkCommonSystem \
-        -lvtkCommonMath \
-        -lvtkCommonDataModel \
-        -lvtkCommonComputationalGeometry \
-        -lvtkIOCore \
-        -lvtkIOAMR \
-        -lvtkIOXML \
-        -lvtkIOXMLParser \
-        -lvtkIOLegacy \
-        -lvtkIOImport \
-        -lvtkIOExport
+CPPFLAGS += -DUSE_VTK -I/usr/include/vtk/
+LIBS += -L/usr/lib64/vtk/ -lvtkCommonCore -lvtkCommonDataModel -lvtkIOXML

@@ -2,13 +2,11 @@ CC=g++
 LD=g++
 
 ifeq "0" "1"
-VTKVER=-8.1
-VTKDIR=/cluster/home/novatig/VTK-8.1.1/build/
-LIBS    += -L$(VTKDIR)lib/ -I$(VTKDIR)include/vtk-8.1/
-#export LD_LIBRARY_PATH:=$(VTKDIR)lib/:$(LD_LIBRARY_PATH)
-CPPFLAGS+= -I$(VTKDIR)include/vtk-8.1/ -DUSE_VTK
-LIBS+= -lvtkCommonCore$(VTKVER) \
-       -lvtkCommonDataModel$(VTKVER) \
-       -lvtkIOXML$(VTKVER)
-endif
 
+VTKV=-8.1
+VTKD=/cluster/home/novatig/VTK-8.1.1/build/
+
+CPPFLAGS+= -I$(VTKDIR)include/vtk-8.1/ -DUSE_VTK
+LIBS+= -L$(VTKD)lib/ -lvtkCommonCore$(VTKV) -lvtkCommonDataModel$(VTKV) -lvtkIOXML$(VTKV)
+
+endif
