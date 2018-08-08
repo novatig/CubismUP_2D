@@ -73,7 +73,7 @@ void DumpHDF5(const TGrid &grid, const int iCounter, const Real absTime, const s
         (hsize_t) grid.getBlocksPerDimension(1)*B::sizeY,
         (hsize_t) grid.getBlocksPerDimension(0)*B::sizeX,
         (hsize_t) NCHANNELS};
-    hsize_t maxExt = std::max(dims[0], dims[1], dims[2]);
+    hsize_t maxExt = std::max({dims[0], dims[1], dims[2]});
     const Real h = 1.0/maxExt;
     hsize_t offset[4] = {0, 0, 0, 0};
 
