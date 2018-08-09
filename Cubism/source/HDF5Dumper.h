@@ -159,7 +159,7 @@ void DumpHDF5(const TGrid &grid, const int iCounter, const Real absTime, const s
 
         fprintf(xmf, "     <Attribute Name=\"data\" AttributeType=\"%s\" Center=\"Node\">\n", Streamer::getAttributeName());
         fprintf(xmf, "       <DataItem Dimensions=\"%d %d %d %d\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n", (int)dims[0], (int)dims[1], (int)dims[2], (int)dims[3]);
-        fprintf(xmf, "        %s:/data\n",(filename.str()+".h5").c_str());
+        fprintf(xmf, "        %s:/data\n",(f_name+".h5").c_str());
         fprintf(xmf, "       </DataItem>\n");
         fprintf(xmf, "     </Attribute>\n");
 
