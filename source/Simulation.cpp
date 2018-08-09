@@ -125,6 +125,7 @@ void Simulation::createShapes() {
 
   while (std::getline(descriptors, lines))
   {
+    std::replace(lines.begin(), lines.end(), '_', ' ');
     // Two options! Either we have list of lines each containing a description
     // of an obstacle (like factory files or CUP3D factory-descriptor)
     // Or we have an argument list that looks like -shapes foo\nbar. Splitter
