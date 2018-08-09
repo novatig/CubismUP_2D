@@ -1,0 +1,6 @@
+CC=CC
+LD=CC
+
+CPPFLAGS+= -I$(HDF5_DIR)/include -I$(FFTW_INC)
+LIBS+= -dynamic -L$(HDF5_DIR)/lib -L$(FFTW_DIR) 
+
