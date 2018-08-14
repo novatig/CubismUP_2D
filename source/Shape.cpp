@@ -13,6 +13,7 @@
 
 #include "Shape.h"
 #include "OperatorComputeForces.h"
+#include "BufferedLogger.h"
 
 Real Shape::getMinRhoS() const { return rhoS; }
 bool Shape::bVariableDensity() const {
@@ -209,15 +210,13 @@ void Shape::computeVelocities()
       centerOfMass[0], centerOfMass[1], center[0], center[1], u, v, omega, M, J, V);
     if(not sim.muteAll)
     {
-      ofstream fileSpeed;
       stringstream ssF;
       ssF<<sim.path2file<<"/velocity_"<<obstacleID<<".dat";
-      fileSpeed.open(ssF.str().c_str(), ios::app);
+      std::stringstream &fileSpeed = logger.get_stream(ssF.str());
       if(sim.step==0)
         fileSpeed<<"time dt CMx CMy angle u v omega M J accx accy"<<std::endl;
 
       fileSpeed<<sim.time<<" "<<sim.dt<<" "<<centerOfMass[0]<<" "<<centerOfMass[1]<<" "<<orientation<<" "<<u <<" "<<v<<" "<<omega <<" "<<M<<" "<<J<<endl;
-      fileSpeed.close();
     }
   #endif
 }
@@ -369,24 +368,20 @@ void Shape::computeForces()
   }
   if(not sim.muteAll)
   {
-    ofstream fileForce;
-    ofstream filePower;
     stringstream ssF, ssP;
     ssF<<sim.path2file<<"/forceValues_"<<obstacleID<<".dat";
     ssP<<sim.path2file<<"/powerValues_"<<obstacleID<<".dat"; //obstacleID
 
-    fileForce.open(ssF.str().c_str(), ios::app);
+    std::stringstream &fileForce = logger.get_stream(ssF.str());
     if(sim.step==0)
       fileForce<<"time Fx Fy FxPres FyPres FxVisc FyVisc tau tauPres tauVisc drag thrust perimeter circulation area_penal mass_penal forcex_penal forcey_penal torque_penal"<<std::endl;
 
     fileForce<<sim.time<<" "<<forcex<<" "<<forcey<<" "<<forcex_P<<" "<<forcey_P<<" "<<forcex_V <<" "<<forcey_V<<" "<<torque <<" "<<torque_P<<" "<<torque_V<<" "<<drag<<" "<<thrust<<" "<<perimeter<<" "<<circulation<<" "<<area_penal<<" "<<mass_penal<<" "<<forcex_penal<<" "<<forcey_penal<<" "<<torque_penal<<endl;
-    fileForce.close();
 
-    filePower.open(ssP.str().c_str(), ios::app);
+    std::stringstream &filePower = logger.get_stream(ssP.str());
     if(sim.step==0)
       filePower<<"time Pthrust Pdrag PoutBnd Pout defPowerBnd defPower EffPDefBnd EffPDef"<<std::endl;
     filePower<<sim.time<<" "<<Pthrust<<" "<<Pdrag<<" "<<PoutBnd<<" "<<Pout<<" "<<defPowerBnd<<" "<<defPower<<" "<<EffPDefBnd<<" "<<EffPDef<<endl;
-    filePower.close();
   }
   #endif
 }
