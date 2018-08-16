@@ -13,7 +13,7 @@
 
 #ifndef _BS_
 #define _BS_ 32
-#endif // _BS_
+#endif//_BS_
 
 struct FluidElement
 {
