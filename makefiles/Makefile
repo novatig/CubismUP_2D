@@ -1,5 +1,7 @@
 CC ?= g++
 LD ?= g++
+NVCC?=nvcc
+NVFLAGS?=-O3 -code=sm_60 -arch=compute_60
 
 nthreads ?= 24
 config ?= production
@@ -40,6 +42,7 @@ endif
 CPPFLAGS += -std=c++11 -fopenmp -Wall -D_ALIGNBYTES_=32
 CPPFLAGS += -DNTHREADS=$(nthreads)
 CPPFLAGS += -I../source/ -I../Cubism/source/
+NVFLAGS += -I../Cubism/source/
 CPPFLAGS+= -Wextra -Wfloat-equal -Wundef -Wcast-align -Woverloaded-virtual
 CPPFLAGS+= -Wlogical-op -Wmissing-declarations -Wredundant-decls -Wshadow
 CPPFLAGS+= -Wwrite-strings -Wno-cpp -Wno-unused-parameter
@@ -71,6 +74,12 @@ endif
 
 all: simulation
 .DEFAULT: all;
+
+LIBS += -lcufft_static
+OBJECTS += PoissonSolverScalarCUDA.o
+PoissonSolverScalarCUDA.o: PoissonSolverScalarCUDA.cu
+	nvcc $(NVFLAGS) -c $< -o $@
+
 
 leadFollow: main_RL_2fish.o $(OBJECTS)
 	ar rs libsimulation.a $^

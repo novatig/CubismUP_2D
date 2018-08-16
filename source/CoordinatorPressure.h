@@ -9,8 +9,16 @@
 #pragma once
 
 #include "GenericCoordinator.h"
+
+#ifndef POISSONCPU
+#include "PoissonSolverScalarCUDA.h"
+using PoissonSolverFreespace = PoissonSolverCuda;
+using PoissonSolverPeriodic  = PoissonSolverCuda;
+using PoissonSolverBase  = PoissonSolverCuda;
+#else
 #include "PoissonSolverScalarFFTW_freespace.h"
 #include "PoissonSolverScalarFFTW_periodic.h"
+#endif
 
 class OperatorDivergenceSplit : public GenericLabOperator {
  private:

@@ -9,22 +9,21 @@
 #include <cufft.h>
 
 #ifndef _FLOAT_PRECISION_
-  using cufftExecFWD = cufftExecR2C;
-  using cufftExecBWD = cufftExecC2R;
-  using cufftPlanFWD = CUFFT_R2C;
-  using cufftPlanBWD = CUFFT_C2R;
-  using cufftValT = cufftReal;
-  using cufftCmpT = cufftComplex;
+#define cufftCmpT cufftComplex
 #else //_FLOAT_PRECISION_
-  using cufftExecFWD = cufftExecD2Z;
-  using cufftExecBWD = cufftExecZ2D;
-  using cufftPlanFWD = CUFFT_D2Z;
-  using cufftPlanBWD = CUFFT_Z2D;
-  using cufftValT = cufftDoubleReal;
-  using cufftCmpT = cufftDoubleComplex;
+#define cufftCmpT cufftDoubleComplex
 #endif//_FLOAT_PRECISION_
 
-#include "common.h"
+#include <Grid.h>
+#include <BlockInfo.h>
+#include <BlockLab.h>
+
+void freeCuMem(Real * buf);
+void allocCuMem(Real* & ptr, const size_t size);
+void freePlan(cufftHandle& plan);
+void makePlan(cufftHandle& handle, const int mx, const int my, cufftType plan);
+void cuSolve(const cufftHandle&fwd, const cufftHandle&bwd, const int mx,
+  const int my, const Real h, Real*const rhs, Real*const rhs_gpu);
 
 class PoissonSolverCuda
 {
@@ -79,14 +78,26 @@ class PoissonSolverCuda
 
  public:
 
-  PoissonSolverCuda(FluidGrid& _grid, const bool bFrespace);
+  PoissonSolverCuda(FluidGrid*const _grid) :
+  grid(*_grid), mx(nx), my(ny)
+  {
+    makePlan(fwd, mx, my, CUFFT_R2C);
+    makePlan(bwd, mx, my, CUFFT_C2R);
+    assert(2*sizeof(Real) == sizeof(ccufftCmpT));
+    rhs = (Real*) malloc(mx * my_hat * 2 * sizeof(Real) );
+    allocCuMem(rhs_gpu, mx * my_hat * sizeof(cufftCmpT) );
+  }
 
-  void solve() const;
+  void solve() const
+  {
+    cuSolve(fwd, bwd, mx, my, h, rhs, rhs_gpu);
+    _fftw2cub();
+  }
 
   virtual ~PoissonSolverCuda() {
-    cufftDestroy(fwd);
-    cufftDestroy(bwd);
-    cudaFree(gpu_rhs);
+    freePlan(fwd);
+    freePlan(bwd);
+    freeCuMem(rhs_gpu);
     free(rhs);
   }
 
