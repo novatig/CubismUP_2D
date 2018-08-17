@@ -387,7 +387,7 @@ struct SimulationData
   void resetAll();
   bool bDump()
   {
-    const bool timeDump = dumpTime>0 && time > nextDumpTime;
+    const bool timeDump = dumpTime>0 && time >= nextDumpTime;
     const bool stepDump = dumpFreq>0 && step % dumpFreq == 0;
     _bDump = stepDump || timeDump;
     return _bDump;
@@ -395,7 +395,7 @@ struct SimulationData
   void registerDump();
   bool bOver() const
   {
-    const bool timeEnd = endTime>0 && time > endTime;
+    const bool timeEnd = endTime>0 && time >= endTime;
     const bool stepEnd =  nsteps>0 && step > nsteps;
     return timeEnd || stepEnd;
   }

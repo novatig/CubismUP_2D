@@ -1,11 +1,21 @@
 #pragma once
 
-#include <PoissonSolverScalarFFTW.h>
+#include <PoissonSolverScalar.h>
+
+#include <fftw3.h>
+#ifndef _FLOAT_PRECISION_
+typedef fftw_complex mycomplex;
+typedef fftw_plan myplan;
+#else // _FLOAT_PRECISION_
+typedef fftwf_complex mycomplex;
+typedef fftwf_plan myplan;
+#endif // _FLOAT_PRECISION_
 
 class PoissonSolverFreespace: public PoissonSolverBase
 {
   Real * m_kernel = nullptr;
 
+  myplan fwd, bwd;
  protected:
 
   void _init_green()
@@ -71,11 +81,42 @@ class PoissonSolverFreespace: public PoissonSolverBase
     #endif
   }
 
-  void _solve() const override
+ public:
+  PoissonSolverFreespace(FluidGrid*const _grid) : PoissonSolverBase(*_grid, 1)
   {
+    const int desired_threads = omp_get_max_threads();
+    #ifndef _FLOAT_PRECISION_
+      const int retval = fftw_init_threads();
+      fftw_plan_with_nthreads(desired_threads);
+      rhs = fftw_alloc_real(2 * mx * my_hat);
+      fwd = fftw_plan_dft_r2c_2d(mx, my, rhs, (mycomplex *)rhs, FFTW_MEASURE);
+      bwd = fftw_plan_dft_c2r_2d(mx, my, (mycomplex *)rhs, rhs, FFTW_MEASURE);
+    #else // _FLOAT_PRECISION_
+      const int retval = fftwf_init_threads();
+      fftwf_plan_with_nthreads(desired_threads);
+      rhs = fftwf_alloc_real(2 * mx * my_hat);
+      fwd = fftwf_plan_dft_r2c_2d(mx, my, rhs, (mycomplex *)rhs, FFTW_MEASURE);
+      bwd = fftwf_plan_dft_c2r_2d(mx, my, (mycomplex *)rhs, rhs, FFTW_MEASURE);
+    #endif // _FLOAT_PRECISION_
+    if(retval==0) {
+      cout << "FFTWBase::setup(): Oops the call to fftw_init_threads() returned zero. Aborting\n";
+      abort();
+    }
+    _init_green();
+  }
+
+  void solve() const override
+  {
+    //const double t0 = omp_get_wtime();
+    #ifndef _FLOAT_PRECISION_
+      fftw_execute(fwd);
+    #else // _FLOAT_PRECISION_
+      fftwf_execute(fwd);
+    #endif // _FLOAT_PRECISION_
+    //const double t1 = omp_get_wtime();
+
     mycomplex * const in_out = (mycomplex *)rhs;
     const Real* const G_hat = m_kernel;
-
     #pragma omp parallel for schedule(static)
     for(size_t i=0; i<mx;     ++i)
     for(size_t j=0; j<my_hat; ++j) {
@@ -83,18 +124,32 @@ class PoissonSolverFreespace: public PoissonSolverBase
       in_out[linidx][0] *= G_hat[linidx];
       in_out[linidx][1] *= G_hat[linidx];
     }
+
+    //const double t2 = omp_get_wtime();
+    #ifndef _FLOAT_PRECISION_
+      fftw_execute(bwd);
+    #else // _FLOAT_PRECISION_
+      fftwf_execute(bwd);
+    #endif // _FLOAT_PRECISION_
+    //const double t3 = omp_get_wtime();
+
+    //printf("UP:%f S:%f DW:%f\n", t1-t0, t2-t1, t3-t2);
+    _fftw2cub();
   }
 
- public:
-  PoissonSolverFreespace(FluidGrid*const _grid) :
-    PoissonSolverBase(*_grid, true) {
-    _init_green();
-  }
   ~PoissonSolverFreespace() {
     #ifndef _FLOAT_PRECISION_
-    fftw_free(m_kernel);
+      fftw_free(m_kernel);
+      fftw_cleanup_threads();
+      fftw_destroy_plan(fwd);
+      fftw_destroy_plan(bwd);
+      fftw_free(rhs);
     #else // _FLOAT_PRECISION_
-    fftwf_free(m_kernel);
+      fftwf_free(m_kernel);
+      fftwf_cleanup_threads();
+      fftwf_destroy_plan(fwd);
+      fftwf_destroy_plan(bwd);
+      fftwf_free(rhs);
     #endif // _FLOAT_PRECISION_
   }
 };

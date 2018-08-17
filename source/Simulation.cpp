@@ -51,7 +51,7 @@ void Simulation::dump(string fname) {
   #else
     DumpHDF5<FluidGrid,StreamerVelocityVector>(*(sim.grid), sim.step, sim.time,
       StreamerVelocityVector::prefix() + ss.str(), sim.path4serialization);
-    if(sim.bVariableDensity)
+    //if(sim.bVariableDensity)
       DumpHDF5<FluidGrid,StreamerPressure>(*(sim.grid), sim.step, sim.time,
       StreamerPressure::prefix() + ss.str(), sim.path4serialization);
     if(sim.bVariableDensity)
@@ -238,13 +238,13 @@ double Simulation::calcMaxTimestep() {
   if (sim.step < 100) {
     const double x = (sim.step+1)/100;
     const double logCFL = std::log(sim.CFL);
-    const double rampCFL = std::exp(-4.5*(1-x) + logCFL * x);
+    const double rampCFL = std::exp(-7*(1-x) + logCFL * x);
     sim.dt = rampCFL*std::min({dtCFL, dtFourier, dtBody});
   }
   #ifndef RL_TRAIN
   if(sim.verbose)
-    cout << "time, dt (Fourier, CFL, body): "
-    <<sim.time<<" "<<sim.dt
+    cout << "step, time, dt "// (Fourier, CFL, body): "
+    <<sim.step<<" "<<sim.time<<" "<<sim.dt
     //<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody
     //<<" "<<sim.uinfx<<" "<<sim.uinfy
     <<endl;

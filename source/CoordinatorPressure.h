@@ -10,11 +10,8 @@
 
 #include "GenericCoordinator.h"
 
-#ifndef POISSONCPU
+#ifdef CUDAFFT
 #include "PoissonSolverScalarCUDA.h"
-using PoissonSolverFreespace = PoissonSolverCuda;
-using PoissonSolverPeriodic  = PoissonSolverCuda;
-using PoissonSolverBase  = PoissonSolverCuda;
 #else
 #include "PoissonSolverScalarFFTW_freespace.h"
 #include "PoissonSolverScalarFFTW_periodic.h"
@@ -37,8 +34,9 @@ class OperatorDivergenceSplit : public GenericLabOperator {
   ~OperatorDivergenceSplit() {}
   template <typename Lab, typename BlockType>
   void operator()(Lab & lab, const BlockInfo& info, BlockType& o) const {
-    const Real invH = 1.0/info.h_gridpoint;
-    const Real factor = rho0 * 0.5/(info.h_gridpoint * dt);
+    // here i multiply both rhs terms by dt and obtain p*dt from poisson solver
+    const Real invH = std::sqrt(dt)/info.h_gridpoint;  // should be 1/h
+    const Real factor = rho0 * 0.5 / info.h_gridpoint; // should be [...]/dt
     const size_t offset = solver->_offset(info);
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
@@ -79,9 +77,8 @@ class OperatorGradPSplit : public GenericLabOperator {
   ~OperatorGradPSplit() {}
   template <typename Lab, typename BlockType>
   void operator()(Lab & lab, const BlockInfo& info, BlockType& o) const {
-    const double dh = info.h_gridpoint;
-    const Real prefactor = -.5 * dt / dh;
-    const Real invRho0 = 1/rho0;
+    const Real prefactor1 = -.5 / info.h_gridpoint / rho0; // tmp is p * dt
+    const Real prefactor2 = -.5 * dt / info.h_gridpoint, invRho0 = 1 / rho0;
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
       const FluidElement& phi  = lab(ix  ,iy  );
@@ -92,10 +89,10 @@ class OperatorGradPSplit : public GenericLabOperator {
       const Real pN = 2*phiN.p - phiN.pOld, pS = 2*phiS.p - phiS.pOld;
       const Real pW = 2*phiW.p - phiW.pOld, pE = 2*phiE.p - phiE.pOld;
       // tmp contains the pressure correction after the Poisson solver
-      o(ix,iy).u += prefactor*invRho0 * (phiE.tmp - phiW.tmp);
-      o(ix,iy).v += prefactor*invRho0 * (phiN.tmp - phiS.tmp);
-      o(ix,iy).u += prefactor * (pE - pW) * (phi.invRho - invRho0);
-      o(ix,iy).v += prefactor * (pN - pS) * (phi.invRho - invRho0);
+      o(ix,iy).u += prefactor1 * (phiE.tmp - phiW.tmp);
+      o(ix,iy).v += prefactor1 * (phiN.tmp - phiS.tmp);
+      o(ix,iy).u += prefactor2 * (pE - pW) * (phi.invRho - invRho0);
+      o(ix,iy).v += prefactor2 * (pN - pS) * (phi.invRho - invRho0);
     }
   }
 };
@@ -114,7 +111,8 @@ class OperatorDivergence : public GenericLabOperator {
   ~OperatorDivergence() {}
   template <typename Lab, typename BlockType>
   void operator()(Lab & lab, const BlockInfo& info, BlockType& o) const {
-    const Real factor = 0.5/(info.h_gridpoint * dt);
+    // here i multiply the rhs by dt and obtain p*dt from poisson solver
+    const Real factor = 0.5/(info.h_gridpoint); // should be [...]/dt
     const size_t offset = solver->_offset(info);
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
@@ -126,6 +124,7 @@ class OperatorDivergence : public GenericLabOperator {
       const Real divVel =           (phiE.u   -phiW.u    + phiN.v   -phiS.v);
       const Real divDef = phi.tmp * (phiE.tmpU-phiW.tmpU + phiN.tmpV-phiS.tmpV);
       solver->_cub2fftw(offset, iy, ix, factor*(divVel-divDef));
+      //o(ix,iy).invRho = factor*(divVel-divDef);
     }
   }
 };
@@ -142,13 +141,14 @@ class OperatorGradP : public GenericLabOperator {
   ~OperatorGradP() {}
   template <typename Lab, typename BlockType>
   void operator()(Lab & lab, const BlockInfo& info, BlockType& o) const {
-    const Real prefactor = -.5 * dt / info.h_gridpoint;
+    const Real prefactor = -.5 / info.h_gridpoint; // * dt / dt
+    const Real prescale = 1.0 / dt; // tmp is p * dt
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
       // tmp contains the pressure correction after the Poisson solver
       o(ix,iy).u += prefactor * (lab(ix+1,iy).tmp - lab(ix-1,iy).tmp);
       o(ix,iy).v += prefactor * (lab(ix,iy+1).tmp - lab(ix,iy-1).tmp);
-      o(ix,iy).p = o(ix,iy).tmp; // copy pressure onto field p
+      o(ix,iy).p = o(ix,iy).tmp * prescale; // copy pressure onto field p
     }
   }
 };
@@ -163,7 +163,7 @@ class CoordinatorPressure : public GenericCoordinator
    bFS? static_cast<PoissonSolverBase*>(new PoissonSolverFreespace(sim.grid))
       : static_cast<PoissonSolverBase*>(new PoissonSolverPeriodic( sim.grid));
 
-  inline void updatePressure() {
+  inline void updatePressure(const Real invdt) {
     #pragma omp parallel for schedule(static)
     for(size_t i=0; i<vInfo.size(); i++) {
       const BlockInfo& info = vInfo[i];
@@ -171,7 +171,7 @@ class CoordinatorPressure : public GenericCoordinator
       for(int iy=0; iy<FluidBlock::sizeY; ++iy)
         for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
           b(ix,iy).pOld = b(ix,iy).p;
-          b(ix,iy).p    = b(ix,iy).tmp;
+          b(ix,iy).p = b(ix,iy).tmp * invdt;
         }
     }
   }
@@ -211,7 +211,7 @@ class CoordinatorPressure : public GenericCoordinator
       computeSplit<OperatorDivergenceSplit>(dt);
       pressureSolver->solve();
       computeSplit<OperatorGradPSplit>(dt);
-      updatePressure();
+      updatePressure(1.0/dt);
     }
     else
     {

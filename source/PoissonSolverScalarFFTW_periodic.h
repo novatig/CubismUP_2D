@@ -1,10 +1,24 @@
 #pragma once
 
-#include <PoissonSolverScalarFFTW.h>
+#include <PoissonSolverScalar.h>
+
+#include <fftw3.h>
+#ifndef _FLOAT_PRECISION_
+typedef fftw_complex mycomplex;
+typedef fftw_plan myplan;
+#else // _FLOAT_PRECISION_
+typedef fftwf_complex mycomplex;
+typedef fftwf_plan myplan;
+#endif // _FLOAT_PRECISION_
 
 class PoissonSolverPeriodic : public PoissonSolverBase
 {
+  const size_t mx = nx;
+  const size_t my = ny;
+  const size_t my_hat = my/2 +1;
   const Real norm_factor = 1./(nx*ny);
+
+  myplan fwd, bwd;
 
  protected:
 
@@ -38,10 +52,10 @@ class PoissonSolverPeriodic : public PoissonSolverBase
       }
 
     //this is sparta!
-    in_out[0][0] = in_out[0][1] = 0;
+    in_out[0][0] = 0; in_out[0][1] = 0;
   }
 
-  void _solve() const override
+  inline void _solve() const
   {
     mycomplex * const in_out = (mycomplex *)rhs;
 
@@ -55,17 +69,67 @@ class PoissonSolverPeriodic : public PoissonSolverBase
         const int ky = (j <= ny/2) ? j : -(ny-j);
         const Real rkx = kx*waveFactX;
         const Real rky = ky*waveFactY;
-        const Real kinv = (kx==0 && ky==0) ? 0 : -1/(rkx*rkx+rky*rky);
+        //const Real kinv = (kx==0 && ky==0) ? 0 : -1/(rkx*rkx+rky*rky);
+        const Real kinv = -1/(rkx*rkx+rky*rky); //this is sparta! (part 1)
         in_out[linidx][0] *= kinv*norm_factor;
         in_out[linidx][1] *= kinv*norm_factor;
       }
-
-    //this is sparta!
-    in_out[0][0] = in_out[0][1] = 0;
+    in_out[0][0] = 0; in_out[0][1] = 0; //this is sparta! (part 2)
   }
 
 public:
 
-  PoissonSolverPeriodic(FluidGrid*const _grid) :
-    PoissonSolverBase(*_grid, false) { }
+  PoissonSolverPeriodic(FluidGrid*const _grid) : PoissonSolverBase(*_grid, 0)
+  {
+    const int desired_threads = omp_get_max_threads();
+    #ifndef _FLOAT_PRECISION_
+      const int retval = fftw_init_threads();
+      fftw_plan_with_nthreads(desired_threads);
+      rhs = fftw_alloc_real(2 * mx * my_hat);
+      fwd = fftw_plan_dft_r2c_2d(mx, my, rhs, (mycomplex *)rhs, FFTW_MEASURE);
+      bwd = fftw_plan_dft_c2r_2d(mx, my, (mycomplex *)rhs, rhs, FFTW_MEASURE);
+    #else // _FLOAT_PRECISION_
+      const int retval = fftwf_init_threads();
+      fftwf_plan_with_nthreads(desired_threads);
+      rhs = fftwf_alloc_real(2 * mx * my_hat);
+      fwd = fftwf_plan_dft_r2c_2d(mx, my, rhs, (mycomplex *)rhs, FFTW_MEASURE);
+      bwd = fftwf_plan_dft_c2r_2d(mx, my, (mycomplex *)rhs, rhs, FFTW_MEASURE);
+    #endif // _FLOAT_PRECISION_
+    if(retval==0) {
+      cout << "FFTWBase::setup(): Oops the call to fftw_init_threads() returned zero. Aborting\n";
+      abort();
+    }
+  }
+
+  void solve() const override
+  {
+    #ifndef _FLOAT_PRECISION_
+      fftw_execute(fwd);
+    #else // _FLOAT_PRECISION_
+      fftwf_execute(fwd);
+    #endif // _FLOAT_PRECISION_
+
+    _solve();
+
+    #ifndef _FLOAT_PRECISION_
+      fftw_execute(bwd);
+    #else // _FLOAT_PRECISION_
+      fftwf_execute(bwd);
+    #endif // _FLOAT_PRECISION_
+    _fftw2cub();
+  }
+
+  ~PoissonSolverPeriodic() {
+    #ifndef _FLOAT_PRECISION_
+      fftw_cleanup_threads();
+      fftw_destroy_plan(fwd);
+      fftw_destroy_plan(bwd);
+      fftw_free(rhs);
+    #else // _FLOAT_PRECISION_
+      fftwf_cleanup_threads();
+      fftwf_destroy_plan(fwd);
+      fftwf_destroy_plan(bwd);
+      fftwf_free(rhs);
+    #endif // _FLOAT_PRECISION_
+  }
 };

@@ -1,21 +1,24 @@
 CC ?= g++
 LD ?= g++
 NVCC?=nvcc
-NVFLAGS?=-O3 -code=sm_60 -arch=compute_60
 
+poisson ?= cpu
 nthreads ?= 24
 config ?= production
 precision ?= single
 bs ?= 32
 smarties ?= false
 
-CPPFLAGS+= -D_BS_=$(bs)
+CPPFLAGS= -D_BS_=$(bs)
+NVFLAGS= -code=sm_60 -arch=compute_60
 
 ifeq "$(config)" "debug"
+NVFLAGS += -g
 CPPFLAGS += -g
 #CPPFLAGS += -fsanitize=address
 #LIBS += -fsanitize=address
 else
+NVFLAGS += -DNDEBUG -O3 --use_fast_math
 CPPFLAGS += -DNDEBUG -O3 -fstrict-aliasing -march=native -mtune=native -ffast-math -falign-functions=32
 endif
 
@@ -51,6 +54,7 @@ LIBS += -fopenmp
 
 ifeq "$(precision)" "single"
     CPPFLAGS += -D_FLOAT_PRECISION_
+    NVFLAGS += -D_FLOAT_PRECISION_
     LIBS += -lfftw3f -lfftw3f_threads
 endif
 ifeq "$(precision)" "double"
@@ -71,15 +75,14 @@ OBJECTS += Communicator.o
 VPATH := $(VPATH):$(SMARTIESDIR)/Communicators/
 endif
 
+ifeq "$(poisson)" "gpu"
+LIBS += -lcufft
+OBJECTS += PoissonSolverScalarCUDA.o
+CPPFLAGS += -DCUDAFFT
+endif
 
 all: simulation
 .DEFAULT: all;
-
-LIBS += -lcufft_static
-OBJECTS += PoissonSolverScalarCUDA.o
-PoissonSolverScalarCUDA.o: PoissonSolverScalarCUDA.cu
-	nvcc $(NVFLAGS) -c $< -o $@
-
 
 leadFollow: main_RL_2fish.o $(OBJECTS)
 	ar rs libsimulation.a $^
@@ -93,6 +96,8 @@ simulation: main.o $(OBJECTS)
 %.o: %.cpp
 	$(CC) $(CPPFLAGS) -c $< -o $@
 
+PoissonSolverScalarCUDA.o: PoissonSolverScalarCUDA.cu
+	nvcc $(NVFLAGS) -c $< -o $@
 
 clean:
 	rm -f simulation libsimulation.a

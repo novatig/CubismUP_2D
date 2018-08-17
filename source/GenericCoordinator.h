@@ -35,9 +35,9 @@ protected:
         if (std::isnan(b(ix,iy).invRho) || std::isnan(b(ix,iy).u) ||
         std::isnan(b(ix,iy).v) || std::isnan(b(ix,iy).p))
           cout << infoText.c_str() <<endl;
-        if (b(ix,iy).invRho <= 0) cout << infoText.c_str() << endl;
+        //if (b(ix,iy).invRho <= 0) cout << infoText.c_str() << endl;
 
-        assert(b(ix,iy).invRho > 0);
+        //assert(b(ix,iy).invRho > 0);
         assert(!std::isnan(b(ix,iy).invRho)); assert(!std::isnan(b(ix,iy).u));
         assert(!std::isnan(b(ix,iy).v)); assert(!std::isnan(b(ix,iy).p));
         assert(!std::isnan(b(ix,iy).pOld)); assert(!std::isnan(b(ix,iy).tmpU));
