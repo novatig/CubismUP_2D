@@ -48,7 +48,7 @@ CPPFLAGS += -I../source/ -I../Cubism/source/
 NVFLAGS += -I../Cubism/source/
 CPPFLAGS+= -Wextra -Wfloat-equal -Wundef -Wcast-align -Woverloaded-virtual
 CPPFLAGS+= -Wlogical-op -Wmissing-declarations -Wredundant-decls -Wshadow
-CPPFLAGS+= -Wwrite-strings -Wno-cpp -Wno-unused-parameter
+CPPFLAGS+= -Wwrite-strings -Wno-unused-parameter #-Wno-cpp
 CPPFLAGS+= -Wno-float-equal
 LIBS += -fopenmp
 

@@ -70,7 +70,7 @@ class PoissonSolverFreespace : public PoissonSolverBase
   PoissonSolverFreespace(FluidGrid*const _grid) : PoissonSolverBase(*_grid, 0)
   {
     const int ny_hat = ny/2 +1;
-    assert(ny_hat == my_hat);
+    assert((size_t)ny_hat == my_hat);
     const int Mx = 2 * nx - 1;
     const int My = 2 * ny - 1;
     const int My_hat = My/2 +1;

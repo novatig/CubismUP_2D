@@ -1,0 +1,92 @@
+#!/bin/bash -l
+
+#SBATCH --job-name=00_CUP2D_VALID
+#SBATCH --time=24:00:00
+#SBATCH --output=out.%j.%a.o
+#SBATCH --error=out.%j.%a.e
+#SBATCH --constraint=gpu
+
+#SBATCH --account=s658
+
+#SBATCH --array=0-95
+
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --threads-per-core=1
+#SBATCH --cpus-per-task=12
+
+# ======START=====
+#FFTWC=cray
+#FFTWC=fftw
+FFTWC=cuda
+CYL="disk_radius=0.05_xpos=0.3_bForced=1_bFixed=1_xvel=0.1"
+FSH="stefanfish_L=0.2_xpos=0.3_bFixed=1"
+
+
+MYNAME=`whoami`
+APPDIR="${HOME}/CubismUP_2D/makefiles/"
+BASEPATH="/scratch/snx3000/${MYNAME}/CUP2D/"
+BPY=(256 128 64 32 16 8)
+PREC=(SP DP)
+BC=(1 0)
+
+opts=()
+exec=()
+dirs=()
+#approximatively sorted by strongest effect on runtime
+for r in ${BPY[@]}; do
+for b in ${BC[@]}; do
+for p in ${PREC[@]}; do
+
+BPX=$((2*${r}))
+SHROPT="-bFreeSpace ${b} -bpdx ${BPX} -bpdy ${r}"
+if [ $b -eq "0" ] ; then
+SHRDIR=00_BPX${BPX}_${p}_PERIODIC_${FFTWC}
+else
+SHRDIR=00_BPX${BPX}_${p}_FRESPACE_${FFTWC}
+fi
+
+opts+=(" ${SHROPT} -tdump 1 -nu 0.0001   -tend 8 -shapes ${CYL}")
+dirs+=("${SHRDIR}_CylRe0100")
+exec+=("simulation_${FFTWC}_${p}")
+
+
+opts+=(" ${SHROPT} -tdump 1 -nu 0.00001  -tend 8 -shapes ${CYL}")
+dirs+=("${SHRDIR}_CylRe1000")
+exec+=("simulation_${FFTWC}_${p}")
+
+opts+=(" ${SHROPT} -tdump 1 -nu 0.00008  -tend 8 -shapes ${FSH}")
+dirs+=("${SHRDIR}_FshRe0500")
+exec+=("simulation_${FFTWC}_${p}")
+
+opts+=(" ${SHROPT} -tdump 1 -nu 0.000008 -tend 8 -shapes ${FSH}")
+dirs+=("${SHRDIR}_FshRe5000")
+exec+=("simulation_${FFTWC}_${p}")
+
+done
+done
+done
+
+# stuff that depends on SLURM_ARRAY_TASK_ID
+RUND=${dirs[$SLURM_ARRAY_TASK_ID]}
+RUNF=${exec[$SLURM_ARRAY_TASK_ID]}
+SETT=${opts[$SLURM_ARRAY_TASK_ID]}
+
+RUNPATH=${BASEPATH}${RUND}
+
+mkdir -p ${RUNPATH}
+
+cp ${APPDIR}${RUNF} ${RUNPATH}/exec
+
+cd ${RUNPATH}
+
+export OMP_NUM_THREADS=12
+export OMP_PROC_BIND=CLOSE
+export OMP_PLACES=cores
+export CRAY_CUDA_MPS=1
+
+srun --ntasks 1 --cpus-per-task=12 --threads-per-core=1 --ntasks-per-node=1  ./exec ${SETT}
+
+#srun  -n 2 --cpu_bind=map_cpu:0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17 ./run1 & srun  -n 2 --cpu_bind=map_cpu:18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35 ./run2 & wait
+
+# =====END====
