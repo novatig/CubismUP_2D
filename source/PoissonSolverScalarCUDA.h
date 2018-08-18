@@ -21,7 +21,7 @@ void dPeriodic(const cufftHandle&fwd, const cufftHandle&bwd, const int mx,
   const int my, const Real h, Real*const rhs, Real*const rhs_gpu);
 void dFreespace(const cufftHandle&fwd, const cufftHandle&bwd, const int nx,
   const int ny, Real*const rhs, const Real*const G_hat, Real*const rhs_gpu);
-void _init_green(const int nx, const int ny, const Real h, Real*const m_kernel);
+void initGreen(const int nx, const int ny, const Real h, Real*const m_kernel);
 
 class PoissonSolverPeriodic : public PoissonSolverBase
 {
@@ -80,7 +80,7 @@ class PoissonSolverFreespace : public PoissonSolverBase
     rhs = (Real*) malloc(nx * ny_hat * 2 * sizeof(Real) );
     allocCuMem(rhs_gpu,  Mx * My_hat * sizeof(cufftCmpT));
     allocCuMem(m_kernel, Mx * My_hat * sizeof(Real) );
-    _init_green(nx, ny, h, m_kernel);
+    initGreen(nx, ny, h, m_kernel);
   }
 
   void solve() const override {

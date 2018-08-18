@@ -120,6 +120,7 @@ void dFreespace(const cufftHandle&fwd, const cufftHandle&bwd, const int nx,
   //t4.start();
   cudaMemcpy2D(rhs,2*ny_hat*sizeof(Real), rhs_gpu,2*my_hat*sizeof(Real),
     ny*sizeof(Real), nx, cudaMemcpyDeviceToHost);
+  cudaMemset(rhs_gpu, 0, mx*my_hat * 2*sizeof(Real) );
   //t4.stop();
   //printf("%f %f %f %f %f\n",t0.get(),t1.get(),t2.get(),t3.get(),t4.get());
 }
@@ -148,7 +149,7 @@ __global__ void kCopyC2R(const int mx, const int my_hat, const Real norm,
   m_kernel[linidx] = G_hat[linidx].x * norm;
 }
 
-void _init_green(const int nx, const int ny, const Real h, Real*const m_kernel)
+void initGreen(const int nx, const int ny, const Real h, Real*const m_kernel)
 {
   const int mx = 2 * nx - 1, my = 2 * ny - 1;
   const int my_hat = my/2 +1;
