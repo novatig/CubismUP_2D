@@ -135,6 +135,7 @@ class PoissonSolverFreespace: public PoissonSolverBase
 
     //printf("UP:%f S:%f DW:%f\n", t1-t0, t2-t1, t3-t2);
     _fftw2cub();
+    memset(rhs, 0, 2 * mx * my_hat * sizeof(Real));
   }
 
   ~PoissonSolverFreespace() {

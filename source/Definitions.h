@@ -358,7 +358,7 @@ struct SimulationData
   double nu = 0;
   double dlm = -1;
 
-  Real gravity[2] = { (Real) 0.0, (Real) -9.81 };
+  Real gravity[2] = { (Real) 0.0, (Real) -9.80665 };
   // nsteps==0 means that this stopping criteria is not active
   int nsteps = 0;
   // endTime==0  means that this stopping criteria is not active
