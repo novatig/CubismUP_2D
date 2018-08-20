@@ -20,10 +20,12 @@
 class Disk : public Shape
 {
   const Real radius;
+  const Real tAccel;
  public:
   Disk(SimulationData& s, ArgumentParser& p, Real C[2] ) :
-  Shape(s,p,C), radius( p("-radius").asDouble(0.1) ) {
-    printf("Created a Disk with: R:%f rho:%f\n",radius,rhoS);
+  Shape(s,p,C), radius( p("-radius").asDouble(0.1) ),
+  tAccel( p("-tAccel").asDouble(-1) ) {
+    printf("Created a Disk with: R:%f rho:%f tAccel:%f\n",radius,rhoS,tAccel);
   }
 
   Real getCharLength() const override
@@ -40,16 +42,19 @@ class Disk : public Shape
   }
 
   void create(const vector<BlockInfo>& vInfo) override;
+  void computeVelocities() override;
 };
 
 class HalfDisk : public Shape
 {
  protected:
   const Real radius;
+  const Real tAccel;
 
  public:
   HalfDisk( SimulationData& s, ArgumentParser& p, Real C[2] ) :
-  Shape(s,p,C), radius( p("-radius").asDouble(0.1) ) {
+  Shape(s,p,C), radius( p("-radius").asDouble(0.1) ),
+  tAccel( p("-tAccel").asDouble(-1) ) {
     printf("Created a half Disk with: R:%f rho:%f\n",radius,rhoS);
   }
 
@@ -67,6 +72,7 @@ class HalfDisk : public Shape
   }
 
   void create(const vector<BlockInfo>& vInfo) override;
+  void computeVelocities() override;
 };
 
 class Ellipse : public Shape

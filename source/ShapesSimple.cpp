@@ -49,6 +49,23 @@ void Disk::create(const vector<BlockInfo>& vInfo)
   for (auto & block : obstacleBlocks) block.second->allocate_surface();
 }
 
+void Disk::computeVelocities()
+{
+  Shape::computeVelocities();
+  if(tAccel > 0) {
+    if(bForcedx && sim.time < tAccel) u = (sim.time/tAccel)*forcedu;
+    if(bForcedy && sim.time < tAccel) v = (sim.time/tAccel)*forcedv;
+  }
+}
+void HalfDisk::computeVelocities()
+{
+  Shape::computeVelocities();
+  if(tAccel > 0) {
+    if(bForcedx && sim.time < tAccel) u = (sim.time/tAccel)*forcedu;
+    if(bForcedy && sim.time < tAccel) v = (sim.time/tAccel)*forcedv;
+  }
+}
+
 void HalfDisk::create(const vector<BlockInfo>& vInfo)
 {
   const Real h =  vInfo[0].h_gridpoint;

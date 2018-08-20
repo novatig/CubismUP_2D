@@ -195,7 +195,7 @@ class Shape
 
   void removeMoments(const vector<BlockInfo>& vInfo);
 
-  void computeVelocities();
+  virtual void computeVelocities();
 
   void updateLabVelocity( int nSum[2], double uSum[2] );
 

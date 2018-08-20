@@ -7,7 +7,7 @@
 //
 
 #pragma once
-
+#define UPWIND
 #include "GenericCoordinator.h"
 
 class OperatorMultistep : public GenericLabOperator

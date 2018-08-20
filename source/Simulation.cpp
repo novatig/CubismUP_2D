@@ -243,8 +243,8 @@ double Simulation::calcMaxTimestep() {
   #ifndef RL_TRAIN
   if(sim.verbose)
     cout << "step, time, dt "// (Fourier, CFL, body): "
-    <<sim.step<<" "<<sim.time<<" "<<sim.dt
-    //<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody<<" "<<sim.uinfx<<" "<<sim.uinfy
+    <<sim.step<<" "<<sim.time<<" "<<sim.dt<<" "<<sim.uinfx<<" "<<sim.uinfy
+    //<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody
     <<endl;
   #endif
 

@@ -27,12 +27,13 @@
 // max number of actions per simulation
 // range of angles in initial conditions
 
-inline void resetIC(
-  StefanFish* const a, const Shape*const p, std::mt19937& gen) {
-  uniform_real_distribution<Real> disA(-20./180*M_PI, 20./180*M_PI);
-  uniform_real_distribution<Real> disX(-0.5, 0.5),  disY(-0.5, 0.5);
-  Real C[2] = { p->centerOfMass[0] + (2+disX(gen))*a->length,
-                p->centerOfMass[1] +    disY(gen) *a->length };
+inline void resetIC(StefanFish* const a, Shape*const p, std::mt19937& gen) {
+  uniform_real_distribution<Real> disA(-20./180.*M_PI, 20./180.*M_PI);
+  uniform_real_distribution<Real> disX(-0.25, 0.25),  disY(-0.25, 0.25);
+  Real C[2] = { p->center[0] + (1.5+disX(gen))*a->length,
+                p->center[1] +      disY(gen) *a->length };
+  p->centerOfMass[1] = p->center[1] - ( C[1] - p->center[1] );
+  p->center[1] = p->center[1] - ( C[1] - p->center[1] );
   a->setCenterOfMass(C);
   a->setOrientation(disA(gen));
 }
