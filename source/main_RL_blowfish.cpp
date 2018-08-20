@@ -28,7 +28,7 @@
 // range of angles in initial conditions
 
 inline void resetIC(BlowFish* const agent, std::mt19937& gen) {
-  const Real A = 10*M_PI/180; // start between -15 and 15 degrees
+  const Real A = 5*M_PI/180; // start between -15 and 15 degrees
   uniform_real_distribution<Real> dis(-A, A);
   agent->setOrientation(dis(gen));
 }
