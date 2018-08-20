@@ -98,29 +98,6 @@ class CoordinatorDiffusion : public GenericCoordinator
     }
   }
 
-  inline void drag()
-  {
-    /*
-    BlockInfo * ary = &vInfo.front();
-    #pragma omp parallel
-    {
-      OperatorViscousDrag kernel(0);
-      Real tmpDrag = 0;
-
-      Lab mylab;
-      mylab.prepare(*grid, kernel.stencil_start, kernel.stencil_end, false);
-
-      #pragma omp for schedule(static) reduction(+:tmpDrag)
-      for (size_t i=0; i<vInfo.size(); i++) {
-        mylab.load(ary[i], 0);
-        kernel(mylab, ary[i], *(FluidBlock*)ary[i].ptrBlock);
-        tmpDrag += kernel.getDrag();
-      }
-    }
-    shape->dragV = tmpDrag*coeff;
-    */
-  }
-
  public:
   CoordinatorDiffusion(SimulationData& s) : GenericCoordinator(s) { }
 
@@ -131,7 +108,6 @@ class CoordinatorDiffusion : public GenericCoordinator
     reset();
     diffuse(dt,0);
     update();
-    //drag();
 
     check("diffusion - end");
   }

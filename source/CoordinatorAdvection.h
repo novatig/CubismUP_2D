@@ -22,11 +22,7 @@ class OperatorAdvectionFD : public GenericLabOperator
   OperatorAdvectionFD(double _dt, const Real u, const Real v)
   : dt(_dt), uinf(u), vinf(v)
   {
-    #ifndef _MULTIPHASE_
-      stencil = StencilInfo(-1,-1,0, 2,2,1, false, 2, 0,1);
-    #else
-      stencil = StencilInfo(-1,-1,0, 2,2,1, false, 3, 0,1,4);
-    #endif
+    stencil = StencilInfo(-1,-1,0, 2,2,1, false, 2, 0,1);
     stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
     stencil_end[0] = 2; stencil_end[1] = 2; stencil_end[2] = 1;
   }
@@ -50,13 +46,6 @@ class OperatorAdvectionFD : public GenericLabOperator
 
       o(ix,iy).tmpU = lab(ix,iy).u + fac*(u * dudx + v * dudy);
       o(ix,iy).tmpV = lab(ix,iy).v + fac*(u * dvdx + v * dvdy);
-
-      #ifdef _MULTIPHASE_
-        const Real drdx = lab(ix+1,iy).rho - lab(ix-1,iy).rho;
-        const Real drdy = lab(ix,iy+1).rho - lab(ix,iy-1).rho;
-
-        o(ix,iy).tmp  = lab(ix,iy).rho + fac*(u * drdx + v * drdy);
-      #endif
     }
   }
 };
@@ -72,11 +61,7 @@ class OperatorAdvectionUpwind3rdOrder : public GenericLabOperator
   OperatorAdvectionUpwind3rdOrder(double _dt, const Real u, const Real v)
   : dt(_dt), uinf(u), vinf(v)
     {
-      #ifndef _MULTIPHASE_
-        stencil = StencilInfo(-2,-2,0, 3,3,1, false, 2, 0,1);
-      #else
-        stencil = StencilInfo(-2,-2,0, 3,3,1, false, 3, 0,1,4);
-      #endif
+      stencil = StencilInfo(-2,-2,0, 3,3,1, false, 2, 0,1);
       stencil_start[0] = -2; stencil_start[1] = -2; stencil_start[2] = 0;
       stencil_end[0] = 3; stencil_end[1] = 3; stencil_end[2] = 1;
     }
@@ -109,18 +94,6 @@ class OperatorAdvectionUpwind3rdOrder : public GenericLabOperator
 
         o(ix,iy).tmpU = ucc + factor*(u*dux + v*duy);
         o(ix,iy).tmpV = vcc + factor*(u*dvx + v*dvy);
-
-        #ifdef _MULTIPHASE_
-          const Real drdx[2] = {  2*lab(ix+1,iy  ).rho + 3*lab(ix  ,iy  ).rho - 6*lab(ix-1,iy  ).rho +   lab(ix-2,iy  ).rho,
-                       -  lab(ix+2,iy  ).rho + 6*lab(ix+1,iy  ).rho - 3*lab(ix  ,iy  ).rho - 2*lab(ix-1,iy  ).rho};
-
-          const Real drdy[2] = {  2*lab(ix  ,iy+1).rho + 3*lab(ix  ,iy  ).rho - 6*lab(ix  ,iy-1).rho +   lab(ix  ,iy-2).rho,
-                       -  lab(ix  ,iy+2).rho + 6*lab(ix  ,iy+1).rho - 3*lab(ix  ,iy  ).rho - 2*lab(ix  ,iy-1).rho};
-
-
-          o(ix,iy).tmp  = o(ix,iy).rho + factor*(max(u,(Real)0) * drdx[0] + min(u,(Real)0) * drdx[1] +
-                         max(v,(Real)0) * drdy[0] + min(v,(Real)0) * drdy[1]);
-        #endif // _MULTIPHASE_
     }
   }
 };
@@ -144,9 +117,6 @@ class CoordinatorAdvection : public GenericCoordinator
           for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
             b(ix,iy).tmpU = 0;
             b(ix,iy).tmpV = 0;
-            #ifdef _MULTIPHASE_
-              b(ix,iy).tmp = 0;
-            #endif // _MULTIPHASE_
           }
       }
     #endif
@@ -183,9 +153,6 @@ class CoordinatorAdvection : public GenericCoordinator
         {
           b(ix,iy).u = b(ix,iy).tmpU;
           b(ix,iy).v = b(ix,iy).tmpV;
-          #ifdef _MULTIPHASE_ // threshold density
-          b(ix,iy).rho = b(ix,iy).tmp;
-          #endif // _MULTIPHASE_
         }
     }
 

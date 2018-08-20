@@ -22,11 +22,14 @@ class OperatorMultistep : public GenericLabOperator
   OperatorMultistep(double _dt, double _mu, Real _g[2], Real u, Real v) :
   mu(_mu), dt(_dt), g{_g[0],_g[1]}, uinf(u), vinf(v)
   {
-    stencil = StencilInfo(-2,-2,0, 3,3,1, false, 2, 0,1);
-    stencil_start[0] = -2; stencil_start[1] = -2; stencil_start[2] = 0;
-    stencil_end[0] = 3; stencil_end[1] = 3; stencil_end[2] = 1;
-    #ifdef _MULTIPHASE_
-      abort();
+    #ifdef UPWIND
+      stencil = StencilInfo(-2,-2,0, 3,3,1, false, 2, 0,1);
+      stencil_start[0] = -2; stencil_start[1] = -2; stencil_start[2] = 0;
+      stencil_end[0] = 3; stencil_end[1] = 3; stencil_end[2] = 1;
+    #else
+      stencil = StencilInfo(-1,-1,0, 2,2,1, false, 2, 0,1);
+      stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
+      stencil_end[0] = 2; stencil_end[1] = 2; stencil_end[2] = 1;
     #endif
   }
 
@@ -36,26 +39,37 @@ class OperatorMultistep : public GenericLabOperator
   void operator()(Lab & lab, const BlockInfo& info, BlockType& o)
   {
     const Real diffac = (mu/info.h_gridpoint) * (dt/info.h_gridpoint);
-    const Real advfac = -dt/(6*info.h_gridpoint);
+    #ifdef UPWIND
+      const Real advfac = -dt/(6*info.h_gridpoint);
+    #else
+      const Real advfac = -dt/(2*info.h_gridpoint);
+    #endif
 
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix)
     {
-      const Real uPx = lab(ix+2,iy  ).u, vPx = lab(ix+2,iy  ).v;
       const Real upx = lab(ix+1,iy  ).u, vpx = lab(ix+1,iy  ).v;
-      const Real uPy = lab(ix  ,iy+2).u, vPy = lab(ix  ,iy+2).v;
       const Real upy = lab(ix  ,iy+1).u, vpy = lab(ix  ,iy+1).v;
       const Real ucc = lab(ix  ,iy  ).u, vcc = lab(ix  ,iy  ).v;
       const Real ulx = lab(ix-1,iy  ).u, vlx = lab(ix-1,iy  ).v;
-      const Real uLx = lab(ix-2,iy  ).u, vLx = lab(ix-2,iy  ).v;
       const Real uly = lab(ix  ,iy-1).u, vly = lab(ix  ,iy-1).v;
-      const Real uLy = lab(ix  ,iy-2).u, vLy = lab(ix  ,iy-2).v;
-
       const Real u = ucc + uinf, v = vcc + vinf;
-      const Real dux = u>0 ? 2*upx+3*ucc-6*ulx+uLx : -uPx+6*upx-3*ucc-2*ulx;
-      const Real duy = v>0 ? 2*upy+3*ucc-6*uly+uLy : -uPy+6*upy-3*ucc-2*uly;
-      const Real dvx = u>0 ? 2*vpx+3*vcc-6*vlx+vLx : -vPx+6*vpx-3*vcc-2*vlx;
-      const Real dvy = v>0 ? 2*vpy+3*vcc-6*vly+vLy : -vPy+6*vpy-3*vcc-2*vly;
+
+      #ifdef UPWIND
+        const Real uPx = lab(ix+2,iy  ).u, vPx = lab(ix+2,iy  ).v;
+        const Real uPy = lab(ix  ,iy+2).u, vPy = lab(ix  ,iy+2).v;
+        const Real uLx = lab(ix-2,iy  ).u, vLx = lab(ix-2,iy  ).v;
+        const Real uLy = lab(ix  ,iy-2).u, vLy = lab(ix  ,iy-2).v;
+        const Real dux = u>0 ? 2*upx+3*ucc-6*ulx+uLx : -uPx+6*upx-3*ucc-2*ulx;
+        const Real duy = v>0 ? 2*upy+3*ucc-6*uly+uLy : -uPy+6*upy-3*ucc-2*uly;
+        const Real dvx = u>0 ? 2*vpx+3*vcc-6*vlx+vLx : -vPx+6*vpx-3*vcc-2*vlx;
+        const Real dvy = v>0 ? 2*vpy+3*vcc-6*vly+vLy : -vPy+6*vpy-3*vcc-2*vly;
+      #else
+        const Real dudx = lab(ix+1,iy).u - lab(ix-1,iy).u;
+        const Real dudy = lab(ix,iy+1).u - lab(ix,iy-1).u;
+        const Real dvdx = lab(ix+1,iy).v - lab(ix-1,iy).v;
+        const Real dvdy = lab(ix,iy+1).v - lab(ix,iy-1).v;
+      #endif
 
       const Real gravFac = dt * (1 - o(ix,iy).invRho);
       const Real duGrav = g[0] * gravFac, dvGrav = g[1] * gravFac;
