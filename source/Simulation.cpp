@@ -244,8 +244,7 @@ double Simulation::calcMaxTimestep() {
   if(sim.verbose)
     cout << "step, time, dt "// (Fourier, CFL, body): "
     <<sim.step<<" "<<sim.time<<" "<<sim.dt
-    //<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody
-    //<<" "<<sim.uinfx<<" "<<sim.uinfy
+    //<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody<<" "<<sim.uinfx<<" "<<sim.uinfy
     <<endl;
   #endif
 
@@ -260,11 +259,8 @@ bool Simulation::advance(const double dt) {
     profiler.push_start(pipeline[c]->getName());
     (*pipeline[c])(sim.dt);
     profiler.pop_stop();
-    // stringstream ss;
-    // ss << path2file << "avemaria_" << pipeline[c]->getName() << "_";
-    // ss << std::setfill('0') << std::setw(7) << step << ".vti";
-    //      cout << ss.str() << endl;
-    //      dump(ss);
+    // stringstream ss; ss<<path2file<<"avemaria_"<<pipeline[c]->getName();
+    // ss<<"_"<<std::setfill('0')<<std::setw(7)<<step<<".vti"; dump(ss);
   }
 
   sim.time += sim.dt;
