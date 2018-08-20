@@ -103,6 +103,7 @@ class PoissonSolverFreespace: public PoissonSolverBase
       abort();
     }
     _init_green();
+    memset(rhs, 0, 2 * mx * my_hat * sizeof(Real));
   }
 
   void solve() const override

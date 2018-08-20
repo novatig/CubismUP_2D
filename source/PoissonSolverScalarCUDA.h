@@ -78,7 +78,8 @@ class PoissonSolverFreespace : public PoissonSolverBase
     makePlan(bwd, Mx, My, cufftPlanBWD);
     assert(2*sizeof(Real) == sizeof(cufftCmpT));
     rhs = (Real*) malloc(nx * ny_hat * 2 * sizeof(Real) );
-    allocCuMem(rhs_gpu,  Mx * My_hat * sizeof(cufftCmpT));
+    allocCuMem(rhs_gpu,  Mx * My_hat * sizeof(cufftCmpT) );
+    cudaMemset(rhs_gpu, 0, Mx * My_hat * sizeof(cufftCmpT) );
     allocCuMem(m_kernel, Mx * My_hat * sizeof(Real) );
     initGreen(nx, ny, h, m_kernel);
   }
