@@ -4,6 +4,7 @@ if [ $# -lt 1 ] ; then
 fi
 RUNNAME=$1
 
+cd ${FOLDERNAME}
 cat <<EOF >daint_sbatch
 #!/bin/bash -l
 

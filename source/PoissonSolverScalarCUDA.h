@@ -14,6 +14,7 @@
 #endif//_FLOAT_PRECISION_
 
 void freeCuMem(Real * buf);
+void clearCuMem(Real * buf, const size_t size);
 void allocCuMem(Real* & ptr, const size_t size);
 void freePlan(cufftHandle& plan);
 void makePlan(cufftHandle& handle, const int mx, const int my, cufftType plan);
@@ -79,7 +80,7 @@ class PoissonSolverFreespace : public PoissonSolverBase
     assert(2*sizeof(Real) == sizeof(cufftCmpT));
     rhs = (Real*) malloc(nx * ny_hat * 2 * sizeof(Real) );
     allocCuMem(rhs_gpu,  Mx * My_hat * sizeof(cufftCmpT) );
-    cudaMemset(rhs_gpu, 0, Mx * My_hat * sizeof(cufftCmpT) );
+    clearCuMem(rhs_gpu, Mx * My_hat * sizeof(cufftCmpT) );
     allocCuMem(m_kernel, Mx * My_hat * sizeof(Real) );
     initGreen(nx, ny, h, m_kernel);
   }

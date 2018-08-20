@@ -31,7 +31,6 @@ export OMP_NUM_THREADS=12
 FOLDERNAME=${BASEPATH}/${RUNNAME}
 mkdir -p ${FOLDERNAME}
 cp ../makefiles/simulation ${FOLDERNAME}
-cd ${FOLDERNAME}
 
 # did we allocate a node?
 srun hostname &> /dev/null
@@ -39,6 +38,7 @@ if [[ "$?" -gt "0" ]] ;
 then
 source launchSbatch.sh
 else
+cd ${FOLDERNAME}
 srun -n 1 simulation ${OPTIONS} -shapes "${OBJECTS}"
 fi
 

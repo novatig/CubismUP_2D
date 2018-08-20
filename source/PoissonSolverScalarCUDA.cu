@@ -149,6 +149,8 @@ __global__ void kCopyC2R(const int mx, const int my_hat, const Real norm,
   m_kernel[linidx] = G_hat[linidx].x * norm;
 }
 
+void clearCuMem(Real * buf, const size_t size) { cudaMemset(buf, 0, size ); }
+
 void initGreen(const int nx, const int ny, const Real h, Real*const m_kernel)
 {
   const int mx = 2 * nx - 1, my = 2 * ny - 1;
