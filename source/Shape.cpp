@@ -31,7 +31,8 @@ void Shape::updatePosition(double dt)
   labCenterOfMass[1] += dt*v;
 
   orientation += dt*omega;
-  orientation = orientation>2*M_PI ? orientation-2*M_PI : (orientation<0 ? orientation+2*M_PI : orientation);
+  orientation = orientation> M_PI ? orientation-2*M_PI : orientation;
+  orientation = orientation<-M_PI ? orientation+2*M_PI : orientation;
 
   center[0] = centerOfMass[0] + std::cos(orientation)*d_gm[0] - std::sin(orientation)*d_gm[1];
   center[1] = centerOfMass[1] + std::sin(orientation)*d_gm[0] + std::cos(orientation)*d_gm[1];
