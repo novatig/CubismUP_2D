@@ -313,3 +313,24 @@ void Fish::apply_pid_corrections()
   }
 }
 #endif
+#if 0
+
+#define _USE_HDF_
+#include <HDF5Dumper.h>
+        #pragma omp parallel for schedule(dynamic)
+        for(size_t i=0; i<vInfo.size(); i++) {
+          FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+          const auto pos = obstacleBlocks.find(vInfo[i].blockID);
+          if(pos == obstacleBlocks.end()) continue;
+
+          for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+          for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
+            b(ix,iy).u = pos->second->udef[iy][ix][0];
+            b(ix,iy).v = pos->second->udef[iy][ix][1];
+            b(ix,iy).tmp = pos->second->chi [iy][ix];
+          }
+        }
+        DumpHDF5<FluidGrid,StreamerVelocityVector>(*(sim.grid), sim.step,
+          sim.time, "constructSurface", sim.path4serialization);
+          abort();
+#endif

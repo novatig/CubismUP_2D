@@ -388,7 +388,7 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, FluidBlock& b, Obs
 {
   Real org[2];
   info.pos(org, 0, 0);
-  const Real invh = 1.0/info.h_gridpoint;
+  const Real h = info.h_gridpoint, invh = 1.0/info.h_gridpoint;
   const Real* const rX = cfish.rX;
   const Real* const rY = cfish.rY;
   const Real* const norX = cfish.norX;
@@ -460,14 +460,18 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, FluidBlock& b, Obs
           assert(dSsq > 2.2e-16);
           const Real cnt2ML = std::pow( width[close_s],2);
           const Real nxt2ML = std::pow( width[secnd_s],2);
-
+          const Real safeW = std::max( width[close_s], width[secnd_s] ) + 2*h;
+          const Real xMidl[2] = {rX[close_s], rY[close_s]};
+          const Real grd2ML = eulerDistSq2D(p, xMidl);
+          const Real diffH = std::fabs( width[close_s] - width[secnd_s] );
           Real sign2d = 0;
-          if(dSsq>=std::fabs(cnt2ML-nxt2ML))
+          //If width changes slowly or if point is very far away, this is safer:
+          if( dSsq > diffH*diffH || grd2ML > safeW*safeW )
           { // if no abrupt changes in width we use nearest neighbour
-            const Real xMidl[3] = {rX[close_s], rY[close_s], 0};
-            const Real grd2ML = eulerDistSq2D(p, xMidl);
             sign2d = grd2ML > cnt2ML ? -1 : 1;
-          } else {
+          }
+          else
+          {
             // else we model the span between ellipses as a spherical segment
             // http://mathworld.wolfram.com/SphericalSegment.html
             const Real corr = 2*std::sqrt(cnt2ML*nxt2ML);
@@ -479,9 +483,9 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, FluidBlock& b, Obs
             // 'submerged' fraction of radius:
             const Real d = std::sqrt((Rsq - maxAx)/dSsq); // (divided by ds)
             // position of the centre of the sphere:
-            const Real xMidl[3] = {rX[idAx1] +(rX[idAx1]-rX[idAx2])*d,
-                                   rY[idAx1] +(rY[idAx1]-rY[idAx2])*d, 0};
-            const Real grd2Core = eulerDistSq2D(p, xMidl);
+            const Real xCentr[2] = {rX[idAx1] +(rX[idAx1]-rX[idAx2])*d,
+                                   rY[idAx1] +(rY[idAx1]-rY[idAx2])*d};
+            const Real grd2Core = eulerDistSq2D(p, xCentr);
             sign2d = grd2Core > Rsq ? -1 : 1; // as always, neg outside
           }
 
