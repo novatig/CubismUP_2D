@@ -48,7 +48,7 @@ void FishData::writeMidline2File(const int step_id, string filename) {
 }
 
 void FishData::_computeMidlineNormals() {
-  #pragma omp parallel for schedule(static)
+  //#pragma omp parallel for schedule(static)
   for(int i=0; i<Nm-1; i++) {
     const auto ds = rS[i+1]-rS[i];
     const auto tX = rX[i+1]-rX[i];
@@ -71,7 +71,7 @@ Real FishData::integrateLinearMomentum(Real CoM[2], Real vCoM[2]) {
   // remaining integral done with composite trapezoidal rule
   // minimize rhs evaluations --> do first and last point separately
   Real _area=0, _cmx=0, _cmy=0, _lmx=0, _lmy=0;
-  #pragma omp parallel for schedule(static) reduction(+:_area,_cmx,_cmy,_lmx,_lmy)
+  //#pragma omp parallel for schedule(static) reduction(+:_area,_cmx,_cmy,_lmx,_lmy)
   for(int i=0; i<Nm; ++i) {
     const Real ds = (i==0) ? rS[1]-rS[0] :
         ((i==Nm-1) ? rS[Nm-1]-rS[Nm-2] :rS[i+1]-rS[i-1]);
@@ -102,7 +102,7 @@ Real FishData::integrateAngularMomentum(Real& angVel) {
   // remaining integral done with composite trapezoidal rule
   // minimize rhs evaluations --> do first and last point separately
   Real _J = 0, _am = 0;
-  #pragma omp parallel for reduction(+:_J,_am) schedule(static)
+  //#pragma omp parallel for reduction(+:_J,_am) schedule(static)
   for(int i=0; i<Nm; ++i) {
     const Real ds =   (i==   0) ? rS[1]   -rS[0] :
                     ( (i==Nm-1) ? rS[Nm-1]-rS[Nm-2]
@@ -128,14 +128,14 @@ Real FishData::integrateAngularMomentum(Real& angVel) {
 }
 
 void FishData::changeToCoMFrameLinear(const Real CoMin[2],const Real vCoMin[2]){
-  #pragma omp parallel for schedule(static)
+  //#pragma omp parallel for schedule(static)
   for(int i=0;i<Nm;++i) {
    rX[i] -= CoMin[0]; rY[i] -= CoMin[1]; vX[i] -= vCoMin[0]; vY[i] -= vCoMin[1];
   }
 }
 void FishData::changeToCoMFrameAngular(const Real theta_internal, const Real angvel_internal) {
   _prepareRotation2D(theta_internal);
-  #pragma omp parallel for schedule(static)
+  //#pragma omp parallel for schedule(static)
   for(int i=0;i<Nm;++i) {
     vX[i] += angvel_internal*rY[i];
     vY[i] -= angvel_internal*rX[i];

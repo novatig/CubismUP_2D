@@ -111,7 +111,7 @@ class IF2D_Interpolation1D
 
     for(unsigned k=n-2; k>0; k--) y2[k] = y2[k]*y2[k+1] +u[k];
 
-    #pragma omp parallel for schedule(static)
+    //#pragma omp parallel for schedule(static)
     for(unsigned j=0; j<nn; j++) {
       unsigned int klo = 0;
       unsigned int khi = n-1;
@@ -313,7 +313,7 @@ struct ParameterSchedulerVector : ParameterScheduler<Npoints>
       memset (dparameters_fine, 0, Nfine*sizeof(Real) );
     } else {
       // we are within transition: interpolate in time for each point of the fine discretization
-      #pragma omp parallel for schedule(static)
+      //#pragma omp parallel for schedule(static)
       for(int i=0;i<Nfine;++i)
         IF2D_Interpolation1D::cubicInterpolation(this->t0, this->t1, t,
           parameters_t0_fine[i], parameters_t1_fine[i], dparameters_t0_fine[i],
@@ -344,7 +344,7 @@ struct ParameterSchedulerLearnWave : ParameterScheduler<Npoints>
     const Real _1oL = 1./Length;
     const Real _1oT = 1./Twave;
     // the fish goes through (as function of t and s) a wave function that describes the curvature
-    #pragma omp parallel for schedule(static)
+    //#pragma omp parallel for schedule(static)
     for(int i=0;i<Nfine;++i) {
       const Real c = positions_fine[i]*_1oL - (t - this->t0)*_1oT; //traveling wave coord
       bool bCheck = true;

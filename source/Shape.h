@@ -181,14 +181,11 @@ class Shape
   virtual void outputSettings(ostream &outStream) const;
 
   struct Integrals {
-    const Real m, V, j, u, v, a, x, y, X, Y;
-
-    Integrals(Real _m, Real _V, Real _j, Real _u, Real _v, Real _a,
-      Real _x, Real _y, Real _X, Real _Y) :
-    m(_m), V(_V), j(_j), u(_u), v(_v), a(_a), x(_x), y(_y), X(_X), Y(_Y) {}
-
+    const Real x, y, m, j, u, v, a;
+    Integrals(Real _x, Real _y, Real _m, Real _j, Real _u, Real _v, Real _a) :
+    x(_x), y(_y), m(_m), j(_j), u(_u), v(_v), a(_a) {}
     Integrals(const Integrals&c) :
-    m(c.m),V(c.V),j(c.j),u(c.u),v(c.v),a(c.a),x(c.x),y(c.y),X(c.X),Y(c.Y){}
+      x(c.x), y(c.y), m(c.m), j(c.j), u(c.u), v(c.v), a(c.a) {}
   };
 
   Integrals integrateObstBlock(const vector<BlockInfo>& vInfo);

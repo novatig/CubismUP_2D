@@ -126,18 +126,17 @@ void CurvatureFish::computeMidline(const Real time, const Real dt)
       (Real)0.82014*_1oL, (Real)1.46515*_1oL, (Real)2.57136*_1oL,
       (Real)3.75425*_1oL, (Real)5.09147*_1oL, (Real)5.70449*_1oL
   };
-  //const std::array<Real ,6> curvature_values = std::array<Real, 6>();
   const std::array<Real,6> curvature_zeros = std::array<Real, 6>();
-  curvScheduler.transition(time,0,Tperiod,curvature_zeros,curvature_values);
+  curvScheduler.transition(0,0, Tperiod, curvature_zeros, curvature_values);
+  //const std::array<Real ,6> curvature_values = std::array<Real, 6>();
   //curvScheduler.transition(time,0,Tperiod,curvature_values,curvature_values);
-
   // query the schedulers for current values
-   curvScheduler.gimmeValues( time,            curvature_points, Nm,rS, rC,vC);
-   baseScheduler.gimmeValues( time,l_Tp,length,baseline_points,  Nm,rS, rB,vB);
+    curvScheduler.gimmeValues(time,            curvature_points, Nm,rS, rC,vC);
+    baseScheduler.gimmeValues(time,l_Tp,length, baseline_points, Nm,rS, rB,vB);
   adjustScheduler.gimmeValues(time,            curvature_points, Nm,rS, rA,vA);
   if(controlFac>0) {
     const Real _vA = velPID, _rA = valPID;
-    #pragma omp parallel for schedule(static)
+    //#pragma omp parallel for schedule(static)
     for(int i=0; i<Nm; i++) {
       const Real darg = 2*M_PI* _1oT;
       const Real arg  = 2*M_PI*(_1oT*(time-time0) +timeshift
@@ -148,7 +147,7 @@ void CurvatureFish::computeMidline(const Real time, const Real dt)
                               +rC[i]*(std::sin(arg)     +rB[i]+_rA)*controlVel);
     }
   } else {
-    #pragma omp parallel for schedule(static)
+    //#pragma omp parallel for schedule(static)
     for(int i=0; i<Nm; i++) {
       const Real darg = 2*M_PI* _1oT;
       const Real arg  = 2*M_PI*(_1oT*(time-time0) +timeshift
