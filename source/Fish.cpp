@@ -34,10 +34,13 @@ void Fish::create(const vector<BlockInfo>& vInfo)
   // 10. correct deformation velocity to nullify momenta
 
   assert(myFish!=nullptr);
+  //profiler.push_start("midline");
   // 1.
   myFish->computeMidline(sim.time, sim.dt);
   //myFish->computeSurface();
 
+  //profiler.pop_stop();
+  //profiler.push_start("2dmoments");
   // 2. and 3.
   // returns area, CoM_internal, vCoM_internal:
   area_internal = myFish->integrateLinearMomentum(CoM_internal, vCoM_internal);
@@ -65,8 +68,10 @@ void Fish::create(const vector<BlockInfo>& vInfo)
     assert(std::fabs(area_internal - area_internal_check) < EPS);
   }
   #endif
+  //profiler.pop_stop();
   //myFish->surfaceToCOMFrame(theta_internal,CoM_internal);
 
+  //profiler.push_start("boxes");
   //- VolumeSegment_OBB's volume cannot be zero
   //- therefore no VolumeSegment_OBB can be only occupied by extension midline
   //  points (which have width and height = 0)
@@ -107,7 +112,9 @@ void Fish::create(const vector<BlockInfo>& vInfo)
     tAS->changeToComputationalFrame(center, orientation);
     vSegments[i] = tAS;
   }
+  //profiler.pop_stop();
 
+  //profiler.push_start("intersect");
   map<int,vector<AreaSegment*>> segmentsPerBlock;
   for(size_t i=0; i<vInfo.size(); ++i) {
     const BlockInfo & info = vInfo[i];
@@ -132,8 +139,10 @@ void Fish::create(const vector<BlockInfo>& vInfo)
   }
   assert(not segmentsPerBlock.empty());
   assert(segmentsPerBlock.size() == obstacleBlocks.size());
+  //profiler.pop_stop();
 
   // 8.
+  #if 1
   #pragma omp parallel
   {
     const PutFishOnBlocks putfish(*myFish, center, orientation);
@@ -155,21 +164,80 @@ void Fish::create(const vector<BlockInfo>& vInfo)
       }
     }
   }
+  #else
+    #pragma omp parallel
+    {
+      #pragma omp single
+      {
+        profiler.push_start("constructSurface");
+      }
+      const PutFishOnBlocks putfish(*myFish, center, orientation);
+
+      #pragma omp for schedule(dynamic)
+      for(size_t i=0; i<vInfo.size(); i++) {
+        FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+        const auto pos = segmentsPerBlock.find(vInfo[i].blockID);
+
+        if(pos != segmentsPerBlock.end()) {
+          for(int iy=0; iy<FluidBlock::sizeY; ++iy) //will be accessed with += :
+          for(int ix=0; ix<FluidBlock::sizeX; ++ix)  b(ix,iy).tmpU = 0;
+
+          assert(obstacleBlocks.find(vInfo[i].blockID) != obstacleBlocks.end());
+          putfish.constructSurface(vInfo[i], b, obstacleBlocks.find(vInfo[i].blockID)->second, pos->second);
+        }
+      }
+      #pragma omp single
+      {
+        profiler.pop_stop();
+        profiler.push_start("constructInternl");
+      }
+      #pragma omp for schedule(dynamic)
+      for(size_t i=0; i<vInfo.size(); i++) {
+        FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+        const auto pos = segmentsPerBlock.find(vInfo[i].blockID);
+
+        if(pos != segmentsPerBlock.end())
+          putfish.constructInternl(vInfo[i], b, obstacleBlocks.find(vInfo[i].blockID)->second, pos->second);
+      }
+      #pragma omp single
+      {
+        profiler.pop_stop();
+        profiler.push_start("constructSurface");
+      }
+      #pragma omp for schedule(dynamic)
+      for(size_t i=0; i<vInfo.size(); i++) {
+        FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+        const auto pos = segmentsPerBlock.find(vInfo[i].blockID);
+
+        if(pos != segmentsPerBlock.end())
+          putfish.signedDistanceSqrt(vInfo[i], b, obstacleBlocks.find(vInfo[i].blockID)->second, pos->second);
+      }
+    }
+    profiler.pop_stop();
+  #endif
 
   // clear vSegments
   for(auto & entry : vSegments) { assert(entry not_eq nullptr); delete entry; }
   // 9.
   //here chi contains signed distance from only this fish, rest of chi field is in tmp
   //obstBlock->chi is the squared signed distance
+  //profiler.push_start("finalize");
   {
     const PutFishOnBlocks_Finalize finalize = PutFishOnBlocks_Finalize();
     compute(finalize, vInfo);
   }
+  //profiler.pop_stop();
 
   // 10.
+  //profiler.push_start("moments");
   removeMoments(vInfo);
   //myFish->surfaceToComputationalFrame(orientation, centerOfMass);
   for(auto & o : obstacleBlocks) o.second->allocate_surface();
+  //profiler.pop_stop();
+  //if (sim.step % 100 == 0 && sim.verbose) {
+  //  profiler.printSummary();
+  //  profiler.reset();
+  //}
 }
 
 void Fish::updatePosition(double dt) {

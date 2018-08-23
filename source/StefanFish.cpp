@@ -137,6 +137,7 @@ void CurvatureFish::computeMidline(const Real time, const Real dt)
   adjustScheduler.gimmeValues(time,            curvature_points, Nm,rS, rA,vA);
   if(controlFac>0) {
     const Real _vA = velPID, _rA = valPID;
+    #pragma omp parallel for schedule(static)
     for(int i=0; i<Nm; i++) {
       const Real darg = 2*M_PI* _1oT;
       const Real arg  = 2*M_PI*(_1oT*(time-time0) +timeshift
@@ -147,6 +148,7 @@ void CurvatureFish::computeMidline(const Real time, const Real dt)
                               +rC[i]*(std::sin(arg)     +rB[i]+_rA)*controlVel);
     }
   } else {
+    #pragma omp parallel for schedule(static)
     for(int i=0; i<Nm; i++) {
       const Real darg = 2*M_PI* _1oT;
       const Real arg  = 2*M_PI*(_1oT*(time-time0) +timeshift

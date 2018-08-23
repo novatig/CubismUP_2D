@@ -71,7 +71,7 @@ Real FishData::integrateLinearMomentum(Real CoM[2], Real vCoM[2]) {
   // remaining integral done with composite trapezoidal rule
   // minimize rhs evaluations --> do first and last point separately
   Real _area=0, _cmx=0, _cmy=0, _lmx=0, _lmy=0;
-  #pragma omp parallel for reduction(+:_area,_cmx,_cmy,_lmx,_lmy)
+  #pragma omp parallel for schedule(static) reduction(+:_area,_cmx,_cmy,_lmx,_lmy)
   for(int i=0; i<Nm; ++i) {
     const Real ds = (i==0) ? rS[1]-rS[0] :
         ((i==Nm-1) ? rS[Nm-1]-rS[Nm-2] :rS[i+1]-rS[i-1]);
@@ -354,7 +354,6 @@ bool AreaSegment::isIntersectingWithAABB(const Real start[2],const Real end[2]) 
 void PutFishOnBlocks::operator()(const BlockInfo& i, FluidBlock& b,
   ObstacleBlock* const o, const vector<AreaSegment*>& v) const
 {
-  std::fill(&o->chi[0][0],&o->chi[0][0]+FluidBlock::sizeY*FluidBlock::sizeX,-1);
   //std::chrono::time_point<std::chrono::high_resolution_clock> t0, t1, t2, t3;
   //t0 = std::chrono::high_resolution_clock::now();
   constructSurface(i, b, o, v);
@@ -400,6 +399,7 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, FluidBlock& b, Obs
   const Real* const vNorY = cfish.vNorY;
   const Real* const width = cfish.width;
   static constexpr int BS[2] = {FluidBlock::sizeX, FluidBlock::sizeY};
+  std::fill(defblock->chi[0], defblock->chi[0] + BS[1]*BS[0], -1);
 
   // construct the shape (P2M with min(distance) as kernel) onto defblocks
   for(int i=0; i<(int)vSegments.size(); ++i) {
@@ -413,13 +413,15 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, FluidBlock& b, Obs
       {
         // create a surface point
         // special treatment of tail (width = 0 --> no ellipse, just line)
-        Real myP[2] = {     rX[ss+0] +width[ss+0]*signp*norX[ss+0],
-                            rY[ss+0] +width[ss+0]*signp*norY[ss+0]  };
-        const Real pP[2] = {rX[ss+1] +width[ss+1]*signp*norX[ss+1],
-                            rY[ss+1] +width[ss+1]*signp*norY[ss+1]  };
-        const Real pM[2] = {rX[ss-1] +width[ss-1]*signp*norX[ss-1],
-                            rY[ss-1] +width[ss-1]*signp*norY[ss-1]  };
+        Real myP[2]= { rX[ss+0] +width[ss+0]*signp*norX[ss+0],
+                       rY[ss+0] +width[ss+0]*signp*norY[ss+0]  };
+        Real pP[2] = { rX[ss+1] +width[ss+1]*signp*norX[ss+1],
+                       rY[ss+1] +width[ss+1]*signp*norY[ss+1]  };
+        Real pM[2] = { rX[ss-1] +width[ss-1]*signp*norX[ss-1],
+                       rY[ss-1] +width[ss-1]*signp*norY[ss-1]  };
         changeToComputationalFrame(myP);
+        changeToComputationalFrame(pP);
+        changeToComputationalFrame(pM);
         const int iap[2] = {  (int)std::floor((myP[0]-org[0])*invh),
                               (int)std::floor((myP[1]-org[1])*invh) };
         Real udef[2] = { vX[ss+0] +width[ss+0]*signp*vNorX[ss+0],
@@ -432,6 +434,11 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, FluidBlock& b, Obs
           Real p[2];
           info.pos(p, sx, sy);
           const Real dist0 = eulerDistSq2D(p, myP);
+          const Real distP = eulerDistSq2D(p,  pP);
+          const Real distM = eulerDistSq2D(p,  pM);
+
+          if(std::fabs(defblock->chi[sy][sx])<std::min({dist0,distP,distM}))
+            continue;
 
           changeFromComputationalFrame(p);
           #ifndef NDEBUG // check that change of ref frame does not affect dist
@@ -440,7 +447,6 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, FluidBlock& b, Obs
             const Real distC = eulerDistSq2D(p, p0);
             assert(std::fabs(distC-dist0)<EPS);
           #endif
-          const Real distP = eulerDistSq2D(p,pP), distM = eulerDistSq2D(p,pM);
 
           int close_s = ss, secnd_s = ss + (distP<distM? 1 : -1);
           Real dist1 = dist0, dist2 = distP<distM? distP : distM;
@@ -479,7 +485,7 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, FluidBlock& b, Obs
             sign2d = grd2Core > Rsq ? -1 : 1; // as always, neg outside
           }
 
-          if(std::fabs(defblock->chi[sy][sx]) > sign2d*dist1) {
+          if(std::fabs(defblock->chi[sy][sx]) > dist1) {
             defblock->udef[sy][sx][0] = udef[0];
             defblock->udef[sy][sx][1] = udef[1];
             defblock->chi [sy][sx] = sign2d*dist1;

@@ -94,24 +94,24 @@ class IF2D_Interpolation1D
     const Real*xx, Real*yy, const unsigned nn, const Real offset) {
     Real y2[n];
     Real u[n-1];
-    Real p, qn, sig, un, h, b, a;
 
     y2[0] = 0;
     u[0] = 0;
     for(unsigned i=1; i<n-1; i++) {
-      sig = (x[i]-x[i-1])/(x[i+1]-x[i-1]);
-      p = sig*y2[i-1] +2;
+      const Real sig = (x[i]-x[i-1])/(x[i+1]-x[i-1]);
+      const Real p = sig*y2[i-1] +2;
       y2[i] = (sig-1)/p;
       u[i] = (y[i+1]-y[i])/(x[i+1]-x[i])-(y[i]-y[i-1])/(x[i]-x[i-1]);
       u[i] = (6*u[i]/(x[i+1]-x[i-1])-sig*u[i-1])/p;
     }
 
-    qn = 0;
-    un = 0;
+    const Real qn = 0;
+    const Real un = 0;
     y2[n-1] = (un-qn*u[n-2])/(qn*y2[n-2] +1);
 
     for(unsigned k=n-2; k>0; k--) y2[k] = y2[k]*y2[k+1] +u[k];
 
+    #pragma omp parallel for schedule(static)
     for(unsigned j=0; j<nn; j++) {
       unsigned int klo = 0;
       unsigned int khi = n-1;
@@ -122,12 +122,12 @@ class IF2D_Interpolation1D
         else                     klo=k;
       }
 
-      h = x[khi] - x[klo];
+      const Real h = x[khi] - x[klo];
       if(h<=0.0) {
         std::cout << "Interpolation points must be distinct!\n"; abort();
       }
-      a = (x[khi]-(xx[j]+offset))/h;
-      b = ((xx[j]+offset)-x[klo])/h;
+      const Real a = (x[khi]-(xx[j]+offset))/h;
+      const Real b = ((xx[j]+offset)-x[klo])/h;
       yy[j] = a*y[klo]+b*y[khi]+((a*a*a-a)*y2[klo]+(b*b*b-b)*y2[khi])*(h*h)/6;
     }
   }
@@ -305,20 +305,15 @@ struct ParameterSchedulerVector : ParameterScheduler<Npoints>
       Nfine);
 
     // look at the different cases
-    if(t<this->t0 or this->t0<0) {
-      // no transition, we are in state 0
-      for(int i=0;i<Nfine;++i) {
-        parameters_fine[i] = parameters_t0_fine[i];
-        dparameters_fine[i] = 0.0;
-      }
-    } else if(t>this->t1) {
-      // no transition, we are in state 1
-      for(int i=0;i<Nfine;++i) {
-        parameters_fine[i] = parameters_t1_fine[i];
-        dparameters_fine[i] = 0.0;
-      }
+    if(t<this->t0 or this->t0<0) { // no transition, we are in state 0
+      memcpy (parameters_fine, parameters_t0_fine, Nfine*sizeof(Real) );
+      memset (dparameters_fine, 0, Nfine*sizeof(Real) );
+    } else if(t>this->t1) { // no transition, we are in state 1
+      memcpy (parameters_fine, parameters_t1_fine, Nfine*sizeof(Real) );
+      memset (dparameters_fine, 0, Nfine*sizeof(Real) );
     } else {
       // we are within transition: interpolate in time for each point of the fine discretization
+      #pragma omp parallel for schedule(static)
       for(int i=0;i<Nfine;++i)
         IF2D_Interpolation1D::cubicInterpolation(this->t0, this->t1, t,
           parameters_t0_fine[i], parameters_t1_fine[i], dparameters_t0_fine[i],
@@ -349,6 +344,7 @@ struct ParameterSchedulerLearnWave : ParameterScheduler<Npoints>
     const Real _1oL = 1./Length;
     const Real _1oT = 1./Twave;
     // the fish goes through (as function of t and s) a wave function that describes the curvature
+    #pragma omp parallel for schedule(static)
     for(int i=0;i<Nfine;++i) {
       const Real c = positions_fine[i]*_1oL - (t - this->t0)*_1oT; //traveling wave coord
       bool bCheck = true;
