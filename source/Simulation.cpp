@@ -131,7 +131,7 @@ void Simulation::createShapes() {
     // will create a vector of strings, the first containing foo and the second
     // bar so that they can be parsed separately. Reason being that in many
     // situations \n will not be read as line escape but as backslash n.
-    const vector<string> vlines = split(lines, ';');
+    const vector<string> vlines = split(lines, ',');
     for (const string line: vlines)
     {
       istringstream line_stream(line);
