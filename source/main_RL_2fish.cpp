@@ -29,9 +29,9 @@
 
 inline void resetIC(StefanFish* const a, Shape*const p, std::mt19937& gen) {
   uniform_real_distribution<Real> disA(-20./180.*M_PI, 20./180.*M_PI);
-  uniform_real_distribution<Real> disX(-0.25, 0.25),  disY(-0.25, 0.25);
-  Real C[2] = { p->center[0] + (1.5+disX(gen))*a->length,
-                p->center[1] +      disY(gen) *a->length };
+  uniform_real_distribution<Real> disX(0, 0.5),  disY(-0.25, 0.25);
+  Real C[2] = { p->center[0] + (1+disX(gen))*a->length,
+                p->center[1] +    disY(gen) *a->length };
   p->centerOfMass[1] = p->center[1] - ( C[1] - p->center[1] );
   p->center[1] = p->center[1] - ( C[1] - p->center[1] );
   a->setCenterOfMass(C);
@@ -43,8 +43,8 @@ inline void setAction(StefanFish* const agent,
 }
 inline vector<double> getState(
   const StefanFish* const a, const Shape*const p, const double t) {
-  const double X = ( a->centerOfMass[0] - p->centerOfMass[0] )/ a->length;
-  const double Y = ( a->centerOfMass[1] - p->centerOfMass[1] )/ a->length;
+  const double X = ( a->center[0] - p->center[0] )/ a->length;
+  const double Y = ( a->center[1] - p->center[1] )/ a->length;
   const double A = a->getOrientation(), T = a->getPhase(t);
   const double U = a->getU() * a->Tperiod / a->length;
   const double V = a->getV() * a->Tperiod / a->length;
@@ -55,13 +55,13 @@ inline vector<double> getState(
   return S;
 }
 inline bool isTerminal(const StefanFish*const a, const Shape*const p) {
-  const double X = ( a->centerOfMass[0] - p->centerOfMass[0] )/ a->length;
-  const double Y = ( a->centerOfMass[1] - p->centerOfMass[1] )/ a->length;
+  const double X = ( a->center[0] - p->center[0] )/ a->length;
+  const double Y = ( a->center[1] - p->center[1] )/ a->length;
   assert(X>0);
-  return std::fabs(Y)>1 || X<1 || X>3;
+  return std::fabs(Y)>1 || X<0.5 || X>3;
 }
 inline double getReward(const StefanFish* const a, const Shape*const p) {
-  return isTerminal(a, p)? -1 : a->EffPDefBnd;
+  return isTerminal(a, p)? -100 : a->EffPDefBnd;
 }
 inline double getTimeToNextAct(const StefanFish* const agent, const double t) {
   return t + agent->getLearnTPeriod() / 2;
