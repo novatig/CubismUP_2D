@@ -21,6 +21,10 @@ FishData::FishData(Real L, Real Tp, Real phi, Real _h, const Real A):
   assert(k+1==Nm);
   //cout << "Discrepancy of midline length: " << std::fabs(rS[k]-L) << endl;
   rS[k] = std::min(rS[k], (Real)L);
+  std::fill(rX, rX+Nm, 0);
+  std::fill(rY, rY+Nm, 0);
+  std::fill(vX, vX+Nm, 0);
+  std::fill(vY, vY+Nm, 0);
 }
 FishData::~FishData() {
   _dealloc(rS); _dealloc(rX); _dealloc(rY); _dealloc(vX); _dealloc(vY);

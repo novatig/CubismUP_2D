@@ -27,7 +27,7 @@ class Shape
   const Real origC[2], origAng;
   Real center[2]; // for single density, this corresponds to centerOfMass
   Real centerOfMass[2];
-  Real d_gm[2]; // distance of center of geometry to center of mass
+  Real d_gm[2] = {0,0}; // distance of center of geometry to center of mass
   Real labCenterOfMass[2] = {0,0};
   Real orientation;
   Real M = 0;
@@ -103,8 +103,7 @@ class Shape
  public:
   Shape( SimulationData& s, ArgumentParser& p, Real C[2] ) :
   sim(s), origC{C[0],C[1]}, origAng( p("-angle").asDouble(0)*M_PI/180 ),
-  center{C[0],C[1]}, centerOfMass{C[0],C[1]},
-  d_gm{0,0}, orientation(origAng),
+  center{C[0],C[1]}, centerOfMass{C[0],C[1]}, orientation(origAng),
   rhoS( p("-rhoS").asDouble(1) ),
   bForced( p("-bForced").asBool(false) ),
   bFixed( p("-bFixed").asBool(false) ),
@@ -127,40 +126,42 @@ class Shape
 
   virtual void updatePosition(double dt);
 
-  void setCentroid(Real centroid[2])
+  void setCentroid(Real C[2])
   {
-    center[0] = centroid[0];
-    center[1] = centroid[1];
-
-    centerOfMass[0] = center[0] - std::cos(orientation)*d_gm[0] + std::sin(orientation)*d_gm[1];
-    centerOfMass[1] = center[1] - std::sin(orientation)*d_gm[0] - std::cos(orientation)*d_gm[1];
+    this->center[0] = C[0];
+    this->center[1] = C[1];
+    const Real cost = std::cos(this->orientation);
+    const Real sint = std::sin(this->orientation);
+    this->centerOfMass[0] = C[0] - cost*this->d_gm[0] + sint*this->d_gm[1];
+    this->centerOfMass[1] = C[1] - sint*this->d_gm[0] - cost*this->d_gm[1];
   }
 
   void setCenterOfMass(Real com[2])
   {
-    centerOfMass[0] = com[0];
-    centerOfMass[1] = com[1];
-
-    center[0] = centerOfMass[0] + std::cos(orientation)*d_gm[0] - std::sin(orientation)*d_gm[1];
-    center[1] = centerOfMass[1] + std::sin(orientation)*d_gm[0] + std::cos(orientation)*d_gm[1];
+    this->centerOfMass[0] = com[0];
+    this->centerOfMass[1] = com[1];
+    const Real cost = std::cos(this->orientation);
+    const Real sint = std::sin(this->orientation);
+    this->center[0] = com[0] + cost*this->d_gm[0] - sint*this->d_gm[1];
+    this->center[1] = com[1] + sint*this->d_gm[0] + cost*this->d_gm[1];
   }
 
   void getCentroid(Real centroid[2]) const
   {
-    centroid[0] = center[0];
-    centroid[1] = center[1];
+    centroid[0] = this->center[0];
+    centroid[1] = this->center[1];
   }
 
   virtual void getCenterOfMass(Real com[2]) const
   {
-    com[0] = centerOfMass[0];
-    com[1] = centerOfMass[1];
+    com[0] = this->centerOfMass[0];
+    com[1] = this->centerOfMass[1];
   }
 
   void getLabPosition(Real com[2]) const
   {
-    com[0] = labCenterOfMass[0];
-    com[1] = labCenterOfMass[1];
+    com[0] = this->labCenterOfMass[0];
+    com[1] = this->labCenterOfMass[1];
   }
 
   Real getU() const { return u; }
@@ -169,11 +170,11 @@ class Shape
 
   Real getOrientation() const
   {
-    return orientation;
+    return this->orientation;
   }
   void setOrientation(const Real angle)
   {
-    orientation = angle;
+    this->orientation = angle;
   }
 
   virtual Real getMinRhoS() const;

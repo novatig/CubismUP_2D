@@ -24,10 +24,8 @@ protected:
   {
     #ifndef NDEBUG
     #pragma omp parallel for schedule(static)
-    for(size_t i=0; i<vInfo.size(); i++)
-    {
-      BlockInfo info = vInfo[i];
-      FluidBlock& b = *(FluidBlock*)info.ptrBlock;
+    for(size_t i=0; i<vInfo.size(); i++) {
+      const FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
 
       for(int iy=0; iy<FluidBlock::sizeY; ++iy)
       for(int ix=0; ix<FluidBlock::sizeX; ++ix)
