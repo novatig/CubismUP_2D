@@ -1,7 +1,4 @@
-CXX=g++
-LD=g++
-
-ifeq "1" "1"
+ifneq "$(findstring g++, $(CXX))" ""
 
 CPPFLAGS += -DUSE_VTK -I/usr/include/vtk/
 LIBS += -L/usr/lib64/vtk/ -lvtkCommonCore -lvtkCommonDataModel -lvtkIOXML
