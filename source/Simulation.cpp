@@ -34,12 +34,11 @@
 #include <algorithm>
 #include <iterator>
 
-static inline vector<string> splitter(string& content) {
-    vector<string> split_content;
-    const regex pattern(R"(\\n)");
-    copy( sregex_token_iterator(content.begin(), content.end(), pattern, -1),
-    sregex_token_iterator(), back_inserter(split_content) );
-    return split_content;
+
+static inline vector<string> split(const string &s, const char delim) {
+  stringstream ss(s); string item; vector<string> tokens;
+  while (getline(ss, item, delim)) tokens.push_back(item);
+  return tokens;
 }
 
 void Simulation::dump(string fname) {
@@ -128,11 +127,11 @@ void Simulation::createShapes() {
     std::replace(lines.begin(), lines.end(), '_', ' ');
     // Two options! Either we have list of lines each containing a description
     // of an obstacle (like factory files or CUP3D factory-descriptor)
-    // Or we have an argument list that looks like -shapes foo\nbar. Splitter
+    // Or we have an argument list that looks like -shapes foo;bar. Splitter
     // will create a vector of strings, the first containing foo and the second
     // bar so that they can be parsed separately. Reason being that in many
     // situations \n will not be read as line escape but as backslash n.
-    const vector<string> vlines = splitter(lines);
+    const vector<string> vlines = split(lines, ';');
     for (const string line: vlines)
     {
       istringstream line_stream(line);

@@ -1,26 +1,24 @@
-CC ?= g++
-LD ?= g++
-NVCC?=nvcc
+ifeq ($(INTEL_LICENSE_FILE),)
+compiler ?= gnu
+else
+compiler ?= intel
+endif
+ifeq "$(compiler)" "intel"
+CXX ?= icpc
+LD = $(CXX)
+include make.icc.flags
+else
+CXX ?= g++
+LD = $(CXX)
+include make.gcc.flags
+endif
+
+NVCC ?= nvcc
 
 poisson ?= cpu
-nthreads ?= 24
 config ?= production
 precision ?= single
-bs ?= 32
 smarties ?= false
-
-CPPFLAGS= -D_BS_=$(bs)
-NVFLAGS= -code=sm_60 -arch=compute_60
-
-ifeq "$(config)" "debug"
-NVFLAGS += -g
-CPPFLAGS += -g
-#CPPFLAGS += -fsanitize=address
-#LIBS += -fsanitize=address
-else
-NVFLAGS += -DNDEBUG -O3 --use_fast_math
-CPPFLAGS += -DNDEBUG -O3 -fstrict-aliasing -march=native -mtune=native -ffast-math -falign-functions=32
-endif
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
@@ -42,15 +40,13 @@ ifneq "$(findstring daint,$(shell hostname))" ""
 include make.daint
 endif
 
-CPPFLAGS += -std=c++11 -fopenmp -Wall -D_ALIGNBYTES_=32
-CPPFLAGS += -DNTHREADS=$(nthreads)
+bs ?= 32
+nthreads ?= 24
+CPPFLAGS+= -D_BS_=$(bs) -D_ALIGNBYTES_=32 -DNTHREADS=$(nthreads)
+NVFLAGS+= -code=sm_60 -arch=compute_60
+
 CPPFLAGS += -I../source/ -I../Cubism/source/
 NVFLAGS += -I../Cubism/source/
-CPPFLAGS+= -Wextra -Wfloat-equal -Wundef -Wcast-align -Woverloaded-virtual
-CPPFLAGS+= -Wlogical-op -Wmissing-declarations -Wredundant-decls -Wshadow
-CPPFLAGS+= -Wwrite-strings -Wno-unused-parameter #-Wno-cpp
-CPPFLAGS+= -Wno-float-equal
-LIBS += -fopenmp
 
 ifeq "$(precision)" "single"
     CPPFLAGS += -D_FLOAT_PRECISION_
@@ -94,7 +90,7 @@ simulation: main.o $(OBJECTS)
 	$(LD) main.o $(OBJECTS) $(LIBS) -o $@
 
 %.o: %.cpp
-	$(CC) $(CPPFLAGS) -c $< -o $@
+	$(CXX) $(CPPFLAGS) -c $< -o $@
 
 PoissonSolverScalarCUDA.o: PoissonSolverScalarCUDA.cu
 	nvcc $(NVFLAGS) -c $< -o $@

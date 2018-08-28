@@ -230,7 +230,7 @@ StefanFish::StefanFish(SimulationData&s,ArgumentParser&p,Real C[2]):Fish(s,p,C),
   printf("CurvatureFish %d %f %f %f\n",myFish->Nm, length, Tperiod, phaseShift);
 }
 
-static inline Real sgn(const Real val) { return (0 < val) - (val < 0); }
+//static inline Real sgn(const Real val) { return (0 < val) - (val < 0); }
 void StefanFish::create(const vector<BlockInfo>& vInfo)
 {
   CurvatureFish* const cFish = dynamic_cast<CurvatureFish*>( myFish );

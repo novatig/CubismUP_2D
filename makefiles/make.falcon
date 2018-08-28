@@ -1,4 +1,4 @@
-CC=g++
+CXX=g++
 LD=g++
 
 ifeq "1" "1"
