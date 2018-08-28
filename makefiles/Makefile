@@ -91,7 +91,7 @@ blowfish: main_RL_blowfish.o $(OBJECTS)
 	ar rs libsimulation.a $^
 
 simulation: main.o $(OBJECTS)
-	$(LD) main.o $(OBJECTS) -o $@ $(LIBS)
+	$(LD) main.o $(OBJECTS) $(LIBS) -o $@
 
 %.o: %.cpp
 	$(CC) $(CPPFLAGS) -c $< -o $@
