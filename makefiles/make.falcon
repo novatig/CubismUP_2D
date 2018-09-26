@@ -1,10 +1,10 @@
-ifneq "$(findstring g++, $(CXX))" ""
+#ifneq "$(findstring g++, $(CXX))" ""
 
 CPPFLAGS += -DUSE_VTK -I/usr/include/vtk/
 LIBS += -L/usr/lib64/vtk/ -lvtkCommonCore -lvtkCommonDataModel -lvtkIOXML
 
-else
+#else
 
-LIBS+= -lhdf5
+#LIBS+= -lhdf5
 
-endif
+#endif
