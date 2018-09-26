@@ -30,7 +30,7 @@
 inline void resetIC(BlowFish* const agent, Communicator*const c) {
   const Real A = 5*M_PI/180; // start between -15 and 15 degrees
   uniform_real_distribution<Real> dis(-A, A);
-  const auto SA = comm->bTrain? dis(comm->gen()) : 0.00;
+  const auto SA = c->isTraining() ? dis(c->getPRNG()) : 0.00;
   agent->setOrientation(SA);
 }
 inline void setAction(BlowFish* const agent, const vector<double> act) {
@@ -85,10 +85,13 @@ int app_main(
 
   Simulation sim(argc, argv);
   sim.init();
-  if(not comm->bTrain) sim.sim.dumpTime = agent->timescale / 10;
 
   BlowFish* const agent = dynamic_cast<BlowFish*>( sim.getShapes()[0] );
   if(agent==nullptr) { printf("Obstacle was not a BlowFish!\n"); abort(); }
+  if(comm->isTraining() == false) {
+    sim.sim.verbose = true; sim.sim.muteAll = false;
+    sim.sim.dumpTime = agent->Tperiod / 20;
+  }
   char dirname[1024]; dirname[1023] = '\0';
   unsigned sim_id = 0, tot_steps = 0;
 

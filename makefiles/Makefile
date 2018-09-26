@@ -66,7 +66,7 @@ VPATH := $(SRC_DIR):$(CUBISM_DIR)
 
 ifneq "$(smarties)" "false"
 SMARTIESDIR ?= ../../smarties/source/
-CPPFLAGS += -I$(SMARTIESDIR)/Communicators/
+CPPFLAGS += -I$(SMARTIESDIR)/Communicators/ -DSMARTIES_APP
 endif
 
 ifeq "$(poisson)" "gpu"
