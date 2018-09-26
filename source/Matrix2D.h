@@ -18,10 +18,10 @@ x& operator=(const x& culatone){abort(); return *this;}
 template <class DataType>  class Matrix2D
 {
 private:
-  DataType * m_pData;
-  unsigned int m_vSize[2];
-  unsigned int m_nElements;
-  bool m_bDataOwner;
+  DataType * const m_pData;
+  const unsigned int m_vSize[2];
+  const unsigned int m_nElements;
+  const bool m_bDataOwner;
 public:
   //_FORBID_COPIES(Matrix2D)
 
@@ -47,20 +47,9 @@ public:
 };
 
 template <class DataType>  Matrix2D<DataType>::Matrix2D(unsigned int nSizeX, unsigned int nSizeY, DataType * data):
-  m_pData(NULL),
-  m_nElements(0),
-  m_bDataOwner(data==NULL)
-{
-  m_vSize[0] = nSizeX;
-  m_vSize[1] = nSizeY;
-
-  m_nElements = nSizeX*nSizeY;
-
-  if (m_bDataOwner)
-    m_pData = new DataType[m_nElements];
-  else
-    m_pData = data;
-}
+  m_pData(data==nullptr? new DataType[nSizeX*nSizeY] : data),
+  m_vSize{nSizeX, nSizeY}, m_nElements(nSizeX*nSizeY),
+  m_bDataOwner(data==nullptr) {}
 
  template <class DataType> inline DataType & Matrix2D<DataType>::Access(unsigned int ix, unsigned int iy) const
 {

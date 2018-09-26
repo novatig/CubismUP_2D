@@ -6,9 +6,13 @@ CPPFLAGS+= -Wlogical-op -Wmissing-declarations -Wredundant-decls -Wshadow
 CPPFLAGS+= -Wwrite-strings -Wno-unused-parameter #-Wno-cpp
 CPPFLAGS+= -Wno-float-equal
 
-ifeq "$(config)" "debug"
+#ifeq "$(config)" "debug"
+ifeq "$(findstring prod,$(config))" ""
 CPPFLAGS+= -g -O0
 else
 NVFLAGS+= -DNDEBUG -O3 --use_fast_math
 CPPFLAGS+= -DNDEBUG -O3 -fstrict-aliasing -march=native -mtune=native -ffast-math -falign-functions -ftree-vectorize -fmerge-all-constants
 endif
+
+#CPPFLAGS+= -fsanitize=address
+#LIBS+= -fsanitize=address

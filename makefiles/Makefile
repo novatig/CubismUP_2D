@@ -67,8 +67,6 @@ VPATH := $(SRC_DIR):$(CUBISM_DIR)
 ifneq "$(smarties)" "false"
 SMARTIESDIR ?= ../../smarties/source/
 CPPFLAGS += -I$(SMARTIESDIR)/Communicators/
-OBJECTS += Communicator.o
-VPATH := $(VPATH):$(SMARTIESDIR)/Communicators/
 endif
 
 ifeq "$(poisson)" "gpu"
@@ -91,6 +89,9 @@ simulation: main.o $(OBJECTS)
 
 %.o: %.cpp
 	$(CXX) $(CPPFLAGS) -c $< -o $@
+
+%.d: %.cpp
+	$(CC) $(CPPFLAGS) -c -MD $<
 
 PoissonSolverScalarCUDA.o: PoissonSolverScalarCUDA.cu
 	nvcc $(NVFLAGS) -c $< -o $@

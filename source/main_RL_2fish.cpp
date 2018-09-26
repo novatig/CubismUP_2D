@@ -27,15 +27,15 @@
 // max number of actions per simulation
 // range of angles in initial conditions
 
-inline void resetIC(StefanFish* const a, Shape*const p, std::mt19937& gen) {
+inline void resetIC(StefanFish* const a, Shape*const p, std::mt19937* gen) {
   uniform_real_distribution<Real> disA(-20./180.*M_PI, 20./180.*M_PI);
   uniform_real_distribution<Real> disX(0, 0.5),  disY(-0.25, 0.25);
-  Real C[2] = { p->center[0] + (1+disX(gen))*a->length,
-                p->center[1] +    disY(gen) *a->length };
+  Real C[2] = { p->center[0] + (1+disX(*gen))*a->length,
+                p->center[1] +    disY(*gen) *a->length };
   p->centerOfMass[1] = p->center[1] - ( C[1] - p->center[1] );
   p->center[1] = p->center[1] - ( C[1] - p->center[1] );
   a->setCenterOfMass(C);
-  a->setOrientation(disA(gen));
+  a->setOrientation(disA(*gen));
 }
 inline void setAction(StefanFish* const agent,
   const vector<double> act, const double t) {
@@ -76,15 +76,16 @@ int app_main(
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
   const int nActions = 2, nStates = 10;
   const unsigned maxLearnStepPerSim = 200; // random number... TODO
-  Communicator& communicator = *comm;
-  communicator.update_state_action_dims(nStates, nActions);
+  cout << "still works? " << comm->gen_ptr << endl;
+  //cout << "still works? " << (*comm->gen_ptr)() << endl;
+  comm->update_state_action_dims(nStates, nActions);
   // Tell smarties that action space should be bounded.
   // First action modifies curvature, only makes sense between -1 and 1
   // Second action affects Tp = (1+act[1])*Tperiod_0 (eg. halved if act[1]=-.5).
   // If too small Re=L^2*Tp/nu would increase too much, we allow it to
   //  double at most, therefore we set the bounds between -0.5 and 0.5.
   vector<double> upper_action_bound{1.0, 0.25}, lower_action_bound{-1., -.25};
-  communicator.set_action_scales(upper_action_bound, lower_action_bound, true);
+  comm->set_action_scales(upper_action_bound, lower_action_bound, true);
 
   Simulation sim(argc, argv);
   sim.init();
@@ -104,17 +105,17 @@ int app_main(
     mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     chdir(dirname);
     sim.reset();
-    resetIC(agent, object, communicator.gen); // randomize initial conditions
+    resetIC(agent, object, comm->gen_ptr); // randomize initial conditions
 
     double t = 0, tNextAct = 0;
     unsigned step = 0;
     bool agentOver = false;
 
-    communicator.sendInitState(getState(agent,object,t)); //send initial state
+    comm->sendInitState(getState(agent,object,t)); //send initial state
 
     while (true) //simulation loop
     {
-      setAction(agent, communicator.recvAction(), tNextAct);
+      setAction(agent, comm->recvAction(), tNextAct);
       tNextAct = getTimeToNextAct(agent, tNextAct);
       while (t < tNextAct)
       {
@@ -137,16 +138,16 @@ int app_main(
 
       if (agentOver) {
         printf("Agent failed\n"); fflush(0);
-        communicator.sendTermState(state, reward);
+        comm->sendTermState(state, reward);
         break;
       }
       else
       if (step >= maxLearnStepPerSim) {
         printf("Sim ended\n"); fflush(0);
-        communicator.truncateSeq(state, reward);
+        comm->truncateSeq(state, reward);
         break;
       }
-      else communicator.sendState(state, reward);
+      else comm->sendState(state, reward);
     } // simulation is done
     chdir("../");
     sim_id++;
