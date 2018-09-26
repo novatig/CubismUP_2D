@@ -27,15 +27,18 @@
 // max number of actions per simulation
 // range of angles in initial conditions
 
-inline void resetIC(StefanFish* const a, Shape*const p, std::mt19937& gen) {
+inline void resetIC(StefanFish* const a, Shape*const p, Communicator*const c) {
   uniform_real_distribution<Real> disA(-20./180.*M_PI, 20./180.*M_PI);
   uniform_real_distribution<Real> disX(0, 0.5),  disY(-0.25, 0.25);
-  Real C[2] = { p->center[0] + (1+disX(gen))*a->length,
-                p->center[1] +    disY(gen) *a->length };
+  const auto SX = comm->bTrain? disX(comm->gen()) : 0.25;
+  const auto SY = comm->bTrain? disY(comm->gen()) : 0.00;
+  const auto SA = comm->bTrain? disA(comm->gen()) : 0.00;
+  Real C[2] = { p->center[0] + (1+SX)*a->length,
+                p->center[1] +    SY *a->length };
   p->centerOfMass[1] = p->center[1] - ( C[1] - p->center[1] );
   p->center[1] = p->center[1] - ( C[1] - p->center[1] );
   a->setCenterOfMass(C);
-  a->setOrientation(disA(gen));
+  a->setOrientation(SA);
 }
 inline void setAction(StefanFish* const agent,
   const vector<double> act, const double t) {
@@ -76,7 +79,7 @@ int app_main(
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
   const int nActions = 2, nStates = 10;
   const unsigned maxLearnStepPerSim = 200; // random number... TODO
-  cout << "still works? " << &comm->gen << endl;
+
   comm->update_state_action_dims(nStates, nActions);
   // Tell smarties that action space should be bounded.
   // First action modifies curvature, only makes sense between -1 and 1
@@ -88,11 +91,11 @@ int app_main(
 
   Simulation sim(argc, argv);
   sim.init();
+  if(not comm->bTrain) sim.sim.dumpTime = agent->timescale / 10;
 
   Shape * const object = sim.getShapes()[0];
   StefanFish*const agent = dynamic_cast<StefanFish*>( sim.getShapes()[1] );
   if(agent==nullptr) { printf("Agent was not a StefanFish!\n"); abort(); }
-  //sim.sim.dumpTime = agent->timescale / 10; // to force dumping
   char dirname[1024]; dirname[1023] = '\0';
   unsigned sim_id = 0, tot_steps = 0;
 
@@ -104,7 +107,7 @@ int app_main(
     mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     chdir(dirname);
     sim.reset();
-    resetIC(agent, object, comm->gen); // randomize initial conditions
+    resetIC(agent, object, comm); // randomize initial conditions
 
     double t = 0, tNextAct = 0;
     unsigned step = 0;

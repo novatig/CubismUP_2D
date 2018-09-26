@@ -27,10 +27,11 @@
 // max number of actions per simulation
 // range of angles in initial conditions
 
-inline void resetIC(BlowFish* const agent, std::mt19937& gen) {
+inline void resetIC(BlowFish* const agent, Communicator*const c) {
   const Real A = 5*M_PI/180; // start between -15 and 15 degrees
   uniform_real_distribution<Real> dis(-A, A);
-  agent->setOrientation(dis(gen));
+  const auto SA = comm->bTrain? dis(comm->gen()) : 0.00;
+  agent->setOrientation(SA);
 }
 inline void setAction(BlowFish* const agent, const vector<double> act) {
   agent->flapAcc_R = act[0]/agent->timescale/agent->timescale;
@@ -79,15 +80,15 @@ int app_main(
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
   const int nActions = 2, nStates = 8;
   const unsigned maxLearnStepPerSim = 500; // random number... TODO
-  Communicator& communicator = *comm;
-  communicator.update_state_action_dims(nStates, nActions);
+
+  comm->update_state_action_dims(nStates, nActions);
 
   Simulation sim(argc, argv);
   sim.init();
+  if(not comm->bTrain) sim.sim.dumpTime = agent->timescale / 10;
 
   BlowFish* const agent = dynamic_cast<BlowFish*>( sim.getShapes()[0] );
   if(agent==nullptr) { printf("Obstacle was not a BlowFish!\n"); abort(); }
-  //sim.sim.dumpTime = agent->timescale / 10; // to force dumping
   char dirname[1024]; dirname[1023] = '\0';
   unsigned sim_id = 0, tot_steps = 0;
 
@@ -99,17 +100,17 @@ int app_main(
     mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     chdir(dirname);
     sim.reset();
-    resetIC(agent, communicator.gen); // randomize initial conditions
+    resetIC(agent, comm); // randomize initial conditions
 
-    communicator.sendInitState(getState(agent)); //send initial state
-
-    Real t = 0;
+    double t = 0;
     unsigned step = 0;
     bool agentOver = false;
 
+    comm->sendInitState(getState(agent)); //send initial state
+
     while (true) //simulation loop
     {
-      setAction(agent, communicator.recvAction());
+      setAction(agent, comm->recvAction());
       const double tNextAct = getTimeToNextAct(agent, t);
       while (t < tNextAct)
       {
@@ -132,16 +133,16 @@ int app_main(
 
       if (agentOver) {
         printf("Agent failed\n"); fflush(0);
-        communicator.sendTermState(state, reward);
+        comm->sendTermState(state, reward);
         break;
       }
       else
       if (step >= maxLearnStepPerSim) {
         printf("Sim ended\n"); fflush(0);
-        communicator.truncateSeq(state, reward);
+        comm->truncateSeq(state, reward);
         break;
       }
-      else communicator.sendState(state, reward);
+      else comm->sendState(state, reward);
     } // simulation is done
     chdir("../");
     sim_id++;
