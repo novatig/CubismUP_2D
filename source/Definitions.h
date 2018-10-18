@@ -369,7 +369,7 @@ struct SimulationData
 
   bool verbose = true;
   bool muteAll = false;
-  bool bFreeSpace = true;
+  int poissonType = 0;
   bool bVariableDensity = false;
   // output
   // dumpFreq==0 means that this dumping frequency (in #steps) is not active

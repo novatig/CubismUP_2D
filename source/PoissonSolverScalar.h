@@ -17,7 +17,7 @@ class PoissonSolverBase
   const Real h = grid.getBlocksInfo().front().h_gridpoint;
   const size_t mx;
   const size_t my;
-  const size_t my_hat = my/2 +1;
+  const size_t my_hat;
 
   Real * rhs = nullptr; // rhs in _setup, out in cub2fftw and fftw2cub
 
@@ -55,8 +55,9 @@ class PoissonSolverBase
 
  public:
 
-  PoissonSolverBase(FluidGrid& _grid, const bool bFreeSpace): grid(_grid),
-  mx(bFreeSpace? 2 * nx - 1 : nx), my(bFreeSpace? 2 * ny - 1 : ny) { }
+  PoissonSolverBase(FluidGrid& _grid, const bool bFreeSpace, long _my_hat= -1) :
+  grid(_grid), mx(bFreeSpace? 2*nx-1 : nx), my(bFreeSpace? 2*ny-1 : ny),
+  my_hat(_my_hat<1 ? my/2 +1 : _my_hat) { }
 
   virtual void solve() const = 0;
 
