@@ -15,6 +15,7 @@
 #else
 #include "PoissonSolverScalarFFTW_freespace.h"
 #include "PoissonSolverScalarFFTW_periodic.h"
+#include "PoissonSolverScalarFFTW_DCT.h"
 #endif
 
 class OperatorDivergenceSplit : public GenericLabOperator {
@@ -158,10 +159,12 @@ class CoordinatorPressure : public GenericCoordinator
 {
  protected:
   const double minRho = sim.minRho();
-  const bool bFS = sim.bFreeSpace, bVariableDensity = sim.bVariableDensity;
+  const int bFS = sim.poissonType, bVariableDensity = sim.bVariableDensity;
   const PoissonSolverBase * const pressureSolver =
-   bFS? static_cast<PoissonSolverBase*>(new PoissonSolverFreespace(sim.grid))
-      : static_cast<PoissonSolverBase*>(new PoissonSolverPeriodic( sim.grid));
+   bFS==1? static_cast<PoissonSolverBase*>(new PoissonSolverFreespace(sim.grid))
+    : (
+   bFS==0? static_cast<PoissonSolverBase*>(new PoissonSolverPeriodic( sim.grid))
+         : static_cast<PoissonSolverBase*>(new PoissonSolverDCT( sim.grid ) ) );
 
   inline void updatePressure(const Real invdt) {
     #pragma omp parallel for schedule(static)

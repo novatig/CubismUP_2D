@@ -99,7 +99,10 @@ void Simulation::parseRuntime() {
 
   sim.path2file = parser("-file").asString("./");
   sim.path4serialization = parser("-serialization").asString(sim.path2file);
-  sim.bFreeSpace = parser("-bFreeSpace").asInt(1);
+  if ( parser("-bFreeSpace").asInt(0) )
+    sim.poissonType = 1;
+  if ( parser("-bNeumann").asInt(0) )
+    sim.poissonType = 2;
 
   // simulation settings
   sim.CFL = parser("-CFL").asDouble(.1);
@@ -207,7 +210,7 @@ void Simulation::init() {
 
   pipeline.push_back( new CoordinatorPressure<Lab>(sim) );
   pipeline.push_back( new CoordinatorComputeForces(sim) );
-  if(not sim.bFreeSpace)
+  if( sim.poissonType not_eq 1 )
     pipeline.push_back( new CoordinatorFadeOut(sim) );
 
   cout << "Coordinator/Operator ordering:\n";
