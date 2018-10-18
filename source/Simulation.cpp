@@ -10,8 +10,7 @@
 
 #ifdef USE_VTK
 #include <SerializerIO_ImageVTK.h>
-#else
-#define _USE_HDF_
+#elif defined(_USE_HDF_)
 #include <HDF5Dumper.h>
 #endif
 //#include <ZBinDumper.h>
@@ -29,6 +28,7 @@
 #include "ShapesSimple.h"
 #include "BlowFish.h"
 #include "StefanFish.h"
+#include "Profiler.h"
 
 #include <regex>
 #include <algorithm>
@@ -47,7 +47,7 @@ void Simulation::dump(string fname) {
   #ifdef USE_VTK
     SerializerIO_ImageVTK<FluidGrid, FluidVTKStreamer> dumper;
     dumper.Write( *(sim.grid), sim.path4serialization + ss.str() + ".vti" );
-  #else
+  #elif defined(_USE_HDF_)
     DumpHDF5<FluidGrid,StreamerVelocityVector>(*(sim.grid), sim.step, sim.time,
       StreamerVelocityVector::prefix() + ss.str(), sim.path4serialization);
     //if(sim.bVariableDensity)
@@ -63,6 +63,7 @@ void Simulation::dump(string fname) {
 
 Simulation::Simulation(int argc, char ** argv) : parser(argc,argv)
 {
+  profiler = new Profiler();
   cout << "=================================================================\n";
   cout << "\t\tFlow past a falling obstacle\n";
   cout << "=================================================================\n";
@@ -186,9 +187,9 @@ void Simulation::init() {
 
   // setup initial conditions
   CoordinatorIC coordIC(sim);
-  profiler.push_start(coordIC.getName());
+  //profiler.push_start(coordIC.getName());
   coordIC(0);
-  profiler.pop_stop();
+  //profiler.pop_stop();
 
   pipeline.clear();
 
@@ -216,9 +217,9 @@ void Simulation::init() {
 
 void Simulation::simulate() {
   while (1) {
-    profiler.push_start("DT");
+    //profiler.push_start("DT");
     const double dt = calcMaxTimestep();
-    profiler.pop_stop();
+    //profiler.pop_stop();
     if (advance(dt)) break;
   }
 }
@@ -255,9 +256,9 @@ bool Simulation::advance(const double dt) {
   const bool bDump = sim.bDump();
 
   for (size_t c=0; c<pipeline.size(); c++) {
-    profiler.push_start(pipeline[c]->getName());
+    //profiler.push_start(pipeline[c]->getName());
     (*pipeline[c])(sim.dt);
-    profiler.pop_stop();
+    //profiler.pop_stop();
     // stringstream ss; ss<<path2file<<"avemaria_"<<pipeline[c]->getName();
     // ss<<"_"<<std::setfill('0')<<std::setw(7)<<step<<".vti"; dump(ss);
   }
@@ -266,19 +267,19 @@ bool Simulation::advance(const double dt) {
   sim.step++;
 
   //dump some time steps every now and then
-  profiler.push_start("Dump");
+  //profiler.push_start("Dump");
   if(bDump) {
     sim.registerDump();
     dump();
   }
-  profiler.pop_stop();
+  //profiler.pop_stop();
 
-  if (sim.step % 100 == 0 && sim.verbose) {
-    profiler.printSummary();
-    profiler.reset();
-  }
+  //if (sim.step % 100 == 0 && sim.verbose) {
+  //  profiler.printSummary();
+  //  profiler.reset();
+  //}
 
   const bool bOver = sim.bOver();
-  if(bOver) profiler.printSummary();
+  //if(bOver) profiler.printSummary();
   return bOver;
 }

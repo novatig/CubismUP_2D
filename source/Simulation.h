@@ -19,13 +19,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+class Profiler;
+
 class Simulation
 {
  public:
   SimulationData sim;
  protected:
   ArgumentParser parser;
-  Profiler profiler;
+  Profiler * profiler = nullptr;
   vector<GenericCoordinator*> pipeline;
 
   void createShapes();

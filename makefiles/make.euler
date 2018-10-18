@@ -5,6 +5,13 @@ VTKD=/cluster/home/novatig/VTK-8.1.1/build/
 
 CPPFLAGS+= -I$(VTKDIR)include/vtk-8.1/ -DUSE_VTK
 LIBS+= -L$(VTKD)lib/ -lvtkCommonCore$(VTKV) -lvtkCommonDataModel$(VTKV) -lvtkIOXML$(VTKV)
-else
-LIBS+= -lhdf5
 endif
+
+ifeq "$(compiler)" "intel"
+CPPFLAGS+= -I/cluster/home/novatig/fftw-3.3.5/build_intel/include/
+LIBS+= -L/cluster/home/novatig/fftw-3.3.5/build_intel/lib/
+else
+CPPFLAGS+= -I/cluster/home/novatig/fftw-3.3.5/build_gnu/include/
+LIBS+= -L/cluster/home/novatig/fftw-3.3.5/build_gnu/lib/
+endif
+#CPPFLAGS+= -fsanitize=address

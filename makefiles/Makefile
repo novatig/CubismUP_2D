@@ -51,10 +51,10 @@ NVFLAGS += -I../Cubism/source/
 ifeq "$(precision)" "single"
     CPPFLAGS += -D_FLOAT_PRECISION_
     NVFLAGS += -D_FLOAT_PRECISION_
-    LIBS += -lfftw3f -lfftw3f_threads
+    LIBS += -lfftw3f -lfftw3f_omp
 endif
 ifeq "$(precision)" "double"
-    LIBS += -lfftw3  -lfftw3_threads
+    LIBS += -lfftw3  -lfftw3_omp
 endif
 
 BUILDDIR = .
@@ -67,6 +67,12 @@ VPATH := $(SRC_DIR):$(CUBISM_DIR)
 ifneq "$(smarties)" "false"
 SMARTIESDIR ?= ../../smarties/source/
 CPPFLAGS += -I$(SMARTIESDIR)/Communicators/ -DSMARTIES_APP
+endif
+
+hdf5 ?= on
+ifeq "$(hdf5)" "on"
+LIBS+= -lhdf5
+CPPFLAGS+= -D_USE_HDF_
 endif
 
 ifeq "$(poisson)" "gpu"

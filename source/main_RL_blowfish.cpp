@@ -28,7 +28,7 @@
 // range of angles in initial conditions
 
 inline void resetIC(BlowFish* const agent, Communicator*const c) {
-  const Real A = 5*M_PI/180; // start between -15 and 15 degrees
+  const Real A = 5*M_PI/180; // start between -5 and 5 degrees
   uniform_real_distribution<Real> dis(-A, A);
   const auto SA = c->isTraining() ? dis(c->getPRNG()) : 0.00;
   agent->setOrientation(SA);
@@ -77,6 +77,7 @@ int app_main(
   int argc, char**argv,    // arguments read from app's runtime settings file
   const unsigned numSteps  // number of time steps to run before exit
 ) {
+  printf("Simulating for %u steps accoding to settings:\n", numSteps);
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
   const int nActions = 2, nStates = 8;
   const unsigned maxLearnStepPerSim = 500; // random number... TODO
@@ -90,7 +91,7 @@ int app_main(
   if(agent==nullptr) { printf("Obstacle was not a BlowFish!\n"); abort(); }
   if(comm->isTraining() == false) {
     sim.sim.verbose = true; sim.sim.muteAll = false;
-    sim.sim.dumpTime = agent->Tperiod / 20;
+    sim.sim.dumpTime = agent->timescale / 20;
   }
   char dirname[1024]; dirname[1023] = '\0';
   unsigned sim_id = 0, tot_steps = 0;

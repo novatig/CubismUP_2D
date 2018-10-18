@@ -28,5 +28,4 @@ typedef float Real;
 #include <BlockInfo.h>
 
 #include <BlockLab.h>
-#include <Profiler.h>
 #include "StencilInfo.h"

@@ -10,7 +10,6 @@ class PoissonSolverBase
   FluidGrid& grid;
   const vector<BlockInfo> infos = grid.getBlocksInfo();
 
-  Profiler profiler;
   const int bs[2] = {BlockType::sizeX, BlockType::sizeY};
   const size_t nx = grid.getBlocksPerDimension(1)*bs[1];
   const size_t ny = grid.getBlocksPerDimension(0)*bs[0];

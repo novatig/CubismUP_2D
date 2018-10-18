@@ -114,7 +114,7 @@ protected:
 	std::stack<std::string> m_mapStoppedAgents;
 
 public:
-	void push_start(std::string sAgentName)
+	inline void push_start(std::string sAgentName)
 	{
 		if (m_mapStoppedAgents.size() > 0)
 			getAgent(m_mapStoppedAgents.top()).stop();
@@ -123,7 +123,7 @@ public:
 		getAgent(sAgentName).start();
 	}
 
-	void pop_stop()
+	inline void pop_stop()
 	{
 		std::string sCurrentAgentName = m_mapStoppedAgents.top();
 		getAgent(sCurrentAgentName).stop();
@@ -134,7 +134,7 @@ public:
 		getAgent(m_mapStoppedAgents.top()).start();
 	}
 
-	void clear()
+	inline void clear()
 	{
 		for(std::map<std::string, ProfileAgent*>::iterator it = m_mapAgents.begin(); it != m_mapAgents.end(); it++)
 		{
@@ -153,7 +153,7 @@ public:
 		clear();
 	}
 
-	void printSummary(FILE *outFile=NULL) const
+	inline void printSummary(FILE *outFile=NULL) const
 	{
 		std::vector<ProfileSummaryItem> v = createSummary();
 
@@ -183,7 +183,7 @@ public:
 		if (outFile) fclose(outFile);
 	}
 
-	std::vector<ProfileSummaryItem> createSummary(bool bSkipIrrelevantEntries=true) const
+	inline std::vector<ProfileSummaryItem> createSummary(bool bSkipIrrelevantEntries=true) const
 	{
 		std::vector<ProfileSummaryItem> result;
 		result.reserve(m_mapAgents.size());
@@ -198,14 +198,14 @@ public:
 		return result;
 	}
 
-	void reset()
+	inline void reset()
 	{
 		printf("reset\n");
 		for(std::map<std::string, ProfileAgent*>::const_iterator it = m_mapAgents.begin(); it != m_mapAgents.end(); it++)
 			it->second->_reset();
 	}
 
-	ProfileAgent& getAgent(std::string sName)
+	inline ProfileAgent& getAgent(std::string sName)
 	{
 		if (bVerboseProfiling) {printf("%s ", sName.data());}
 
