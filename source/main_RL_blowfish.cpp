@@ -80,7 +80,7 @@ int app_main(
   printf("Simulating for %u steps accoding to settings:\n", numSteps);
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
   const int nActions = 2, nStates = 8;
-  const unsigned maxLearnStepPerSim = 500; // random number... TODO
+  const unsigned maxLearnStepPerSim = comm->isTraining()? 500 : numSteps;
 
   comm->update_state_action_dims(nStates, nActions);
 
