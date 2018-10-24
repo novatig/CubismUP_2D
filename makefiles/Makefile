@@ -17,7 +17,7 @@ NVCC ?= nvcc
 
 poisson ?= cpu
 config ?= production
-precision ?= single
+precision ?= double
 smarties ?= false
 
 UNAME_S := $(shell uname -s)

@@ -26,7 +26,7 @@ cd ${FOLDERNAME}
 elif [ ${HOST:0:5} == 'daint' ] ;
 then
 
-BASEPATH="/scratch/snx3000/novatig/CUP2D/"
+BASEPATH="${SCRATCH}/CUP2D/"
 export OMP_NUM_THREADS=12
 FOLDERNAME=${BASEPATH}/${RUNNAME}
 mkdir -p ${FOLDERNAME}
