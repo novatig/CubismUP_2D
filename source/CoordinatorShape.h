@@ -29,7 +29,7 @@ class CoordinatorComputeShape : public GenericCoordinator
     for( const auto& shape : sim.shapes )
     {
       shape->updatePosition(dt);
-      Real p[2] = {0,0};
+      double p[2] = {0,0};
       shape->getCentroid(p);
       if (p[0]<0 || p[0]>domainSize[0] || p[1]<0 || p[1]>domainSize[1]) {
         cout << "Body out of domain: " << p[0] << " " << p[1] << endl;

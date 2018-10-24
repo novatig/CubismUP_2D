@@ -28,13 +28,13 @@
 // range of angles in initial conditions
 
 inline void resetIC(StefanFish* const a, Shape*const p, Communicator*const c) {
-  uniform_real_distribution<Real> disA(-20./180.*M_PI, 20./180.*M_PI);
-  uniform_real_distribution<Real> disX(0, 0.5),  disY(-0.25, 0.25);
-  const Real SX = c->isTraining()? disX(c->getPRNG()) : 0.25;
-  const Real SY = c->isTraining()? disY(c->getPRNG()) : 0.00;
-  const Real SA = c->isTraining()? disA(c->getPRNG()) : 0.00;
-  Real C[2] = { p->center[0] + (1+SX)*a->length,
-                p->center[1] +    SY *a->length };
+  uniform_real_distribution<double> disA(-20./180.*M_PI, 20./180.*M_PI);
+  uniform_real_distribution<double> disX(0, 0.5),  disY(-0.25, 0.25);
+  const double SX = c->isTraining()? disX(c->getPRNG()) : 0.25;
+  const double SY = c->isTraining()? disY(c->getPRNG()) : 0.00;
+  const double SA = c->isTraining()? disA(c->getPRNG()) : 0.00;
+  double C[2] = { p->center[0] + (1+SX)*a->length,
+                  p->center[1] +    SY *a->length };
   p->centerOfMass[1] = p->center[1] - ( C[1] - p->center[1] );
   p->center[1] = p->center[1] - ( C[1] - p->center[1] );
   a->setCenterOfMass(C);
@@ -64,7 +64,7 @@ inline bool isTerminal(const StefanFish*const a, const Shape*const p) {
   return std::fabs(Y)>1 || X<0.5 || X>3;
 }
 inline double getReward(const StefanFish* const a, const Shape*const p) {
-  return isTerminal(a, p)? -100 : a->EffPDefBnd;
+  return isTerminal(a, p)? -10 : a->EffPDefBnd;
 }
 inline double getTimeToNextAct(const StefanFish* const agent, const double t) {
   return t + agent->getLearnTPeriod() / 2;

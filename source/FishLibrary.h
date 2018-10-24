@@ -140,10 +140,10 @@ struct FishData
   FishData(Real L, Real Tp, Real phi, Real _h, const Real A=1);
   virtual ~FishData();
 
-  Real integrateLinearMomentum(Real CoM[2], Real vCoM[2]);
-  Real integrateAngularMomentum(Real & angVel);
+  Real integrateLinearMomentum(double CoM[2], double vCoM[2]);
+  Real integrateAngularMomentum(double & angVel);
 
-  void changeToCoMFrameLinear(const Real CoM_internal[2], const Real vCoM_internal[2]);
+  void changeToCoMFrameLinear(const double CoM_internal[2], const double vCoM_internal[2]);
   void changeToCoMFrameAngular(const Real theta_internal, const Real angvel_internal);
 
   //void computeSurface();
@@ -172,7 +172,7 @@ struct AreaSegment
   c{ (bb[0][1]+bb[0][0])/2,        (bb[1][1]+bb[1][0])/2 }
   { assert(w[0]>0); assert(w[1]>0); }
 
-  void changeToComputationalFrame(const Real position[2], const Real angle);
+  void changeToComputationalFrame(const double position[2], const Real angle);
   bool isIntersectingWithAABB(const Real start[2],const Real end[2]) const;
 };
 
@@ -210,8 +210,8 @@ struct PutFishOnBlocks
   }
   static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
 
-  PutFishOnBlocks(const FishData& cf, const Real pos[2],
-    const Real ang): cfish(cf), position{pos[0],pos[1]}, angle(ang) { }
+  PutFishOnBlocks(const FishData& cf, const double pos[2],
+    const Real ang): cfish(cf), position{(Real)pos[0],(Real)pos[1]}, angle(ang) { }
 
   void operator()(const BlockInfo& i, FluidBlock& b,
     ObstacleBlock* const o, const vector<AreaSegment*>& v) const;

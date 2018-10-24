@@ -15,7 +15,7 @@ class StefanFish: public Fish
   // std::array<Real ,6> baseline_points;
   // std::array<Real ,6> baseline_values;
   // Real tau;
-  Real adjTh = 0, adjDy = 0;
+  double adjTh = 0, adjDy = 0;
   const Real followX, followY;
   const bool bCorrectTrajectory;
 
@@ -28,6 +28,6 @@ class StefanFish: public Fish
   double getPhase(const double t) const;
 
   void resetAll() override;
-  StefanFish(SimulationData&s, ArgumentParser&p, Real C[2]);
+  StefanFish(SimulationData&s, ArgumentParser&p, double C[2]);
   void create(const vector<BlockInfo>& vInfo) override;
 };

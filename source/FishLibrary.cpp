@@ -70,17 +70,17 @@ void FishData::_computeMidlineNormals() {
   vNorY[Nm-1] = vNorY[Nm-2];
 }
 
-Real FishData::integrateLinearMomentum(Real CoM[2], Real vCoM[2]) {
+Real FishData::integrateLinearMomentum(double CoM[2], double vCoM[2]) {
   // already worked out the integrals for r, theta on paper
   // remaining integral done with composite trapezoidal rule
   // minimize rhs evaluations --> do first and last point separately
-  Real _area=0, _cmx=0, _cmy=0, _lmx=0, _lmy=0;
+  double _area=0, _cmx=0, _cmy=0, _lmx=0, _lmy=0;
   //#pragma omp parallel for schedule(static) reduction(+:_area,_cmx,_cmy,_lmx,_lmy)
   for(int i=0; i<Nm; ++i) {
-    const Real ds = (i==0) ? rS[1]-rS[0] :
+    const double ds = (i==0) ? rS[1]-rS[0] :
         ((i==Nm-1) ? rS[Nm-1]-rS[Nm-2] :rS[i+1]-rS[i-1]);
-    const Real fac1 = _integrationFac1(i);
-    const Real fac2 = _integrationFac2(i);
+    const double fac1 = _integrationFac1(i);
+    const double fac2 = _integrationFac2(i);
     _area +=                        fac1 *ds/2;
     _cmx  += (rX[i]*fac1 +  norX[i]*fac2)*ds/2;
     _cmy  += (rY[i]*fac1 +  norY[i]*fac2)*ds/2;
@@ -100,25 +100,25 @@ Real FishData::integrateLinearMomentum(Real CoM[2], Real vCoM[2]) {
   //printf("%f %f %f %f %f\n",CoM[0],CoM[1],vCoM[0],vCoM[1], vol);
   return area;
 }
-Real FishData::integrateAngularMomentum(Real& angVel) {
+Real FishData::integrateAngularMomentum(double& angVel) {
   // assume we have already translated CoM and vCoM to nullify linear momentum
   // already worked out the integrals for r, theta on paper
   // remaining integral done with composite trapezoidal rule
   // minimize rhs evaluations --> do first and last point separately
-  Real _J = 0, _am = 0;
+  double _J = 0, _am = 0;
   //#pragma omp parallel for reduction(+:_J,_am) schedule(static)
   for(int i=0; i<Nm; ++i) {
-    const Real ds =   (i==   0) ? rS[1]   -rS[0] :
+    const double ds =   (i==   0) ? rS[1]   -rS[0] :
                     ( (i==Nm-1) ? rS[Nm-1]-rS[Nm-2]
                                 : rS[i+1] -rS[i-1] );
-    const Real fac1 = _integrationFac1(i);
-    const Real fac2 = _integrationFac2(i);
-    const Real fac3 = _integrationFac3(i);
-    const Real tmp_M = (rX[i]*vY[i] - rY[i]*vX[i])*fac1
+    const double fac1 = _integrationFac1(i);
+    const double fac2 = _integrationFac2(i);
+    const double fac3 = _integrationFac3(i);
+    const double tmp_M = (rX[i]*vY[i] - rY[i]*vX[i])*fac1
       + (rX[i]*vNorY[i] -rY[i]*vNorX[i] +vY[i]*norX[i] -vX[i]*norY[i])*fac2
       + (norX[i]*vNorY[i] - norY[i]*vNorX[i])*fac3;
 
-    const Real tmp_J = (rX[i]*rX[i]   + rY[i]*rY[i]  )*fac1
+    const double tmp_J = (rX[i]*rX[i]   + rY[i]*rY[i]  )*fac1
                    + 2*(rX[i]*norX[i] + rY[i]*norY[i])*fac2 + fac3;
 
     _am += tmp_M*ds/2;
@@ -131,7 +131,7 @@ Real FishData::integrateAngularMomentum(Real& angVel) {
   return J;
 }
 
-void FishData::changeToCoMFrameLinear(const Real CoMin[2],const Real vCoMin[2]){
+void FishData::changeToCoMFrameLinear(const double CoMin[2],const double vCoMin[2]){
   //#pragma omp parallel for schedule(static)
   for(int i=0;i<Nm;++i) {
    rX[i] -= CoMin[0]; rY[i] -= CoMin[1]; vX[i] -= vCoMin[0]; vY[i] -= vCoMin[1];
@@ -251,7 +251,7 @@ void FishMidlineData::surfaceToComputationalFrame(const Real theta_comp, const R
 }
 #endif
 
-void AreaSegment::changeToComputationalFrame(const Real pos[2],const Real angle)
+void AreaSegment::changeToComputationalFrame(const double pos[2],const Real angle)
 {
   // we are in CoM frame and change to comp frame --> first rotate around CoM (which is at (0,0) in CoM frame), then update center
   const Real Rmatrix2D[2][2] = {

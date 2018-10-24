@@ -35,8 +35,8 @@ struct FillBlocks_Cylinder
     cylinder_box[1][1] = cylinder_position[1] + safe_radius;
   }
 
-  FillBlocks_Cylinder(Real rad, Real h, Real pos[2], Real rho):
-  radius(rad),safe_radius(rad+2*h),rhoS(rho),cylinder_position{pos[0],pos[1]}
+  FillBlocks_Cylinder(Real rad, Real h, double pos[2], Real rho):
+  radius(rad),safe_radius(rad+2*h),rhoS(rho),cylinder_position{(Real)pos[0],(Real)pos[1]}
   {
       _find_cylinder_box();
   }
@@ -87,8 +87,10 @@ struct FillBlocks_HalfCylinder
    { cylinder_position[1] -safe_radius, cylinder_position[1] +safe_radius }
   };
 
-  FillBlocks_HalfCylinder(Real rad, Real h, Real pos[2], Real rho, Real ang):
-  radius(rad), safe_radius(rad+2*h), cylinder_position{pos[0],pos[1]}, angle(ang), safety(2*h), rhoS(rho) { }
+  FillBlocks_HalfCylinder(Real rad, Real h, double pos[2], Real rho, Real ang):
+  radius(rad), safe_radius(rad+2*h),
+  cylinder_position{(Real)pos[0],(Real)pos[1]},
+  angle(ang), safety(2*h), rhoS(rho) { }
 
   bool _is_touching(const Real min_pos[2], const Real max_pos[2]) const
   {
@@ -141,8 +143,8 @@ struct FillBlocks_Ellipse
   };
 
   FillBlocks_Ellipse(const Real _e0, const Real _e1, const Real h,
-    const Real pos[2], Real ang, Real rho): e0(_e0), e1(_e1), safety(2*h),
-    position{pos[0], pos[1]}, angle(ang), rhoS(rho) {}
+    const double pos[2], Real ang, Real rho): e0(_e0), e1(_e1), safety(2*h),
+    position{(Real)pos[0], (Real)pos[1]}, angle(ang), rhoS(rho) {}
 
   inline bool _is_touching(const Real min_pos[2], const Real max_pos[2]) const
   {
@@ -197,8 +199,8 @@ struct FillBlocks_Plate
     {position[1] -LX-LY-safety, position[1] +LX+LY+safety}
   };
 
-  FillBlocks_Plate(Real lx, Real ly, Real h, const Real pos[2], Real ang, Real avel, Real rho):
-  LX(lx), LY(ly), safety(h*2), position{pos[0],pos[1]}, angle(ang), angvel(avel), rhoS(rho) { }
+  FillBlocks_Plate(Real lx, Real ly, Real h, const double pos[2], Real ang, Real avel, Real rho):
+  LX(lx), LY(ly), safety(h*2), position{(Real)pos[0],(Real)pos[1]}, angle(ang), angvel(avel), rhoS(rho) { }
 
   bool _is_touching(const BlockInfo& info) const
   {
@@ -243,7 +245,7 @@ struct FillBlocks_VarRhoCylinder
     return 0.5+0.5*std::cos(alpha);
   }
 
-  FillBlocks_VarRhoCylinder(Real rad, Real h, Real pos[2], Real rhoT, Real rhoB, Real ang) : radius(rad), safe_radius(rad+2*h), rhoTop(rhoT), rhoBot(rhoB), angle(ang), cylinder_position{pos[0],pos[1]} {}
+  FillBlocks_VarRhoCylinder(Real rad, Real h, double pos[2], Real rhoT, Real rhoB, Real ang) : radius(rad), safe_radius(rad+2*h), rhoTop(rhoT), rhoBot(rhoB), angle(ang), cylinder_position{(Real)pos[0],(Real)pos[1]} {}
 
   bool _is_touching(const Real min_pos[2], const Real max_pos[2]) const
   {
@@ -291,7 +293,7 @@ struct FillBlocks_VarRhoEllipseFinalize
     return 0.5+0.5*std::cos(alpha);
   }
 
-  FillBlocks_VarRhoEllipseFinalize(Real _h, Real C[2], Real rhoT, Real rhoB, Real ang) : h(_h), rhoTop(rhoT), rhoBot(rhoB), angle(ang), position{C[0],C[1]} {}
+  FillBlocks_VarRhoEllipseFinalize(Real _h, double C[2], Real rhoT, Real rhoB, Real ang) : h(_h), rhoTop(rhoT), rhoBot(rhoB), angle(ang), position{(Real)C[0],(Real)C[1]} {}
 
   void operator()(Lab& l, const BlockInfo&i, FluidBlock&b, ObstacleBlock*const o) const;
 };

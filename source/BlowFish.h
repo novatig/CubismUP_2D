@@ -22,10 +22,10 @@ class BlowFish : public Shape
   Real flapAcc_R = 0, flapAcc_L = 0;
 
   void resetAll() override;
-  const Real radius;
-  const Real rhoTop = 1.5; //top half
-  const Real rhoBot = 0.5; //bot half
-  const Real rhoFin = 1.0; //fins
+  const double radius;
+  const double rhoTop = 1.5; //top half
+  const double rhoBot = 0.5; //bot half
+  const double rhoFin = 1.0; //fins
 
   const Real finLength = 0.5*radius; //fins
   const Real finWidth  = 0.1*radius; //fins
@@ -38,7 +38,7 @@ class BlowFish : public Shape
   const Real timescale = sqrt(3*M_PI*radius/deltaRho/fabs(sim.gravity[1])/8);
   const Real minRho = std::min(rhoTop,rhoBot), maxRho = std::max(rhoTop,rhoBot);
 
-  BlowFish(SimulationData&s, ArgumentParser&p, Real C[2]);
+  BlowFish(SimulationData&s, ArgumentParser&p, double C[2]);
 
   void updatePosition(double dt) override;
 

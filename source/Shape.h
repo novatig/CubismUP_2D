@@ -24,33 +24,33 @@ class Shape
   unsigned obstacleID = 0;
   std::map<int,ObstacleBlock*> obstacleBlocks;
   // general quantities
-  const Real origC[2], origAng;
-  Real center[2]; // for single density, this corresponds to centerOfMass
-  Real centerOfMass[2];
-  Real d_gm[2] = {0,0}; // distance of center of geometry to center of mass
-  Real labCenterOfMass[2] = {0,0};
-  Real orientation;
-  Real M = 0;
-  Real V = 0;
-  Real J = 0;
-  Real u = 0; // in lab frame, not sim frame
-  Real v = 0; // in lab frame, not sim frame
-  Real omega = 0;
-  Real computedu = 0;
-  Real computedv = 0;
-  Real computedo = 0;
-  Real area_penal = 0;
-  Real mass_penal = 0;
-  Real forcex_penal = 0;
-  Real forcey_penal = 0;
-  Real torque_penal = 0;
+  const double origC[2], origAng;
+  double center[2]; // for single density, this corresponds to centerOfMass
+  double centerOfMass[2];
+  double d_gm[2] = {0,0}; // distance of center of geometry to center of mass
+  double labCenterOfMass[2] = {0,0};
+  double orientation;
+  double M = 0;
+  double V = 0;
+  double J = 0;
+  double u = 0; // in lab frame, not sim frame
+  double v = 0; // in lab frame, not sim frame
+  double omega = 0;
+  double computedu = 0;
+  double computedv = 0;
+  double computedo = 0;
+  double area_penal = 0;
+  double mass_penal = 0;
+  double forcex_penal = 0;
+  double forcey_penal = 0;
+  double torque_penal = 0;
 
-  Real perimeter=0, forcex=0, forcey=0, forcex_P=0, forcey_P=0;
-  Real forcex_V=0, forcey_V=0, torque=0, torque_P=0, torque_V=0;
-  Real drag=0, thrust=0, circulation=0, Pout=0, PoutBnd=0, defPower=0;
-  Real defPowerBnd=0, Pthrust=0, Pdrag=0, EffPDef=0, EffPDefBnd=0;
+  double perimeter=0, forcex=0, forcey=0, forcex_P=0, forcey_P=0;
+  double forcex_V=0, forcey_V=0, torque=0, torque_P=0, torque_V=0;
+  double drag=0, thrust=0, circulation=0, Pout=0, PoutBnd=0, defPower=0;
+  double defPowerBnd=0, Pthrust=0, Pdrag=0, EffPDef=0, EffPDefBnd=0;
 
-  const Real rhoS;
+  const double rhoS;
   const bool bForced;
   const bool bFixed;
   const bool bForcedx;
@@ -58,8 +58,8 @@ class Shape
   const bool bBlockang;
   const bool bFixedx;
   const bool bFixedy;
-  const Real forcedu;
-  const Real forcedv;
+  const double forcedu;
+  const double forcedv;
 
   virtual void resetAll() {
              center[0] = origC[0];
@@ -86,22 +86,16 @@ class Shape
 
  protected:
 
-  Real smoothHeaviside(Real rR, Real radius, Real eps) const
-  {
-    if (rR < radius-eps*.5) return (Real) 1.;
-    else if (rR > radius+eps*.5) return (Real) 0.;
-    else return (Real) ((1.+cos(M_PI*((rR-radius)/eps+.5)))*.5);
-  }
-
+/*
   inline void rotate(Real p[2]) const
   {
     const Real x = p[0], y = p[1];
     p[0] =  x*std::cos(orientation) + y*std::sin(orientation);
     p[1] = -x*std::sin(orientation) + y*std::cos(orientation);
   }
-
+*/
  public:
-  Shape( SimulationData& s, ArgumentParser& p, Real C[2] ) :
+  Shape( SimulationData& s, ArgumentParser& p, double C[2] ) :
   sim(s), origC{C[0],C[1]}, origAng( p("-angle").asDouble(0)*M_PI/180 ),
   center{C[0],C[1]}, centerOfMass{C[0],C[1]}, orientation(origAng),
   rhoS( p("-rhoS").asDouble(1) ),
@@ -126,53 +120,53 @@ class Shape
 
   virtual void updatePosition(double dt);
 
-  void setCentroid(Real C[2])
+  void setCentroid(double C[2])
   {
     this->center[0] = C[0];
     this->center[1] = C[1];
-    const Real cost = std::cos(this->orientation);
-    const Real sint = std::sin(this->orientation);
+    const double cost = std::cos(this->orientation);
+    const double sint = std::sin(this->orientation);
     this->centerOfMass[0] = C[0] - cost*this->d_gm[0] + sint*this->d_gm[1];
     this->centerOfMass[1] = C[1] - sint*this->d_gm[0] - cost*this->d_gm[1];
   }
 
-  void setCenterOfMass(Real com[2])
+  void setCenterOfMass(double com[2])
   {
     this->centerOfMass[0] = com[0];
     this->centerOfMass[1] = com[1];
-    const Real cost = std::cos(this->orientation);
-    const Real sint = std::sin(this->orientation);
+    const double cost = std::cos(this->orientation);
+    const double sint = std::sin(this->orientation);
     this->center[0] = com[0] + cost*this->d_gm[0] - sint*this->d_gm[1];
     this->center[1] = com[1] + sint*this->d_gm[0] + cost*this->d_gm[1];
   }
 
-  void getCentroid(Real centroid[2]) const
+  void getCentroid(double centroid[2]) const
   {
     centroid[0] = this->center[0];
     centroid[1] = this->center[1];
   }
 
-  virtual void getCenterOfMass(Real com[2]) const
+  virtual void getCenterOfMass(double com[2]) const
   {
     com[0] = this->centerOfMass[0];
     com[1] = this->centerOfMass[1];
   }
 
-  void getLabPosition(Real com[2]) const
+  void getLabPosition(double com[2]) const
   {
     com[0] = this->labCenterOfMass[0];
     com[1] = this->labCenterOfMass[1];
   }
 
-  Real getU() const { return u; }
-  Real getV() const { return v; }
-  Real getW() const { return omega; }
+  double getU() const { return u; }
+  double getV() const { return v; }
+  double getW() const { return omega; }
 
-  Real getOrientation() const
+  double getOrientation() const
   {
     return this->orientation;
   }
-  void setOrientation(const Real angle)
+  void setOrientation(const double angle)
   {
     this->orientation = angle;
   }
@@ -182,8 +176,8 @@ class Shape
   virtual void outputSettings(ostream &outStream) const;
 
   struct Integrals {
-    const Real x, y, m, j, u, v, a;
-    Integrals(Real _x, Real _y, Real _m, Real _j, Real _u, Real _v, Real _a) :
+    const double x, y, m, j, u, v, a;
+    Integrals(double _x, double _y, double _m, double _j, double _u, double _v, double _a) :
     x(_x), y(_y), m(_m), j(_j), u(_u), v(_v), a(_a) {}
     Integrals(const Integrals&c) :
       x(c.x), y(c.y), m(c.m), j(c.j), u(c.u), v(c.v), a(c.a) {}

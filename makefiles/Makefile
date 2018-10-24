@@ -17,7 +17,7 @@ NVCC ?= nvcc
 
 poisson ?= cpu
 config ?= production
-precision ?= single
+precision ?= double
 smarties ?= false
 
 UNAME_S := $(shell uname -s)
@@ -52,8 +52,7 @@ ifeq "$(precision)" "single"
     CPPFLAGS += -D_FLOAT_PRECISION_
     NVFLAGS += -D_FLOAT_PRECISION_
     LIBS += -lfftw3f -lfftw3f_omp
-endif
-ifeq "$(precision)" "double"
+else
     LIBS += -lfftw3  -lfftw3_omp
 endif
 

@@ -47,11 +47,16 @@ then
 
 BASEPATH="/cluster/scratch/novatig/CubismUP_2D"
 NCPUSTR=`lscpu | grep "Core"`
-export OMP_NUM_THREADS=${NCPUSTR: -3}
+#export OMP_NUM_THREADS=${NCPUSTR: -3}
+export OMP_NUM_THREADS=36
+export OMP_PROC_BIND=TRUE
+export OMP_PLACES=cores
+echo $OMP_NUM_THREADS
 FOLDERNAME=${BASEPATH}/${RUNNAME}
 mkdir -p ${FOLDERNAME}
 cp ../makefiles/simulation ${FOLDERNAME}
 cd ${FOLDERNAME}
+./simulation ${OPTIONS} -shapes "${OBJECTS}"
 
 else
 

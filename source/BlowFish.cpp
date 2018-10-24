@@ -14,18 +14,18 @@
 #include "BlowFish.h"
 #include "ShapeLibrary.h"
 
-BlowFish::BlowFish(SimulationData&s, ArgumentParser&p, Real C[2])
+BlowFish::BlowFish(SimulationData&s, ArgumentParser&p, double C[2])
 : Shape(s,p,C), radius( p("-radius").asDouble(0.1) )
 {
-  const Real distHalfCM = 4*radius/(3*M_PI);
-  const Real halfarea = 0.5*M_PI*radius*radius;
+  const double distHalfCM = 4*radius/(3*M_PI);
+  const double halfarea = 0.5*M_PI*radius*radius;
   // based on weighted average
-  const Real CentTop =  distHalfCM;
-  const Real MassTop =  halfarea*rhoTop;
-  const Real CentBot = -distHalfCM;
-  const Real MassBot =  halfarea*rhoBot;
-  const Real CentFin = -std::sin(finAngle0)*(attachDist+finLength/2);
-  const Real MassFin = 2*finLength*finWidth*rhoFin;
+  const double CentTop =  distHalfCM;
+  const double MassTop =  halfarea*rhoTop;
+  const double CentBot = -distHalfCM;
+  const double MassBot =  halfarea*rhoBot;
+  const double CentFin = -std::sin(finAngle0)*(attachDist+finLength/2);
+  const double MassFin = 2*finLength*finWidth*rhoFin;
 
   d_gm[0] = 0;
   d_gm[1] = -(CentTop*MassTop + CentBot*MassBot + CentFin*MassFin)/(MassTop + MassBot + MassFin);
@@ -87,16 +87,16 @@ void BlowFish::updatePosition(double dt)
 
 void BlowFish::create(const vector<BlockInfo>& vInfo)
 {
-  const Real angleAttFin1 = orientation  -finAngle0;
-  const Real angleAttFin2 = orientation  +finAngle0 +M_PI;
-  const Real angleTotFin1 = angleAttFin1 +flapAng_R;
-  const Real angleTotFin2 = angleAttFin2 +flapAng_L;
+  const double angleAttFin1 = orientation  -finAngle0;
+  const double angleAttFin2 = orientation  +finAngle0 +M_PI;
+  const double angleTotFin1 = angleAttFin1 +flapAng_R;
+  const double angleTotFin2 = angleAttFin2 +flapAng_L;
 
-  const Real attach1[2] = {
+  const double attach1[2] = {
     center[0]+attachDist*std::cos(angleAttFin1),
     center[1]+attachDist*std::sin(angleAttFin1)
   };
-  const Real attach2[2] = {
+  const double attach2[2] = {
     center[0]+attachDist*std::cos(angleAttFin2),
     center[1]+attachDist*std::sin(angleAttFin2)
   };

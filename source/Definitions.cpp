@@ -32,6 +32,8 @@ void SimulationData::checkVariableDensity()
   bVariableDensity = false;
   for(const auto& shape : shapes)
     bVariableDensity = bVariableDensity || shape->bVariableDensity();
+  if( bVariableDensity) std::cout << "Using variable density solver\n";
+  if(!bVariableDensity) std::cout << "Using constant density solver\n";
 }
 double SimulationData::maxSpeed() const
 {

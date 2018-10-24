@@ -145,9 +145,9 @@ void Simulation::createShapes() {
       // Comments and empty lines ignored:
       if(objectName.empty() or objectName[0]=='#') continue;
       FactoryFileLineParser ffparser(line_stream);
-      Real center[2] = {
-          (Real) ffparser("-xpos").asDouble(.5*axX/ext),
-          (Real) ffparser("-ypos").asDouble(.5*axY/ext)
+      double center[2] = {
+        ffparser("-xpos").asDouble(.5*axX/ext),
+        ffparser("-ypos").asDouble(.5*axY/ext)
       };
       //ffparser.print_args();
       Shape* shape = nullptr;

@@ -50,8 +50,8 @@ void Shape::outputSettings(ostream &outStream) const
 
 Shape::Integrals Shape::integrateObstBlock(const vector<BlockInfo>& vInfo)
 {
-  Real _x=0, _y=0, _m=0, _j=0, _u=0, _v=0, _a=0;
-  const Real hsq = std::pow(vInfo[0].h_gridpoint, 2);
+  double _x=0, _y=0, _m=0, _j=0, _u=0, _v=0, _a=0;
+  const double hsq = std::pow(vInfo[0].h_gridpoint, 2);
   #pragma omp parallel for schedule(dynamic) reduction(+: _x,_y,_m,_j,_u,_v,_a)
   for(size_t i=0; i<vInfo.size(); i++) {
     const auto pos = obstacleBlocks.find(vInfo[i].blockID);
@@ -61,11 +61,11 @@ Shape::Integrals Shape::integrateObstBlock(const vector<BlockInfo>& vInfo)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
       const Real chi = pos->second->chi[iy][ix];
       if (chi <= 0) continue;
-      Real p[2];
+      double p[2];
       vInfo[i].pos(p, ix, iy);
-      const Real u_ = pos->second->udef[iy][ix][0];
-      const Real v_ = pos->second->udef[iy][ix][1];
-      const Real rhochi = chi * pos->second->rho[iy][ix] * hsq;
+      const double u_ = pos->second->udef[iy][ix][0];
+      const double v_ = pos->second->udef[iy][ix][1];
+      const double rhochi = chi * pos->second->rho[iy][ix] * hsq;
       _x += rhochi*p[0];
       _y += rhochi*p[1];
       p[0] -= centerOfMass[0];
@@ -79,7 +79,7 @@ Shape::Integrals Shape::integrateObstBlock(const vector<BlockInfo>& vInfo)
   }
   _x /= _m; _y /= _m;
   // Parallel axis theorem:
-  const Real dC[2] = { _x - centerOfMass[0], _y - centerOfMass[1] };
+  const double dC[2] = { _x - centerOfMass[0], _y - centerOfMass[1] };
   // I_arbitrary_axis = I_CM + m * dist_CM_axis ^ 2 . Now _j is J around old CM
   _j = _j - _m*(dC[0]*dC[0] + dC[1]*dC[1]);
   _a = _a - ( dC[0]*_v - dC[1]*_u );
@@ -103,8 +103,8 @@ void Shape::removeMoments(const vector<BlockInfo>& vInfo)
   //cout << center[0]<<" "<<I.X<<" "<<center[1]<<" "<<I.Y << endl;
   centerOfMass[0] = I.x; centerOfMass[1] = I.y;
   //center[0] = I.X; center[1] = I.Y;
-  const Real dCx = center[0]-centerOfMass[0];
-  const Real dCy = center[1]-centerOfMass[1];
+  const double dCx = center[0]-centerOfMass[0];
+  const double dCy = center[1]-centerOfMass[1];
   d_gm[0] =  dCx*std::cos(orientation) +dCy*std::sin(orientation);
   d_gm[1] = -dCx*std::sin(orientation) +dCy*std::cos(orientation);
 
@@ -125,7 +125,7 @@ void Shape::removeMoments(const vector<BlockInfo>& vInfo)
 
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
-        Real p[2];
+        double p[2];
         vInfo[i].pos(p, ix, iy);
         p[0] -= centerOfMass[0];
         p[1] -= centerOfMass[1];
@@ -151,8 +151,8 @@ void Shape::removeMoments(const vector<BlockInfo>& vInfo)
 void Shape::computeVelocities()
 {
   const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
-  Real _M = 0, _J = 0, um = 0, vm = 0, am = 0; //linear momenta
-  const Real hsq = std::pow(vInfo[0].h_gridpoint,2);
+  double _M = 0, _J = 0, um = 0, vm = 0, am = 0; //linear momenta
+  const double hsq = std::pow(vInfo[0].h_gridpoint,2);
   #pragma omp parallel for schedule(dynamic) reduction(+:_M,_J,um,vm,am)
   for(size_t i=0; i<vInfo.size(); i++) {
       FluidBlock & b = *(FluidBlock*)vInfo[i].ptrBlock;
@@ -163,12 +163,12 @@ void Shape::computeVelocities()
       for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
         const Real chi = pos->second->chi[iy][ix];
         if (chi <= 0) continue;
-        Real p[2];
+        double p[2];
         vInfo[i].pos(p, ix, iy);
         p[0] -= centerOfMass[0];
         p[1] -= centerOfMass[1];
 
-        const Real rhochi = pos->second->rho[iy][ix] * chi * hsq;
+        const double rhochi = pos->second->rho[iy][ix] * chi * hsq;
         _M += rhochi;
         um += rhochi * b(ix,iy).u;
         vm += rhochi * b(ix,iy).v;
@@ -214,7 +214,7 @@ void Shape::updateLabVelocity( int nSum[2], double uSum[2] )
 void Shape::penalize()
 {
   const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
-  const Real lamdt = sim.dt * sim.lambda;
+  const double lamdt = sim.dt * sim.lambda;
   #pragma omp parallel for schedule(dynamic)
   for(size_t i=0; i<vInfo.size(); i++) {
     FluidBlock & b = *(FluidBlock*)vInfo[i].ptrBlock;
@@ -225,13 +225,13 @@ void Shape::penalize()
     for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
       const Real chi = pos->second->chi[iy][ix];
       if (chi <= 0) continue;
-      Real p[2];
+      double p[2];
       vInfo[i].pos(p, ix, iy);
       p[0] -= centerOfMass[0]; p[1] -= centerOfMass[1];
-      const Real alpha = 1/(1 + lamdt * chi);
+      const double alpha = 1/(1 + lamdt * chi);
       const Real*const udef = pos->second->udef[iy][ix];
-      const Real uTot = u -omega*p[1] +udef[0];// -sim.uinfx;
-      const Real vTot = v +omega*p[0] +udef[1];// -sim.uinfy;
+      const double uTot = u -omega*p[1] +udef[0];// -sim.uinfx;
+      const double vTot = v +omega*p[0] +udef[1];// -sim.uinfy;
       b(ix,iy).u = alpha*b(ix,iy).u + (1-alpha)*uTot;
       b(ix,iy).v = alpha*b(ix,iy).v + (1-alpha)*vTot;
     }
@@ -241,8 +241,8 @@ void Shape::penalize()
 void Shape::diagnostics()
 {
   const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
-  const Real hsq = std::pow(vInfo[0].h_gridpoint, 2);
-  Real _a=0, _m=0, _x=0, _y=0, _t=0;
+  const double hsq = std::pow(vInfo[0].h_gridpoint, 2);
+  double _a=0, _m=0, _x=0, _y=0, _t=0;
   #pragma omp parallel for schedule(dynamic) reduction(+:_a,_m,_x,_y,_t)
   for(size_t i=0; i<vInfo.size(); i++) {
       const auto pos = obstacleBlocks.find(vInfo[i].blockID);
@@ -252,14 +252,14 @@ void Shape::diagnostics()
       for(int iy=0; iy<FluidBlock::sizeY; ++iy)
       for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
         if (pos->second->chi[iy][ix] <= 0) continue;
-        const Real Xs = pos->second->chi[iy][ix] * hsq;
-        Real p[2];
+        const double Xs = pos->second->chi[iy][ix] * hsq;
+        double p[2];
         vInfo[i].pos(p, ix, iy);
         p[0] -= centerOfMass[0];
         p[1] -= centerOfMass[1];
         const Real*const udef = pos->second->udef[iy][ix];
-        const Real uDiff = b(ix,iy).u - (u -omega*p[1] +udef[0]);
-        const Real vDiff = b(ix,iy).v - (v +omega*p[0] +udef[1]);
+        const double uDiff = b(ix,iy).u - (u -omega*p[1] +udef[0]);
+        const double vDiff = b(ix,iy).v - (v +omega*p[0] +udef[1]);
         _a += Xs;
         _m += Xs / b(ix,iy).invRho;
         _x += uDiff*Xs;
@@ -338,7 +338,7 @@ void Shape::computeForces()
   //derived quantities:
   Pthrust    = thrust*vel_norm;
   Pdrag      =   drag*vel_norm;
-  EffPDef    = Pthrust/(Pthrust-min(defPower,(Real)0.));
+  EffPDef    = Pthrust/(Pthrust-min(defPower,(double)0));
   EffPDefBnd = Pthrust/(Pthrust-    defPowerBnd);
 
   #ifndef RL_TRAIN
@@ -370,59 +370,3 @@ void Shape::computeForces()
   #endif
 }
 
-#if 0
-Shape::Integrals Shape::integrateObstBlock(const vector<BlockInfo>& vInfo)
-{
-  double _m=0, _V=0, _j=0, _u=0, _v=0, _a=0, _x=0, _y=0, _X=0, _Y=0;
-  //numerical trick to improve accuracy of sum: multiply m by h!
-  const Real h = vInfo[0].h_gridpoint;
-  #pragma omp parallel for schedule(dynamic) reduction( +: _m,_V,_x,_y,_X,_Y )
-  for(size_t i=0; i<vInfo.size(); i++) {
-    const auto pos = obstacleBlocks.find(vInfo[i].blockID);
-    if(pos == obstacleBlocks.end()) continue;
-    for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-    for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
-      const Real chi = pos->second->chi[iy][ix]*h;
-      if (chi <= 0) continue;
-      Real p[2];
-      vInfo[i].pos(p, ix, iy);
-      const Real rhochi = chi*pos->second->rho[iy][ix];
-      _x += rhochi*p[0];
-      _y += rhochi*p[1];
-      _X += chi*p[0];
-      _Y += chi*p[1];
-      _V += chi;
-      _m += rhochi;
-    }
-  }
-  //first compute the center of mass:
-  _x /= _m; _y /= _m; _X /= _V; _Y /= _V;
-  // here for numerical acuracy don't premultiply by h
-  #pragma omp parallel for schedule(dynamic) reduction( + :_j, _u, _v, _a )
-  for(size_t i=0; i<vInfo.size(); i++) {
-    const auto pos = obstacleBlocks.find(vInfo[i].blockID);
-    if(pos == obstacleBlocks.end()) continue;
-    for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-    for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
-      const Real chi = pos->second->chi[iy][ix];
-      if (chi <= 0) continue;
-      Real p[2];
-      vInfo[i].pos(p, ix,iy);
-      p[0] -= _x; p[1] -= _y;
-      const Real u_ = pos->second->udef[iy][ix][0];
-      const Real v_ = pos->second->udef[iy][ix][1];
-      const Real rhochi = chi*pos->second->rho[iy][ix];
-      _u += rhochi*u_;
-      _v += rhochi*v_;
-      _a += rhochi*(p[0]*v_ - p[1]*u_);
-      _j += rhochi*(p[0]*p[0] + p[1]*p[1]);
-    }
-  }
-  //divide by mass/inertia to get velocities
-  _u *= h/_m; _v *= h/_m; _a /= _j;
-  // multiply by grid-area to get proper mass , moment , and volume
-  _m *= h; _j *= std::pow(h, 2); _V *= h;
-  Shape::Integrals I(_m, _V, _j, _u, _v, _a, _x, _y, _X, _Y);
-  return I;
-}
-#endif

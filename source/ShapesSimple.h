@@ -19,10 +19,10 @@
 
 class Disk : public Shape
 {
-  const Real radius;
+  const double radius;
   const Real tAccel;
  public:
-  Disk(SimulationData& s, ArgumentParser& p, Real C[2] ) :
+  Disk(SimulationData& s, ArgumentParser& p, double C[2] ) :
   Shape(s,p,C), radius( p("-radius").asDouble(0.1) ),
   tAccel( p("-tAccel").asDouble(-1) ) {
     printf("Created a Disk with: R:%f rho:%f tAccel:%f\n",radius,rhoS,tAccel);
@@ -48,11 +48,11 @@ class Disk : public Shape
 class HalfDisk : public Shape
 {
  protected:
-  const Real radius;
+  const double radius;
   const Real tAccel;
 
  public:
-  HalfDisk( SimulationData& s, ArgumentParser& p, Real C[2] ) :
+  HalfDisk( SimulationData& s, ArgumentParser& p, double C[2] ) :
   Shape(s,p,C), radius( p("-radius").asDouble(0.1) ),
   tAccel( p("-tAccel").asDouble(-1) ) {
     printf("Created a half Disk with: R:%f rho:%f\n",radius,rhoS);
@@ -78,10 +78,10 @@ class HalfDisk : public Shape
 class Ellipse : public Shape
 {
  protected:
-  const Real semiAxis[2];
+  const double semiAxis[2];
   //Characteristic scales:
-  const Real majax = std::max(semiAxis[0], semiAxis[1]);
-  const Real minax = std::min(semiAxis[0], semiAxis[1]);
+  const double majax = std::max(semiAxis[0], semiAxis[1]);
+  const double minax = std::min(semiAxis[0], semiAxis[1]);
   const Real velscale = std::sqrt((rhoS/1-1)*9.81*minax);
   const Real lengthscale = majax, timescale = majax/velscale;
   //const Real torquescale = M_PI/8*pow((a*a-b*b)*velscale,2)/a/b;
@@ -91,7 +91,7 @@ class Ellipse : public Shape
   Real powerOutput = 0, old_powerOutput = 0;
 
  public:
-  Ellipse(SimulationData&s, ArgumentParser&p, Real C[2]) : Shape(s,p,C),
+  Ellipse(SimulationData&s, ArgumentParser&p, double C[2]) : Shape(s,p,C),
     semiAxis{ (Real) p("-semiAxisX").asDouble(.1),
               (Real) p("-semiAxisY").asDouble(.2) } {
     printf("Created ellipse semiAxis:[%f %f] rhoS:%f a:%f b:%f velscale:%f lengthscale:%f timescale:%f torquescale:%f\n", semiAxis[0], semiAxis[1], rhoS, majax, minax, velscale, lengthscale, timescale, torquescale); fflush(0);
@@ -117,12 +117,12 @@ class Ellipse : public Shape
 class DiskVarDensity : public Shape
 {
  protected:
-  const Real radius;
-  const Real rhoTop;
-  const Real rhoBot;
+  const double radius;
+  const double rhoTop;
+  const double rhoBot;
 
  public:
-  DiskVarDensity( SimulationData& s, ArgumentParser& p, Real C[2] ) :
+  DiskVarDensity( SimulationData& s, ArgumentParser& p, double C[2] ) :
   Shape(s,p,C), radius( p("-radius").asDouble(0.1) ),
   rhoTop(p("-rhoTop").asDouble(rhoS) ), rhoBot(p("-rhoBot").asDouble(rhoS) ) {
     d_gm[0] = 0;
@@ -163,13 +163,13 @@ class DiskVarDensity : public Shape
 class EllipseVarDensity : public Shape
 {
   protected:
-   const Real semiAxisX;
-   const Real semiAxisY;
-   const Real rhoTop;
-   const Real rhoBot;
+   const double semiAxisX;
+   const double semiAxisY;
+   const double rhoTop;
+   const double rhoBot;
 
   public:
-   EllipseVarDensity( SimulationData& s, ArgumentParser& p, Real C[2] ) :
+   EllipseVarDensity( SimulationData& s, ArgumentParser& p, double C[2] ) :
    Shape(s,p,C),
    semiAxisX( p("-semiAxisX").asDouble(0.1) ),
    semiAxisY( p("-semiAxisY").asDouble(0.1) ),
