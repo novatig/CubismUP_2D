@@ -12,6 +12,7 @@
 
 #ifdef CUDAFFT
 #include "PoissonSolverScalarCUDA.h"
+#define PoissonSolverDCT PoissonSolverPeriodic
 #else
 #include "PoissonSolverScalarFFTW_freespace.h"
 #include "PoissonSolverScalarFFTW_periodic.h"

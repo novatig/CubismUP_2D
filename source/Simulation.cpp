@@ -190,9 +190,9 @@ void Simulation::init() {
 
   // setup initial conditions
   CoordinatorIC coordIC(sim);
-  //profiler.push_start(coordIC.getName());
+  profiler->push_start(coordIC.getName());
   coordIC(0);
-  //profiler.pop_stop();
+  profiler->pop_stop();
 
   pipeline.clear();
 
@@ -220,9 +220,9 @@ void Simulation::init() {
 
 void Simulation::simulate() {
   while (1) {
-    //profiler.push_start("DT");
+    profiler->push_start("DT");
     const double dt = calcMaxTimestep();
-    //profiler.pop_stop();
+    profiler->pop_stop();
     if (advance(dt)) break;
   }
 }
@@ -259,9 +259,9 @@ bool Simulation::advance(const double dt) {
   const bool bDump = sim.bDump();
 
   for (size_t c=0; c<pipeline.size(); c++) {
-    //profiler.push_start(pipeline[c]->getName());
+    profiler->push_start(pipeline[c]->getName());
     (*pipeline[c])(sim.dt);
-    //profiler.pop_stop();
+    profiler->pop_stop();
     // stringstream ss; ss<<path2file<<"avemaria_"<<pipeline[c]->getName();
     // ss<<"_"<<std::setfill('0')<<std::setw(7)<<step<<".vti"; dump(ss);
   }
@@ -270,19 +270,19 @@ bool Simulation::advance(const double dt) {
   sim.step++;
 
   //dump some time steps every now and then
-  //profiler.push_start("Dump");
+  profiler->push_start("Dump");
   if(bDump) {
     sim.registerDump();
     dump();
   }
-  //profiler.pop_stop();
+  profiler->pop_stop();
 
-  //if (sim.step % 100 == 0 && sim.verbose) {
-  //  profiler.printSummary();
-  //  profiler.reset();
-  //}
+  if (sim.step % 100 == 0 && sim.verbose) {
+    profiler->printSummary();
+    profiler->reset();
+  }
 
   const bool bOver = sim.bOver();
-  //if(bOver) profiler.printSummary();
+  if(bOver) profiler->printSummary();
   return bOver;
 }
