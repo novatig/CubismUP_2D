@@ -52,7 +52,7 @@ void FishData::writeMidline2File(const int step_id, string filename) {
 }
 
 void FishData::_computeMidlineNormals() {
-  //#pragma omp parallel for schedule(static)
+  #pragma omp parallel for schedule(static)
   for(int i=0; i<Nm-1; i++) {
     const auto ds = rS[i+1]-rS[i];
     const auto tX = rX[i+1]-rX[i];
@@ -75,7 +75,7 @@ Real FishData::integrateLinearMomentum(double CoM[2], double vCoM[2]) {
   // remaining integral done with composite trapezoidal rule
   // minimize rhs evaluations --> do first and last point separately
   double _area=0, _cmx=0, _cmy=0, _lmx=0, _lmy=0;
-  //#pragma omp parallel for schedule(static) reduction(+:_area,_cmx,_cmy,_lmx,_lmy)
+  #pragma omp parallel for schedule(static) reduction(+:_area,_cmx,_cmy,_lmx,_lmy)
   for(int i=0; i<Nm; ++i) {
     const double ds = (i==0) ? rS[1]-rS[0] :
         ((i==Nm-1) ? rS[Nm-1]-rS[Nm-2] :rS[i+1]-rS[i-1]);
@@ -106,7 +106,7 @@ Real FishData::integrateAngularMomentum(double& angVel) {
   // remaining integral done with composite trapezoidal rule
   // minimize rhs evaluations --> do first and last point separately
   double _J = 0, _am = 0;
-  //#pragma omp parallel for reduction(+:_J,_am) schedule(static)
+  #pragma omp parallel for reduction(+:_J,_am) schedule(static)
   for(int i=0; i<Nm; ++i) {
     const double ds =   (i==   0) ? rS[1]   -rS[0] :
                     ( (i==Nm-1) ? rS[Nm-1]-rS[Nm-2]
@@ -132,14 +132,14 @@ Real FishData::integrateAngularMomentum(double& angVel) {
 }
 
 void FishData::changeToCoMFrameLinear(const double CoMin[2],const double vCoMin[2]){
-  //#pragma omp parallel for schedule(static)
+  #pragma omp parallel for schedule(static)
   for(int i=0;i<Nm;++i) {
    rX[i] -= CoMin[0]; rY[i] -= CoMin[1]; vX[i] -= vCoMin[0]; vY[i] -= vCoMin[1];
   }
 }
 void FishData::changeToCoMFrameAngular(const Real theta_internal, const Real angvel_internal) {
   _prepareRotation2D(theta_internal);
-  //#pragma omp parallel for schedule(static)
+  #pragma omp parallel for schedule(static)
   for(int i=0;i<Nm;++i) {
     vX[i] += angvel_internal*rY[i];
     vY[i] -= angvel_internal*rX[i];
@@ -604,88 +604,3 @@ void PutFishOnBlocks_Finalize::operator()(Lab & lab, const BlockInfo& info,
     b(ix,iy).tmp = std::max(H, b(ix,iy).tmp);
   }
 }
-
-
-
-/*
-inline Real rampFactorSine(const Real t, const Real T) {
-  return (t<T ? std::sin(0.5*M_PI*t/T) : 1.0);
-}
-
-inline Real rampFactorVelSine(const Real t, const Real T) {
-  return (t<T ? 0.5*M_PI/T * std::cos(0.5*M_PI*t/T) : 0.0);
-}
-
-inline Real * _alloc(const int N) {
-    return new Real[N];
-}
-inline void _dealloc(Real * ptr) {
-    if(ptr not_eq nullptr) { delete [] ptr; ptr=nullptr; }
-}
-
-void _get_rX_from_rY() {
-  rX[0] = 0;
-  for(int i=1; i<Nm; ++i) {
-    const Real dy = rY[i]-rY[i-1];
-    const Real ds = rS[i] - rS[i-1];
-    const Real dx = std::sqrt(ds*ds-dy*dy);
-    rX[i] = rX[i-1] + dx;
-  }
-}
-void _get_vX_from_vY() {
-  vX[0] = 0; //rX[0] is constant
-  for(int i=1; i<Nm; ++i) {
-    const Real dy = rY[i]-rY[i-1];
-    const Real dx = rX[i]-rX[i-1];
-    const Real dVy = vY[i]-vY[i-1];
-    assert(dx>0); //has to be, otherwise y(s) is multiple valued for a given s
-    vX[i] = vX[i-1] - dy/dx * dVy; // use ds^2 = dx^2 + dy^2 --> ddx = -dy/dx*ddy
-  }
-}
-
-struct AmplitudeDefinedFishData : FishData
-{
- protected:
-
-    virtual Real midlineLateralPos(const Real s, const Real t, const Real L, const Real T, const Real phaseShift) = 0;
-    virtual Real midlineLateralVel(const Real s, const Real t, const Real L, const Real T, const Real phaseShift) = 0;
-
-    virtual void midlineLearnUpdate(const Real t, const Real T) = 0;
-
-    void _computeMidlineCoordinates(const Real time)
-    {
-        const Real rampFac = FishObstacle::rampFactorSine(time, Tperiod);
-
-        midlineLearnUpdate(time, Tperiod);
-
-        rY[0] = rampFac*midlineLateralPos(rS[0],time,length,Tperiod, phaseShift);
-        for(int i=1;i<Nm;++i)
-            rY[i]=rampFac*midlineLateralPos(rS[i],time,length,Tperiod, phaseShift);
-        _get_rX_from_rY();
-    }
-
-    void _computeMidlineVelocities(const Real time)
-    {
-        const Real rampFac = FishObstacle::rampFactorSine(time, Tperiod);
-        const Real rampFacVel = FishObstacle::rampFactorVelSine(time, Tperiod);
-
-        midlineLearnUpdate(time, Tperiod);
-
-        vY[0] = rampFac*midlineLateralVel(rS[0],time,length,Tperiod, phaseShift) + rampFacVel*midlineLateralPos(rS[0],time,length,Tperiod, phaseShift);
-        for(int i=1;i<Nm;++i)
-            vY[i]=rampFac*midlineLateralVel(rS[i],time,length,Tperiod, phaseShift) + rampFacVel*midlineLateralPos(rS[i],time,length,Tperiod, phaseShift);
-        _get_vX_from_vY();
-    }
- public:
-    AmplitudeDefinedFishData(const int Nm, const Real length, const Real Tperiod, const Real phaseShift, const bool cosine=true):FishData(Nm,length,Tperiod,phaseShift,cosine){}
-    AmplitudeDefinedFishData(const int Nm, const Real length, const Real Tperiod, const Real phaseShift, const std::pair<int,Real> extension_info, const bool cosine=true):FishData(Nm,length,Tperiod,phaseShift,extension_info,cosine){}
-
-    virtual void computeMidline(const Real time) override
-    {
-        _computeMidlineCoordinates(time);
-        _computeMidlineVelocities(time);
-        _computeMidlineNormals();
-        computeSurface();
-    }
-};
-*/

@@ -102,36 +102,9 @@ void BlowFish::create(const vector<BlockInfo>& vInfo)
   };
 
   const Real h = vInfo[0].h_gridpoint;
-  for(auto & entry : obstacleBlocks) delete entry.second;
+  for(auto & entry : obstacleBlocks) delete entry;
   obstacleBlocks.clear();
-
-  {
-    const FillBlocks_Cylinder kernelC(radius, h, center, rhoBot);
-    const FillBlocks_Plate kernelF1(finLength, finWidth, h, attach1, angleTotFin1, flapVel_R, rhoFin);
-    const FillBlocks_Plate kernelF2(finLength, finWidth, h, attach2, angleTotFin2, flapVel_L, rhoFin);
-
-    for(size_t i=0; i<vInfo.size(); i++) {
-      const BlockInfo& info = vInfo[i];
-      if(kernelC._is_touching(info))
-      {
-        assert(obstacleBlocks.find(info.blockID) == obstacleBlocks.end());
-        obstacleBlocks[info.blockID] = new ObstacleBlock;
-        obstacleBlocks[info.blockID]->clear(); //memset 0
-      }
-      else if(kernelF1._is_touching(info))
-      {
-        assert(obstacleBlocks.find(info.blockID) == obstacleBlocks.end());
-        obstacleBlocks[info.blockID] = new ObstacleBlock;
-        obstacleBlocks[info.blockID]->clear(); //memset 0
-      }
-      else if(kernelF2._is_touching(info))
-      {
-        assert(obstacleBlocks.find(info.blockID) == obstacleBlocks.end());
-        obstacleBlocks[info.blockID] = new ObstacleBlock;
-        obstacleBlocks[info.blockID]->clear(); //memset 0
-      }
-    }
-  }
+  obstacleBlocks = std::vector<ObstacleBlock*> (vInfo.size(), nullptr);
 
   #pragma omp parallel
   {
@@ -140,17 +113,37 @@ void BlowFish::create(const vector<BlockInfo>& vInfo)
     const FillBlocks_Plate kernelF2(finLength, finWidth, h, attach2, angleTotFin2, flapVel_L, rhoFin);
 
     #pragma omp for schedule(dynamic)
-    for(size_t i=0; i<vInfo.size(); i++) {
-      const BlockInfo& info = vInfo[i];
-      const auto pos = obstacleBlocks.find(info.blockID);
-      if(pos == obstacleBlocks.end()) continue;
-      FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-      kernelC(info, b, pos->second);
-      kernelF1(info, b, pos->second);
-      kernelF2(info, b, pos->second);
+    for(size_t i=0; i<vInfo.size(); i++)
+    {
+      if(kernelC._is_touching(vInfo[i]))
+      {
+        assert(obstacleBlocks[vInfo[i].blockID] == nullptr);
+        obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
+        obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
+      }
+      else if(kernelF1._is_touching(vInfo[i]))
+      {
+        assert(obstacleBlocks[vInfo[i].blockID] == nullptr);
+        obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
+        obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
+      }
+      else if(kernelF2._is_touching(vInfo[i]))
+      {
+        assert(obstacleBlocks[vInfo[i].blockID] == nullptr);
+        obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
+        obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
+      }
+
+      const auto pos = obstacleBlocks[vInfo[i].blockID];
+      if(pos == nullptr) continue;
+
+      FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+      kernelC(vInfo[i], b, pos);
+      kernelF1(vInfo[i], b, pos);
+      kernelF2(vInfo[i], b, pos);
     }
   }
 
   removeMoments(vInfo);
-  for (auto & block : obstacleBlocks) block.second->allocate_surface();
+  for (auto & O : obstacleBlocks) if(O not_eq nullptr) O->allocate_surface();
 }

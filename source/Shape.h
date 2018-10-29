@@ -22,7 +22,7 @@ class Shape
  public: // data fields
   SimulationData& sim;
   unsigned obstacleID = 0;
-  std::map<int,ObstacleBlock*> obstacleBlocks;
+  std::vector<ObstacleBlock*> obstacleBlocks;
   // general quantities
   const double origC[2], origAng;
   double center[2]; // for single density, this corresponds to centerOfMass
@@ -80,7 +80,7 @@ class Shape
     computedo = 0;
     d_gm[0] = 0;
     d_gm[1] = 0;
-    for(auto & entry : obstacleBlocks) delete entry.second;
+    for(auto & entry : obstacleBlocks) delete entry;
     obstacleBlocks.clear();
   }
 
@@ -111,7 +111,7 @@ class Shape
   {  }
 
   virtual ~Shape() {
-    for(auto & entry : obstacleBlocks) delete entry.second;
+    for(auto & entry : obstacleBlocks) delete entry;
     obstacleBlocks.clear();
   }
 
@@ -209,11 +209,11 @@ class Shape
       #pragma omp for schedule(dynamic)
       for (size_t i=0; i<vInfo.size(); i++)
       {
-        const auto pos = obstacleBlocks.find(vInfo[i].blockID);
-        if(pos == obstacleBlocks.end()) continue;
+        const auto pos = obstacleBlocks[vInfo[i].blockID];
+        if(pos == nullptr) continue; //obstacle is not in the block
         mylab.load(vInfo[i], 0);
         FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-        kernel(mylab, vInfo[i], b, pos->second);
+        kernel(mylab, vInfo[i], b, pos);
       }
     }
   }
@@ -229,14 +229,14 @@ class Shape
       #pragma omp for schedule(dynamic)
       for (size_t i=0; i<vInfo.size(); i++)
       {
-        const auto pos = obstacleBlocks.find(vInfo[i].blockID);
-        if(pos == obstacleBlocks.end()) continue; //obstacle is not in the block
-        assert(pos->second->filled);
-        if(!pos->second->n_surfPoints) continue; //does not contain surf points
+        const auto pos = obstacleBlocks[vInfo[i].blockID];
+        if(pos == nullptr) continue; //obstacle is not in the block
+        assert(pos->filled);
+        if(!pos->n_surfPoints) continue; //does not contain surf points
 
         mylab.load(vInfo[i], 0);
         FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-        kernel(mylab, vInfo[i], b, pos->second);
+        kernel(mylab, vInfo[i], b, pos);
       }
     }
   }

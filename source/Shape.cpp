@@ -54,18 +54,18 @@ Shape::Integrals Shape::integrateObstBlock(const vector<BlockInfo>& vInfo)
   const double hsq = std::pow(vInfo[0].h_gridpoint, 2);
   #pragma omp parallel for schedule(dynamic) reduction(+: _x,_y,_m,_j,_u,_v,_a)
   for(size_t i=0; i<vInfo.size(); i++) {
-    const auto pos = obstacleBlocks.find(vInfo[i].blockID);
-    if(pos == obstacleBlocks.end()) continue;
+    const auto pos = obstacleBlocks[vInfo[i].blockID];
+    if(pos == nullptr) continue;
 
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
-      const Real chi = pos->second->chi[iy][ix];
+      const Real chi = pos->chi[iy][ix];
       if (chi <= 0) continue;
       double p[2];
       vInfo[i].pos(p, ix, iy);
-      const double u_ = pos->second->udef[iy][ix][0];
-      const double v_ = pos->second->udef[iy][ix][1];
-      const double rhochi = chi * pos->second->rho[iy][ix] * hsq;
+      const double u_ = pos->udef[iy][ix][0];
+      const double v_ = pos->udef[iy][ix][1];
+      const double rhochi = chi * pos->rho[iy][ix] * hsq;
       _x += rhochi*p[0];
       _y += rhochi*p[1];
       p[0] -= centerOfMass[0];
@@ -120,8 +120,8 @@ void Shape::removeMoments(const vector<BlockInfo>& vInfo)
 
   #pragma omp parallel for schedule(dynamic)
   for(size_t i=0; i<vInfo.size(); i++) {
-    const auto pos = obstacleBlocks.find(vInfo[i].blockID);
-    if(pos == obstacleBlocks.end()) continue;
+    const auto pos = obstacleBlocks[vInfo[i].blockID];
+    if(pos == nullptr) continue;
 
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
@@ -129,8 +129,8 @@ void Shape::removeMoments(const vector<BlockInfo>& vInfo)
         vInfo[i].pos(p, ix, iy);
         p[0] -= centerOfMass[0];
         p[1] -= centerOfMass[1];
-        pos->second->udef[iy][ix][0] -= I.u -I.a*p[1];
-        pos->second->udef[iy][ix][1] -= I.v +I.a*p[0];
+        pos->udef[iy][ix][0] -= I.u -I.a*p[1];
+        pos->udef[iy][ix][1] -= I.v +I.a*p[0];
     }
   }
 
@@ -156,19 +156,19 @@ void Shape::computeVelocities()
   #pragma omp parallel for schedule(dynamic) reduction(+:_M,_J,um,vm,am)
   for(size_t i=0; i<vInfo.size(); i++) {
       FluidBlock & b = *(FluidBlock*)vInfo[i].ptrBlock;
-      const auto pos = obstacleBlocks.find(vInfo[i].blockID);
-      if(pos == obstacleBlocks.end()) continue;
+      const auto pos = obstacleBlocks[vInfo[i].blockID];
+      if(pos == nullptr) continue;
 
       for(int iy=0; iy<FluidBlock::sizeY; ++iy)
       for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
-        const Real chi = pos->second->chi[iy][ix];
+        const Real chi = pos->chi[iy][ix];
         if (chi <= 0) continue;
         double p[2];
         vInfo[i].pos(p, ix, iy);
         p[0] -= centerOfMass[0];
         p[1] -= centerOfMass[1];
 
-        const double rhochi = pos->second->rho[iy][ix] * chi * hsq;
+        const double rhochi = pos->rho[iy][ix] * chi * hsq;
         _M += rhochi;
         um += rhochi * b(ix,iy).u;
         vm += rhochi * b(ix,iy).v;
@@ -218,18 +218,18 @@ void Shape::penalize()
   #pragma omp parallel for schedule(dynamic)
   for(size_t i=0; i<vInfo.size(); i++) {
     FluidBlock & b = *(FluidBlock*)vInfo[i].ptrBlock;
-    const auto pos = obstacleBlocks.find(vInfo[i].blockID);
-    if(pos == obstacleBlocks.end()) continue;
+    const auto pos = obstacleBlocks[vInfo[i].blockID];
+    if(pos == nullptr) continue;
 
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
-      const Real chi = pos->second->chi[iy][ix];
+      const Real chi = pos->chi[iy][ix];
       if (chi <= 0) continue;
       double p[2];
       vInfo[i].pos(p, ix, iy);
       p[0] -= centerOfMass[0]; p[1] -= centerOfMass[1];
       const double alpha = 1/(1 + lamdt * chi);
-      const Real*const udef = pos->second->udef[iy][ix];
+      const Real*const udef = pos->udef[iy][ix];
       const double uTot = u -omega*p[1] +udef[0];// -sim.uinfx;
       const double vTot = v +omega*p[0] +udef[1];// -sim.uinfy;
       b(ix,iy).u = alpha*b(ix,iy).u + (1-alpha)*uTot;
@@ -245,19 +245,19 @@ void Shape::diagnostics()
   double _a=0, _m=0, _x=0, _y=0, _t=0;
   #pragma omp parallel for schedule(dynamic) reduction(+:_a,_m,_x,_y,_t)
   for(size_t i=0; i<vInfo.size(); i++) {
-      const auto pos = obstacleBlocks.find(vInfo[i].blockID);
-      if(pos == obstacleBlocks.end()) continue;
+      const auto pos = obstacleBlocks[vInfo[i].blockID];
+      if(pos == nullptr) continue;
       FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
 
       for(int iy=0; iy<FluidBlock::sizeY; ++iy)
       for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
-        if (pos->second->chi[iy][ix] <= 0) continue;
-        const double Xs = pos->second->chi[iy][ix] * hsq;
+        if (pos->chi[iy][ix] <= 0) continue;
+        const double Xs = pos->chi[iy][ix] * hsq;
         double p[2];
         vInfo[i].pos(p, ix, iy);
         p[0] -= centerOfMass[0];
         p[1] -= centerOfMass[1];
-        const Real*const udef = pos->second->udef[iy][ix];
+        const Real*const udef = pos->udef[iy][ix];
         const double uDiff = b(ix,iy).u - (u -omega*p[1] +udef[0]);
         const double vDiff = b(ix,iy).v - (v +omega*p[0] +udef[1]);
         _a += Xs;
@@ -280,12 +280,12 @@ void Shape::characteristic_function()
   #pragma omp parallel for schedule(dynamic)
   for(size_t i=0; i<vInfo.size(); i++) {
     FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-    const auto pos = obstacleBlocks.find(vInfo[i].blockID);
-    if(pos == obstacleBlocks.end()) continue;
+    const auto pos = obstacleBlocks[vInfo[i].blockID];
+    if(pos == nullptr) continue;
 
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-      b(ix,iy).tmp = std::max(pos->second->chi[iy][ix], b(ix,iy).tmp);
+      b(ix,iy).tmp = std::max(pos->chi[iy][ix], b(ix,iy).tmp);
   }
 }
 
@@ -295,13 +295,13 @@ void Shape::deformation_velocities()
   #pragma omp parallel for schedule(dynamic)
   for(size_t i=0; i<vInfo.size(); i++) {
     FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-    const auto pos = obstacleBlocks.find(vInfo[i].blockID);
-    if(pos == obstacleBlocks.end()) continue;
+    const auto pos = obstacleBlocks[vInfo[i].blockID];
+    if(pos == nullptr) continue;
 
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
     for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
-      b(ix,iy).tmpU += pos->second->udef[iy][ix][0];
-      b(ix,iy).tmpV += pos->second->udef[iy][ix][1];
+      b(ix,iy).tmpU += pos->udef[iy][ix][0];
+      b(ix,iy).tmpV += pos->udef[iy][ix][1];
     }
   }
 }
@@ -322,17 +322,17 @@ void Shape::computeForces()
   torque_P = 0; torque_V = 0; drag = 0; thrust = 0;
   Pout = 0; PoutBnd = 0; defPower = 0; defPowerBnd = 0; circulation = 0;
 
-  for (auto & block : obstacleBlocks)
+  for (auto & block : obstacleBlocks) if(block not_eq nullptr)
   {
-    circulation += block.second->circulation;
-    perimeter += block.second->perimeter; torque   += block.second->torque;
-    forcex   += block.second->forcex;     forcey   += block.second->forcey;
-    forcex_P += block.second->forcex_P;   forcey_P += block.second->forcey_P;
-    forcex_V += block.second->forcex_V;   forcey_V += block.second->forcey_V;
-    torque_P += block.second->torque_P;   torque_V += block.second->torque_V;
-    drag     += block.second->drag;       thrust   += block.second->thrust;
-    Pout += block.second->Pout; defPowerBnd += block.second->defPowerBnd;
-    PoutBnd += block.second->PoutBnd; defPower += block.second->defPower;
+    circulation += block->circulation;
+    perimeter += block->perimeter; torque   += block->torque;
+    forcex   += block->forcex;     forcey   += block->forcey;
+    forcex_P += block->forcex_P;   forcey_P += block->forcey_P;
+    forcex_V += block->forcex_V;   forcey_V += block->forcey_V;
+    torque_P += block->torque_P;   torque_V += block->torque_V;
+    drag     += block->drag;       thrust   += block->thrust;
+    Pout += block->Pout; defPowerBnd += block->defPowerBnd;
+    PoutBnd += block->PoutBnd; defPower += block->defPower;
   }
 
   //derived quantities:
@@ -347,7 +347,8 @@ void Shape::computeForces()
     stringstream ssF; ssF<<sim.path2file<<"/surface_"<<obstacleID
       <<"_"<<std::setfill('0')<<std::setw(7)<<sim.step<<".raw";
     ofstream pFile(ssF.str().c_str(), ofstream::binary);
-    for(auto & block : obstacleBlocks) block.second->print(pFile);
+    for(auto & block : obstacleBlocks) if(block not_eq nullptr)
+      block->print(pFile);
     pFile.close();
   }
   if(not sim.muteAll)
