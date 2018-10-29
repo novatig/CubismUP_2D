@@ -28,6 +28,7 @@
 #include "ShapesSimple.h"
 #include "BlowFish.h"
 #include "StefanFish.h"
+#include "CarlingFish.h"
 #include "Profiler.h"
 
 #include <regex>
@@ -170,6 +171,8 @@ void Simulation::createShapes() {
         shape = new BlowFish(         sim, ffparser, center);
       else if (objectName=="stefanfish")
         shape = new StefanFish(       sim, ffparser, center);
+      else if (objectName=="carlingfish")
+        shape = new CarlingFish(      sim, ffparser, center);
       else {
         cout << "Error - this shape is not recognized! Aborting now\n";
         abort();
@@ -225,6 +228,9 @@ void Simulation::init() {
   cout << "Coordinator/Operator ordering:\n";
   for (size_t c=0; c<pipeline.size(); c++)
     cout << "\t" << pipeline[c]->getName() << endl;
+
+  (*pipeline[0])(0);
+  dump("init");
 }
 
 void Simulation::simulate() {

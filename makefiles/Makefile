@@ -59,7 +59,7 @@ endif
 BUILDDIR = .
 SRC_DIR = $(BUILDDIR)/../source/
 CUBISM_DIR = $(BUILDDIR)/../Cubism/source/
-OBJECTS = Simulation.o Definitions.o Shape.o ShapeLibrary.o ShapesSimple.o BlowFish.o Fish.o FishLibrary.o StefanFish.o BufferedLogger.o
+OBJECTS = Simulation.o Definitions.o Shape.o ShapeLibrary.o ShapesSimple.o BlowFish.o Fish.o FishLibrary.o StefanFish.o BufferedLogger.o CarlingFish.o
 
 VPATH := $(SRC_DIR):$(CUBISM_DIR)
 

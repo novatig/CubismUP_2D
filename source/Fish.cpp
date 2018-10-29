@@ -67,6 +67,7 @@ void Fish::create(const vector<BlockInfo>& vInfo)
     assert(std::fabs(dummy_CoM_internal[1])<EPS);
     assert(std::fabs(myFish->linMom[0])<EPS);
     assert(std::fabs(myFish->linMom[1])<EPS);
+    cout << myFish->angMom << endl;
     assert(std::fabs(myFish->angMom)<EPS);
     assert(std::fabs(area_internal - area_internal_check) < EPS);
   }
