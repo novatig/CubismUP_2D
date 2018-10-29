@@ -62,7 +62,7 @@ void FillBlocks_Cylinder::operator()(const BlockInfo& info, FluidBlock& block, O
     #ifndef NDEBUG
     if (H < obstblock->chi[iy][ix]) {
       printf("FillBlocks_Cylinder: Error is obstblock->chi \n");
-      abort();
+      fflush(0); abort();
     }
     #endif
 
@@ -97,7 +97,7 @@ void FillBlocks_HalfCylinder::operator()(const BlockInfo& info, FluidBlock& bloc
     #ifndef NDEBUG
     if ( H > 0 && H < obstblock->chi[iy][ix]) {
       printf("FillBlocks_HalfCylinder: Error is obstblock->chi \n");
-      abort();
+      fflush(0); abort();
     }
     #endif
 
@@ -248,7 +248,7 @@ void FillBlocks_EllipseFinalize::operator()(Lab& l, const BlockInfo&i, FluidBloc
     #ifndef NDEBUG
     if (H > 0 && H < o->chi[iy][ix]) {
       printf("FillBlocks_Ellipse: Error is obstblock->chi \n");
-      abort();
+      fflush(0); abort();
     }
     #endif
 
@@ -282,7 +282,7 @@ void FillBlocks_Plate::operator()(const BlockInfo& info, FluidBlock& block, Obst
     #ifndef NDEBUG
     if (H > 0 && H < obstblock->chi[iy][ix]) {
       printf("FillBlocks_Plate: Error is obstblock->chi \n");
-      abort();
+      fflush(0); abort();
     }
     #endif
     obstblock->write(ix, iy, udef, vdef, rhoS, H, Delta, gradUX, gradUY, h);
@@ -317,7 +317,7 @@ void FillBlocks_VarRhoCylinder::operator()(const BlockInfo& info, FluidBlock& bl
     #ifndef NDEBUG
     if (H > 0 && H < obstblock->chi[iy][ix]) {
       printf("FillBlocks_VarRhoCylinder: Error is obstblock->chi \n");
-      abort();
+      fflush(0); abort();
     }
     #endif
 
@@ -355,7 +355,7 @@ void FillBlocks_VarRhoEllipseFinalize::operator()(Lab& l, const BlockInfo&i, Flu
     #ifndef NDEBUG
     if (H < o->chi[iy][ix]) {
       printf("FillBlocks_VarRhoEllipseFinalize: Error is obstblock->chi \n");
-      abort();
+      fflush(0); abort();
     }
     #endif
 

@@ -99,8 +99,7 @@ class PoissonSolverFreespace: public PoissonSolverBase
       bwd = fftwf_plan_dft_c2r_2d(mx, my, (mycomplex *)rhs, rhs, FFTW_MEASURE);
     #endif // _FLOAT_PRECISION_
     if(retval==0) {
-      cout << "FFTWBase::setup(): Oops the call to fftw_init_threads() returned zero. Aborting\n";
-      abort();
+      cout << "Call fftw_init_threads() returned zero.\n"; fflush(0); abort();
     }
     _init_green();
     memset(rhs, 0, 2 * mx * my_hat * sizeof(Real));

@@ -314,8 +314,8 @@ void Fish::apply_pid_corrections()
   }
 }
 #endif
-#if 0
 
+#if 0
 #define _USE_HDF_
 #include <HDF5Dumper.h>
         #pragma omp parallel for schedule(dynamic)
@@ -333,5 +333,5 @@ void Fish::apply_pid_corrections()
         }
         DumpHDF5<FluidGrid,StreamerVelocityVector>(*(sim.grid), sim.step,
           sim.time, "constructSurface", sim.path4serialization);
-          abort();
+        // abort();
 #endif

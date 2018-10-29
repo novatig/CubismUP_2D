@@ -93,47 +93,6 @@ struct FluidBlock
   }
 };
 
-// this is used for serialization - important that ALL the quantities are treamed
-struct StreamerGridPoint
-{
-  static const int channels = 9;
-  void operate(const FluidElement& input, Real output[channels]) const
-  {
-    abort();
-    output[0] = input.invRho;
-    output[1] = input.u;
-    output[2] = input.v;
-    output[3] = input.p;
-    output[4] = input.pOld;
-    output[5] = input.tmpU;
-    output[6] = input.tmpV;
-    output[7] = input.tmp;
-  }
-
-  void operate(const Real input[channels], FluidElement& output) const
-  {
-    abort();
-    output.invRho  = input[0];
-    output.u    = input[1];
-    output.v    = input[2];
-    output.p    = input[3];
-    output.pOld = input[4];
-    output.tmpU = input[5];
-    output.tmpV = input[6];
-    output.tmp  = input[7];
-  }
-};
-
-template <> inline void FluidBlock::Write<StreamerGridPoint>(ofstream& output, StreamerGridPoint streamer) const
-{
-  output.write((const char *)&data[0][0][0], sizeof(FluidElement)*sizeX*sizeY);
-}
-
-template <> inline void FluidBlock::Read<StreamerGridPoint>(ifstream& input, StreamerGridPoint streamer)
-{
-  input.read((char *)&data[0][0][0], sizeof(FluidElement)*sizeX*sizeY);
-}
-
 struct StreamerSerialization
 {
   static const int NCHANNELS = 5;
@@ -212,21 +171,18 @@ struct StreamerSerialization
 template<typename BlockType, template<typename X> class allocator=std::allocator>
 class BlockLabOpen: public BlockLab<BlockType,allocator>
 {
-    typedef typename BlockType::ElementType ElementTypeBlock;
+  typedef typename BlockType::ElementType ElementTypeBlock;
 
   public:
-    ElementTypeBlock pDirichlet;
-    BlockLabOpen(): BlockLab<BlockType,allocator>(){}
-    void _apply_bc(const BlockInfo& info, const Real t=0)
-    {
-        BoundaryCondition<BlockType,ElementTypeBlock,allocator>
-                bc(this->m_stencilStart, this->m_stencilEnd, this->m_cacheBlock);
-
-        if (info.index[0]==0)           bc.template applyBC_absorbing<0,0>();
-        if (info.index[0]==this->NX-1)  bc.template applyBC_absorbing<0,1>();
-        if (info.index[1]==0)           bc.template applyBC_absorbing<1,0>();
-        if (info.index[1]==this->NY-1)  bc.template applyBC_absorbing<1,1>();
-    }
+  ElementTypeBlock pDirichlet;
+  BlockLabOpen(): BlockLab<BlockType,allocator>(){}
+  void _apply_bc(const BlockInfo& info, const Real t=0) {
+    BoundaryCondition<BlockType,ElementTypeBlock,allocator> bc(this->m_stencilStart, this->m_stencilEnd, this->m_cacheBlock);
+    if (info.index[0]==0)           bc.template applyBC_absorbing<0,0>();
+    if (info.index[0]==this->NX-1)  bc.template applyBC_absorbing<0,1>();
+    if (info.index[1]==0)           bc.template applyBC_absorbing<1,0>();
+    if (info.index[1]==this->NY-1)  bc.template applyBC_absorbing<1,1>();
+  }
 };
 
 

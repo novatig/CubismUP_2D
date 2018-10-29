@@ -124,7 +124,7 @@ class IF2D_Interpolation1D
 
       const Real h = x[khi] - x[klo];
       if(h<=0.0) {
-        std::cout << "Interpolation points must be distinct!\n"; abort();
+        std::cout<<"Interpolation points must be distinct!"<<std::endl; abort();
       }
       const Real a = (x[khi]-(xx[j]+offset))/h;
       const Real b = ((xx[j]+offset)-x[klo])/h;

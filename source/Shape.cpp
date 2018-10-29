@@ -113,8 +113,8 @@ void Shape::removeMoments(const vector<BlockInfo>& vInfo)
     Real Cytest = center[1] -std::sin(orientation)*d_gm[0] - std::cos(orientation)*d_gm[1];
     if( std::abs(Cxtest-centerOfMass[0])>numeric_limits<Real>::epsilon() ||
         std::abs(Cytest-centerOfMass[1])>numeric_limits<Real>::epsilon() ) {
-        printf("Error update of center of mass = [%f %f]\n", Cxtest-centerOfMass[0], Cytest-centerOfMass[1]);
-          abort();
+        printf("Error update of center of mass = [%f %f]\n",
+          Cxtest-centerOfMass[0], Cytest-centerOfMass[1]); fflush(0); abort();
         }
   #endif
 
@@ -143,7 +143,7 @@ void Shape::removeMoments(const vector<BlockInfo>& vInfo)
       std::abs(Itest.y-centerOfMass[1])>10*numeric_limits<Real>::epsilon() ){
     printf("After correction: linm [%e %e] angm [%e] deltaCM=[%e %e]\n",
     Itest.u,Itest.v,Itest.a,Itest.x-centerOfMass[0],Itest.y-centerOfMass[1]);
-    abort();
+    fflush(0); abort();
    }
   #endif
 };
@@ -369,4 +369,3 @@ void Shape::computeForces()
   }
   #endif
 }
-

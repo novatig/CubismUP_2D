@@ -174,8 +174,7 @@ void Simulation::createShapes() {
       else if (objectName=="carlingfish")
         shape = new CarlingFish(      sim, ffparser, center);
       else {
-        cout << "Error - this shape is not recognized! Aborting now\n";
-        abort();
+        cout << "FATAL - shape is not recognized!" << std::endl; abort();
       }
       assert(shape not_eq nullptr);
       shape->obstacleID = k++;
@@ -184,8 +183,7 @@ void Simulation::createShapes() {
   }
 
   if( sim.shapes.size() ==  0) {
-    std::cout << "Did not create any obstacles. Not supported. Aborting!\n";
-    abort();
+    std::cout << "FATAL - Did not create any obstacles." << std::endl; abort();
   }
 
   //now that shapes are created, we know whether we need variable rho solver:
