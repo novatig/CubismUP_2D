@@ -63,13 +63,18 @@ void Simulation::dump(string fname) {
 
 Simulation::Simulation(int argc, char ** argv) : parser(argc,argv)
 {
-  profiler = new Profiler();
+  #ifndef SMARTIES_APP
+    profiler = new Profiler();
+  #endif
   cout << "=================================================================\n";
   cout << "\t\tFlow past a falling obstacle\n";
   cout << "=================================================================\n";
 }
 
 Simulation::~Simulation() {
+  #ifndef SMARTIES_APP
+    delete profiler;
+  #endif
   while( not pipeline.empty() ) {
     GenericCoordinator * g = pipeline.back();
     pipeline.pop_back();
@@ -190,9 +195,13 @@ void Simulation::init() {
 
   // setup initial conditions
   CoordinatorIC coordIC(sim);
-  profiler->push_start(coordIC.getName());
+  #ifndef SMARTIES_APP
+    profiler->push_start(coordIC.getName());
+  #endif
   coordIC(0);
-  profiler->pop_stop();
+  #ifndef SMARTIES_APP
+    profiler->pop_stop();
+  #endif
 
   pipeline.clear();
 
@@ -220,9 +229,13 @@ void Simulation::init() {
 
 void Simulation::simulate() {
   while (1) {
-    profiler->push_start("DT");
+    #ifndef SMARTIES_APP
+     profiler->push_start("DT");
+    #endif
     const double dt = calcMaxTimestep();
-    profiler->pop_stop();
+    #ifndef SMARTIES_APP
+     profiler->pop_stop();
+    #endif
     if (advance(dt)) break;
   }
 }
@@ -259,9 +272,13 @@ bool Simulation::advance(const double dt) {
   const bool bDump = sim.bDump();
 
   for (size_t c=0; c<pipeline.size(); c++) {
-    profiler->push_start(pipeline[c]->getName());
+    #ifndef SMARTIES_APP
+     profiler->push_start(pipeline[c]->getName());
+    #endif
     (*pipeline[c])(sim.dt);
-    profiler->pop_stop();
+    #ifndef SMARTIES_APP
+     profiler->pop_stop();
+    #endif
     // stringstream ss; ss<<path2file<<"avemaria_"<<pipeline[c]->getName();
     // ss<<"_"<<std::setfill('0')<<std::setw(7)<<step<<".vti"; dump(ss);
   }
@@ -270,19 +287,27 @@ bool Simulation::advance(const double dt) {
   sim.step++;
 
   //dump some time steps every now and then
-  profiler->push_start("Dump");
+  #ifndef SMARTIES_APP
+   profiler->push_start("Dump");
+  #endif
   if(bDump) {
     sim.registerDump();
     dump();
   }
-  profiler->pop_stop();
+  #ifndef SMARTIES_APP
+   profiler->pop_stop();
+  #endif
 
   if (sim.step % 100 == 0 && sim.verbose) {
-    profiler->printSummary();
-    profiler->reset();
+    #ifndef SMARTIES_APP
+     profiler->printSummary();
+     profiler->reset();
+    #endif
   }
 
   const bool bOver = sim.bOver();
-  if(bOver) profiler->printSummary();
+  #ifndef SMARTIES_APP
+   if(bOver) profiler->printSummary();
+  #endif
   return bOver;
 }
