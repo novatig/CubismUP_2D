@@ -344,7 +344,7 @@ struct SimulationData
   bool bDump()
   {
     const bool timeDump = dumpTime>0 && time >= nextDumpTime;
-    const bool stepDump = dumpFreq>0 && step % dumpFreq == 0;
+    const bool stepDump = dumpFreq>0 && (step % dumpFreq) == 0;
     _bDump = stepDump || timeDump;
     return _bDump;
   }

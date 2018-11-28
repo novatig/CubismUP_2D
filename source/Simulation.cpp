@@ -100,7 +100,7 @@ void Simulation::parseRuntime() {
   sim.endTime = parser("-tend").asDouble(0);
 
   // output parameters
-  sim.dumpFreq = parser("-fdump").asDouble(0);
+  sim.dumpFreq = parser("-fdump").asInt(0);
   sim.dumpTime = parser("-tdump").asDouble(0);
 
   sim.path2file = parser("-file").asString("./");
@@ -113,7 +113,7 @@ void Simulation::parseRuntime() {
   // simulation settings
   sim.CFL = parser("-CFL").asDouble(.1);
   sim.lambda = parser("-lambda").asDouble(1e5);
-  sim.dlm = parser("-dlm").asDouble(10.);
+  sim.dlm = parser("-dlm").asDouble(1);
   sim.nu = parser("-nu").asDouble(1e-2);
 
   sim.verbose = parser("-verbose").asInt(1);
@@ -254,7 +254,7 @@ double Simulation::calcMaxTimestep() {
   const double dtBody = maxUb<2.2e-16? 1 : h/maxUb;
   sim.dt = std::min( sim.dt, sim.CFL*dtBody );
 
-  if(sim.dlm > 1) sim.lambda = sim.dlm / sim.dt;
+  if(sim.dlm >= 1) sim.lambda = sim.dlm / sim.dt;
   if (sim.step < 100) {
     const double x = (sim.step+1.0)/100;
     const double rampCFL = std::exp(std::log(1e-3)*(1-x) + std::log(sim.CFL)*x);
@@ -302,7 +302,7 @@ bool Simulation::advance(const double dt) {
    profiler->pop_stop();
   #endif
 
-  if (sim.step % 100 == 0 && sim.verbose) {
+  if (sim.step % 5 == 0 && sim.verbose) {
     #ifndef SMARTIES_APP
      profiler->printSummary();
      profiler->reset();

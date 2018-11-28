@@ -32,7 +32,7 @@ class OperatorDivergence : public GenericLabOperator
   template <typename Lab, typename BlockType>
   void operator()(Lab & lab, const BlockInfo& info, BlockType& o) const {
     // here i multiply the rhs by dt and obtain p*dt from poisson solver
-    const Real factor = 0.5/(info.h_gridpoint); // should be [...]/dt
+    const Real fac = 0.5 * info.h_gridpoint;
     const size_t blocki = BlockType::sizeX * info.index[0];
     const size_t blockj = BlockType::sizeY * info.index[1];
     const size_t blockStart = blocki + stride_buffer * blockj;
@@ -45,7 +45,7 @@ class OperatorDivergence : public GenericLabOperator
       const FluidElement & phiW = lab(ix-1, iy  );
       const Real divVel =           (phiE.u   -phiW.u    + phiN.v   -phiS.v);
       const Real divDef = phi.tmp * (phiE.tmpU-phiW.tmpU + phiN.tmpV-phiS.tmpV);
-      rhs_buffer[blockStart + ix + stride_buffer*iy] = factor*(divVel-divDef);
+      rhs_buffer[blockStart + ix + stride_buffer*iy] = fac*(divVel-divDef);
     }
   }
 };
@@ -219,9 +219,9 @@ class CoordinatorPressure : public GenericCoordinator
         #pragma omp parallel for schedule(static)
         for (size_t j = 0; j < totNy; j++) {
           vals[totNx*j][0] += 1; // center
-          vals[totNx*j][1] -= 0; // west
+          vals[totNx*j][1] -= 1; // west
           vals[totNx*j + totNx-1][0] += 1; // center
-          vals[totNx*j + totNx-1][2] -= 0; // east
+          vals[totNx*j + totNx-1][2] -= 1; // east
         }
       }
       Real * const linV = (Real*) vals;
@@ -250,7 +250,7 @@ class CoordinatorPressure : public GenericCoordinator
     if (solver == "gmres") // GMRES solver
     {
       HYPRE_StructGMRESCreate(COMM, &hypre_solver);
-      HYPRE_StructGMRESSetTol(hypre_solver, 1e-6);
+      HYPRE_StructGMRESSetTol(hypre_solver, 1e-3);
       HYPRE_StructGMRESSetPrintLevel(hypre_solver, 0);
       HYPRE_StructGMRESSetMaxIter(hypre_solver, 1000);
       HYPRE_StructGMRESSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
@@ -261,7 +261,7 @@ class CoordinatorPressure : public GenericCoordinator
       HYPRE_StructSMGCreate(COMM, &hypre_solver);
       HYPRE_StructSMGSetMemoryUse(hypre_solver, 0);
       HYPRE_StructSMGSetMaxIter(hypre_solver, 1000);
-      HYPRE_StructSMGSetTol(hypre_solver, 1e-6);
+      HYPRE_StructSMGSetTol(hypre_solver, 1e-3);
       HYPRE_StructSMGSetRelChange(hypre_solver, 0);
       HYPRE_StructSMGSetPrintLevel(hypre_solver, 0);
       HYPRE_StructSMGSetNumPreRelax(hypre_solver, 1);
@@ -273,7 +273,7 @@ class CoordinatorPressure : public GenericCoordinator
     {
       HYPRE_StructPCGCreate(COMM, &hypre_solver);
       HYPRE_StructPCGSetMaxIter(hypre_solver, 1000);
-      HYPRE_StructPCGSetTol(hypre_solver, 1e-6);
+      HYPRE_StructPCGSetTol(hypre_solver, 1e-2);
       HYPRE_StructPCGSetPrintLevel(hypre_solver, 0);
       HYPRE_StructPCGSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
     }
