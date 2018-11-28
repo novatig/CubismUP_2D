@@ -1,5 +1,4 @@
 ifeq "0" "1"
-
 VTKV=-8.1
 VTKD=/cluster/home/novatig/VTK-8.1.1/build/
 
@@ -7,6 +6,14 @@ CPPFLAGS+= -I$(VTKDIR)include/vtk-8.1/ -DUSE_VTK
 LIBS+= -L$(VTKD)lib/ -lvtkCommonCore$(VTKV) -lvtkCommonDataModel$(VTKV) -lvtkIOXML$(VTKV)
 endif
 
+MPICXX=mpic++
+
+ifeq "$(poisson)" "hyprecpu"
+LIBS+=-L/cluster/home/novatig/hypre/build/lib/ -lHYPRE
+CPPFLAGS+=-I/cluster/home/novatig/hypre/build/include/
+endif
+
+ifeq "$(poisson)" "fftcpu"
 ifeq "$(compiler)" "intel"
 CPPFLAGS+= -I/cluster/home/novatig/fftw-3.3.5/build_intel/include/
 LIBS+= -L/cluster/home/novatig/fftw-3.3.5/build_intel/lib/
@@ -15,3 +22,4 @@ CPPFLAGS+= -I/cluster/home/novatig/fftw-3.3.5/build_gnu/include/
 LIBS+= -L/cluster/home/novatig/fftw-3.3.5/build_gnu/lib/
 endif
 #CPPFLAGS+= -fsanitize=address
+endif

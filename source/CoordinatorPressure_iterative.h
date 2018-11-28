@@ -21,7 +21,7 @@ class OperatorDivergence : public GenericLabOperator
 
  public:
   OperatorDivergence(double DT, Real*const RHS, const size_t STRIDE):
-    dt(_dt), rhs_buffer(RHS), stride_buffer(STRIDE) {
+    dt(DT), rhs_buffer(RHS), stride_buffer(STRIDE) {
     stencil = StencilInfo(-1,-1,0, 2,2,1, false, 4, 0,1,2,3);
     stencil_start[0] = -1; stencil_start[1] = -1; stencil_start[2] = 0;
     stencil_end[0] = 2; stencil_end[1] = 2; stencil_end[2] = 1;
@@ -45,7 +45,7 @@ class OperatorDivergence : public GenericLabOperator
       const FluidElement & phiW = lab(ix-1, iy  );
       const Real divVel =           (phiE.u   -phiW.u    + phiN.v   -phiS.v);
       const Real divDef = phi.tmp * (phiE.tmpU-phiW.tmpU + phiN.tmpV-phiS.tmpV);
-      rhs_buffer[blockStart + ix + stride_buffer*iy] = val;
+      rhs_buffer[blockStart + ix + stride_buffer*iy] = factor*(divVel-divDef);
     }
   }
 };
@@ -79,16 +79,16 @@ template <typename Lab>
 class CoordinatorPressure : public GenericCoordinator
 {
  protected:
-  FluidGrid& grid;
-  const std::vector<BlockInfo> infos = grid.getBlocksInfo();
   // total number of DOFs in y and x:
-  const size_t totNy =grid.getBlocksPerDimension(1)*FluidGrid::BlockType::sizeY;
-  const size_t totNx =grid.getBlocksPerDimension(0)*FluidGrid::BlockType::sizeX;
+  const size_t totNy = sim.grid->getBlocksPerDimension(1) * _BS_;
+  const size_t totNx = sim.grid->getBlocksPerDimension(0) * _BS_;
   // grid spacing:
-  const Real h = grid.getBlocksInfo().front().h_gridpoint;
+  const Real h = sim.grid->getBlocksInfo().front().h_gridpoint;
   // memory buffer for mem transfers to/from hypre:
   Real * const buffer = new Real[totNy * totNx];
-
+  int ilower[2] = {0,0};
+  int iupper[2] = {(int)totNx-1, (int)totNy-1};
+  const bool bPeriodic = false;
   const std::string solver = "pcg";
   HYPRE_StructGrid     hypre_grid;
   HYPRE_StructStencil  hypre_stencil;
@@ -103,13 +103,13 @@ class CoordinatorPressure : public GenericCoordinator
     for(size_t i=0; i<vInfo.size(); i++)
     {
       const BlockInfo& info = vInfo[i];
-      const size_t blocki = BlockType::sizeX * info.index[0];
-      const size_t blockj = BlockType::sizeY * info.index[1];
+      const size_t blocki = FluidGrid::BlockType::sizeX * info.index[0];
+      const size_t blockj = FluidGrid::BlockType::sizeY * info.index[1];
       const size_t blockStart = blocki + totNx * blockj;
       FluidBlock& b = *(FluidBlock*)info.ptrBlock;
       for(int iy=0; iy<FluidBlock::sizeY; ++iy)
       for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-          b.tmp = rhs_buffer[blockStart + ix + totNx*iy];
+          b(ix,iy).tmp = buffer[blockStart + ix + totNx*iy];
     }
   }
 
@@ -144,16 +144,20 @@ class CoordinatorPressure : public GenericCoordinator
     for( const auto& shape : sim.shapes ) shape->deformation_velocities();
 
     {
-      const auto divKernel = OperatorDivergenceSplit(dt, buffer, totNx);
+      const auto divKernel = OperatorDivergence(dt, buffer, totNx);
       computeSplit(dt, divKernel);
 
-      if (solver == "gmres")
-        HYPRE_StructGMRESSolve(hypre_solver, hypre_grid, hypre_rhs, hypre_sol);
-      else if (solver == "smg")
-        HYPRE_StructSMGSolve(hypre_solver, hypre_grid, hypre_rhs, hypre_sol);
-      else
-        HYPRE_StructPCGSolve(hypre_solver, hypre_grid, hypre_rhs, hypre_sol);
+      HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, buffer);
 
+      if (solver == "gmres")
+        HYPRE_StructGMRESSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
+      else if (solver == "smg")
+        HYPRE_StructSMGSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
+      else
+        HYPRE_StructPCGSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
+
+      HYPRE_StructVectorGetBoxValues(hypre_sol, ilower, iupper, buffer);
+      getSolution();
       const auto gradPKernel = OperatorGradP(dt);
       computeSplit(dt, gradPKernel);
     }
@@ -166,7 +170,6 @@ class CoordinatorPressure : public GenericCoordinator
     // Grid
     HYPRE_StructGridCreate(COMM, 2, &hypre_grid);
 
-    int ilower[2] = {0,0}, iupper[2] = {(int)totNx-1, (int)totNy-1};
     HYPRE_StructGridSetExtents(hypre_grid, ilower, iupper);
 
     if(bPeriodic)
@@ -191,53 +194,54 @@ class CoordinatorPressure : public GenericCoordinator
 
       // These indices must match to those in the offset array:
       int inds[5] = {0, 1, 2, 3, 4};
-      Real * vals = new Real[totNy][totNx][5];
+      using RowType = Real[5];
+      RowType * vals = new RowType[totNy*totNx];
 
       #pragma omp parallel for schedule(static)
-      for (int j = 0; j < totNy; j++)
-      for (int i = 0; i < totNx; i++) {
-        vals[j][i][0] = -4; // center
-        vals[j][i][1] =  1; // west
-        vals[j][i][2] =  1; // east
-        vals[j][i][3] =  1; // south
-        vals[j][i][4] =  1; // north
+      for (size_t j = 0; j < totNy; j++)
+      for (size_t i = 0; i < totNx; i++) {
+        vals[j*totNx + i][0] = -4; // center
+        vals[j*totNx + i][1] =  1; // west
+        vals[j*totNx + i][2] =  1; // east
+        vals[j*totNx + i][3] =  1; // south
+        vals[j*totNx + i][4] =  1; // north
       }
 
       if(not bPeriodic) // 0 Neumann BC
       {
         #pragma omp parallel for schedule(static)
-        for (int i = 0; i < totNx; i++) {
-          vals[0][i][0] += 1; // center
-          vals[0][i][3] -= 1; // south
-          vals[totNy-1][i][0] += 1; // center
-          vals[totNy-1][i][4] -= 1; // north
+        for (size_t i = 0; i < totNx; i++) {
+          vals[i][0] += 1; // center
+          vals[i][3] -= 1; // south
+          vals[totNx*(totNy-1) +i][0] += 1; // center
+          vals[totNx*(totNy-1) +i][4] -= 1; // north
         }
         #pragma omp parallel for schedule(static)
-        for (int j = 0; j < totNy; j++) {
-          vals[j][0][0] += 1; // center
-          vals[j][0][1] -= 0; // west
-          vals[j][totNx-1][0] += 1; // center
-          vals[j][totNx-1][2] -= 0; // east
+        for (size_t j = 0; j < totNy; j++) {
+          vals[totNx*j][0] += 1; // center
+          vals[totNx*j][1] -= 0; // west
+          vals[totNx*j + totNx-1][0] += 1; // center
+          vals[totNx*j + totNx-1][2] -= 0; // east
         }
       }
-
-      HYPRE_StructMatrixSetBoxValues(hypre_mat, ilower, iupper, 5, inds, vals);
-      delete vals [];
+      Real * const linV = (Real*) vals;
+      HYPRE_StructMatrixSetBoxValues(hypre_mat, ilower, iupper, 5, inds, linV);
+      delete [] vals;
       HYPRE_StructMatrixAssemble(hypre_mat);
     }
 
 
     // Rhs and initial guess
-    HYPRE_StructVectorCreate(COMM, hypre_mat, hypre_rhs);
-    HYPRE_StructVectorCreate(COMM, hypre_mat, hypre_sol);
+    HYPRE_StructVectorCreate(COMM, hypre_grid, &hypre_rhs);
+    HYPRE_StructVectorCreate(COMM, hypre_grid, &hypre_sol);
 
     HYPRE_StructVectorInitialize(hypre_rhs);
     HYPRE_StructVectorInitialize(hypre_sol);
 
     {
       memset(buffer, 0, totNx*totNy*sizeof(Real));
-      HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, vals.data());
-      HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, vals.data());
+      HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, buffer);
+      HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, buffer);
     }
 
     HYPRE_StructVectorAssemble(hypre_rhs);
@@ -246,7 +250,7 @@ class CoordinatorPressure : public GenericCoordinator
     if (solver == "gmres") // GMRES solver
     {
       HYPRE_StructGMRESCreate(COMM, &hypre_solver);
-      HYPRE_StructGMRESSetTol(hypre_solver, 1e-3);
+      HYPRE_StructGMRESSetTol(hypre_solver, 1e-6);
       HYPRE_StructGMRESSetPrintLevel(hypre_solver, 0);
       HYPRE_StructGMRESSetMaxIter(hypre_solver, 1000);
       HYPRE_StructGMRESSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
@@ -257,7 +261,7 @@ class CoordinatorPressure : public GenericCoordinator
       HYPRE_StructSMGCreate(COMM, &hypre_solver);
       HYPRE_StructSMGSetMemoryUse(hypre_solver, 0);
       HYPRE_StructSMGSetMaxIter(hypre_solver, 1000);
-      HYPRE_StructSMGSetTol(hypre_solver, 1e-3);
+      HYPRE_StructSMGSetTol(hypre_solver, 1e-6);
       HYPRE_StructSMGSetRelChange(hypre_solver, 0);
       HYPRE_StructSMGSetPrintLevel(hypre_solver, 0);
       HYPRE_StructSMGSetNumPreRelax(hypre_solver, 1);
@@ -269,7 +273,7 @@ class CoordinatorPressure : public GenericCoordinator
     {
       HYPRE_StructPCGCreate(COMM, &hypre_solver);
       HYPRE_StructPCGSetMaxIter(hypre_solver, 1000);
-      HYPRE_StructPCGSetTol(hypre_solver, 1e-3);
+      HYPRE_StructPCGSetTol(hypre_solver, 1e-6);
       HYPRE_StructPCGSetPrintLevel(hypre_solver, 0);
       HYPRE_StructPCGSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
     }
@@ -292,6 +296,6 @@ class CoordinatorPressure : public GenericCoordinator
     HYPRE_StructMatrixDestroy(hypre_mat);
     HYPRE_StructVectorDestroy(hypre_rhs);
     HYPRE_StructVectorDestroy(hypre_sol);
-    delete buffer [];
+    delete [] buffer;
   }
 };

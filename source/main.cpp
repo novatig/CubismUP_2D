@@ -14,8 +14,13 @@
 
 #include "Simulation.h"
 
+#include "mpi.h"
+
 int main(int argc, char **argv)
 {
+  int threadSafety;
+  MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &threadSafety);
+
   for(int i=0; i<argc; i++) {printf("%s\n",argv[i]); fflush(0);}
   cout<<"===================================================================\n";
   cout<<"  CubismUP 2D (velocity-pressure 2D incompressible Navier-Stokes)  \n";
@@ -28,5 +33,6 @@ int main(int argc, char **argv)
   sim->init();
   sim->simulate();
 
+  MPI_Finalize();
   return 0;
 }

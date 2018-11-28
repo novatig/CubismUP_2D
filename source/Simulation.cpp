@@ -21,7 +21,7 @@
 #include "CoordinatorMultistep.h"
 #include "CoordinatorDiffusion.h"
 #include "CoordinatorShape.h"
-#include "CoordinatorPressure.h"
+#include "CoordinatorPressure_iterative.h"
 #include "CoordinatorGravity.h"
 #include "FactoryFileLineParser.h"
 

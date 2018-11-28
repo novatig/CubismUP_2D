@@ -15,7 +15,8 @@ endif
 
 NVCC ?= nvcc
 
-poisson ?= cpu
+#poisson ?= fftcpu
+poisson ?= hyprecpu
 config ?= production
 precision ?= double
 smarties ?= false
@@ -40,6 +41,10 @@ ifneq "$(findstring daint,$(shell hostname))" ""
 include make.daint
 endif
 
+ifneq "$(findstring hypre, $(poisson))" ""
+CXX=$(MPICXX)
+endif
+
 bs ?= 32
 nthreads ?= 24
 CPPFLAGS+= -D_BS_=$(bs) -D_ALIGNBYTES_=32 -DNTHREADS=$(nthreads)
@@ -48,12 +53,14 @@ NVFLAGS+= -code=sm_60 -arch=compute_60
 CPPFLAGS += -I../source/ -I../Cubism/source/
 NVFLAGS += -I../Cubism/source/
 
+ifneq "$(findstring fft, $(poisson))" ""
 ifeq "$(precision)" "single"
     CPPFLAGS += -D_FLOAT_PRECISION_
     NVFLAGS += -D_FLOAT_PRECISION_
     LIBS += -lfftw3f -lfftw3f_omp
 else
     LIBS += -lfftw3  -lfftw3_omp
+endif
 endif
 
 BUILDDIR = .
@@ -74,7 +81,7 @@ LIBS+= -lhdf5
 CPPFLAGS+= -D_USE_HDF_
 endif
 
-ifeq "$(poisson)" "gpu"
+ifeq "$(poisson)" "fftgpu"
 LIBS += -lcufft
 OBJECTS += PoissonSolverScalarCUDA.o
 CPPFLAGS += -DCUDAFFT
