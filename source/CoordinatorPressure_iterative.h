@@ -89,17 +89,21 @@ class CoordinatorPressure : public GenericCoordinator
   int ilower[2] = {0,0};
   int iupper[2] = {(int)totNx-1, (int)totNy-1};
   const bool bPeriodic = false;
-  const std::string solver = "pcg";
+  const std::string solver = "smg";
   HYPRE_StructGrid     hypre_grid;
   HYPRE_StructStencil  hypre_stencil;
   HYPRE_StructMatrix   hypre_mat;
   HYPRE_StructVector   hypre_rhs;
   HYPRE_StructVector   hypre_sol;
   HYPRE_StructSolver   hypre_solver;
+  HYPRE_StructSolver   hypre_precond;
+  Real avgP = 0;
 
-  inline void getSolution() const
+  inline void getSolution()
   {
-    #pragma omp parallel for schedule(static)
+    Real _avgP = 0;
+    const Real fac = 1.0 / (totNx * totNy);
+    #pragma omp parallel for schedule(static, 1) reduction(+:_avgP)
     for(size_t i=0; i<vInfo.size(); i++)
     {
       const BlockInfo& info = vInfo[i];
@@ -108,9 +112,13 @@ class CoordinatorPressure : public GenericCoordinator
       const size_t blockStart = blocki + totNx * blockj;
       FluidBlock& b = *(FluidBlock*)info.ptrBlock;
       for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-      for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-          b(ix,iy).tmp = buffer[blockStart + ix + totNx*iy];
+      for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
+        b(ix,iy).tmp = buffer[blockStart + ix + totNx*iy];
+        _avgP += fac * buffer[blockStart + ix + totNx*iy];
+      }
     }
+    avgP = 0.99 * avgP + 0.01 * _avgP;
+    printf("Avg Pressure:%f\n",avgP);
   }
 
   template <typename Operator>
@@ -146,6 +154,12 @@ class CoordinatorPressure : public GenericCoordinator
     {
       const auto divKernel = OperatorDivergence(dt, buffer, totNx);
       computeSplit(dt, divKernel);
+      if(not bPeriodic) {
+        const Real pLast = buffer[totNx*totNy-1] - avgP;
+        buffer[totNx*totNy-1] = pLast;
+        buffer[totNx*(totNy-2) + totNx-1] -= pLast;
+        buffer[totNx*(totNy-1) + totNx-2] -= pLast;
+      }
 
       HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, buffer);
 
@@ -211,19 +225,27 @@ class CoordinatorPressure : public GenericCoordinator
       {
         #pragma omp parallel for schedule(static)
         for (size_t i = 0; i < totNx; i++) {
-          vals[i][0] += 1; // center
-          vals[i][3] -= 1; // south
+          vals[totNx*(0)       +i][0] += 1; // center
+          vals[totNx*(0)       +i][3]  = 0; // south
           vals[totNx*(totNy-1) +i][0] += 1; // center
-          vals[totNx*(totNy-1) +i][4] -= 1; // north
+          vals[totNx*(totNy-1) +i][4]  = 1; // north
         }
         #pragma omp parallel for schedule(static)
         for (size_t j = 0; j < totNy; j++) {
-          vals[totNx*j][0] += 1; // center
-          vals[totNx*j][1] -= 1; // west
+          vals[totNx*j +       0][0] += 1; // center
+          vals[totNx*j +       0][1]  = 1; // west
           vals[totNx*j + totNx-1][0] += 1; // center
-          vals[totNx*j + totNx-1][2] -= 1; // east
+          vals[totNx*j + totNx-1][2]  = 1; // east
         }
+        vals[totNx*(totNy-1) + totNx-1][0] = 1; // center
+        vals[totNx*(totNy-1) + totNx-1][1] = 0; // west
+        vals[totNx*(totNy-1) + totNx-1][2] = 0; // east
+        vals[totNx*(totNy-1) + totNx-1][3] = 0; // south
+        vals[totNx*(totNy-1) + totNx-1][4] = 0; // north
+        vals[totNx*(totNy-2) + totNx-1][4] = 0;
+        vals[totNx*(totNy-1) + totNx-2][2] = 0;
       }
+
       Real * const linV = (Real*) vals;
       HYPRE_StructMatrixSetBoxValues(hypre_mat, ilower, iupper, 5, inds, linV);
       delete [] vals;
@@ -247,34 +269,43 @@ class CoordinatorPressure : public GenericCoordinator
     HYPRE_StructVectorAssemble(hypre_rhs);
     HYPRE_StructVectorAssemble(hypre_sol);
 
-    if (solver == "gmres") // GMRES solver
-    {
+    if (solver == "gmres") {
+      printf("Using GMRES solver\n");
       HYPRE_StructGMRESCreate(COMM, &hypre_solver);
-      HYPRE_StructGMRESSetTol(hypre_solver, 1e-3);
-      HYPRE_StructGMRESSetPrintLevel(hypre_solver, 0);
+      HYPRE_StructGMRESSetTol(hypre_solver, 1e-2);
+      HYPRE_StructGMRESSetPrintLevel(hypre_solver, 2);
       HYPRE_StructGMRESSetMaxIter(hypre_solver, 1000);
       HYPRE_StructGMRESSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
     }
-    else
-    if (solver == "smg") // SMG solver
-    {
+    else if (solver == "smg") {
+      printf("Using SMG solver\n");
       HYPRE_StructSMGCreate(COMM, &hypre_solver);
-      HYPRE_StructSMGSetMemoryUse(hypre_solver, 0);
-      HYPRE_StructSMGSetMaxIter(hypre_solver, 1000);
-      HYPRE_StructSMGSetTol(hypre_solver, 1e-3);
-      HYPRE_StructSMGSetRelChange(hypre_solver, 0);
-      HYPRE_StructSMGSetPrintLevel(hypre_solver, 0);
+      //HYPRE_StructSMGSetMemoryUse(hypre_solver, 0);
+      HYPRE_StructSMGSetMaxIter(hypre_solver, 100);
+      HYPRE_StructSMGSetTol(hypre_solver, 1e-2);
+      //HYPRE_StructSMGSetRelChange(hypre_solver, 0);
+      HYPRE_StructSMGSetPrintLevel(hypre_solver, 3);
       HYPRE_StructSMGSetNumPreRelax(hypre_solver, 1);
       HYPRE_StructSMGSetNumPostRelax(hypre_solver, 1);
 
       HYPRE_StructSMGSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
     }
-    else // PCG solver
-    {
+    else {
+      printf("Using PCG solver\n");
       HYPRE_StructPCGCreate(COMM, &hypre_solver);
       HYPRE_StructPCGSetMaxIter(hypre_solver, 1000);
       HYPRE_StructPCGSetTol(hypre_solver, 1e-2);
-      HYPRE_StructPCGSetPrintLevel(hypre_solver, 0);
+      HYPRE_StructPCGSetPrintLevel(hypre_solver, 2);
+      if(0)
+      { // Use SMG preconditioner
+        HYPRE_StructSMGCreate(COMM, &hypre_precond);
+        HYPRE_StructSMGSetMaxIter(hypre_precond, 1000);
+        HYPRE_StructSMGSetTol(hypre_precond, 0);
+        HYPRE_StructSMGSetNumPreRelax(hypre_precond, 1);
+        HYPRE_StructSMGSetNumPostRelax(hypre_precond, 1);
+        HYPRE_StructPCGSetPrecond(hypre_solver, HYPRE_StructSMGSolve,
+                                  HYPRE_StructSMGSetup, hypre_precond);
+      }
       HYPRE_StructPCGSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
     }
   }
