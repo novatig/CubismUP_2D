@@ -34,9 +34,9 @@ class PoissonSolverDCT : public PoissonSolverBase
         const Real rky = (j+0.5)*waveFactY;
         //const Real kinv = (kx==0 && ky==0) ? 0 : -1/(rkx*rkx+rky*rky);
         const Real kinv = -1/(rkx*rkx+rky*rky); //this is sparta! (part 1)
-        rhs[linidx] *= kinv*norm_factor;
+        lhs[linidx] *= kinv*norm_factor;
       }
-    rhs[0] = 0; //this is sparta! (part 2)
+    lhs[0] = 0; //this is sparta! (part 2)
   }
 
 public:
@@ -49,14 +49,16 @@ public:
       const int retval = fftw_init_threads();
       fftw_plan_with_nthreads(desired_threads);
       rhs = fftw_alloc_real(mx * my);
-      fwd = fftw_plan_r2r_2d(mx, my, rhs, rhs, FFTW_REDFT10, FFTW_REDFT10, FFTW_MEASURE);
-      bwd = fftw_plan_r2r_2d(mx, my, rhs, rhs, FFTW_REDFT01, FFTW_REDFT01, FFTW_MEASURE);
+      lhs = fftw_alloc_real(mx * my);
+      fwd = fftw_plan_r2r_2d(mx, my, rhs, lhs, FFTW_REDFT10, FFTW_REDFT10, FFTW_MEASURE);
+      bwd = fftw_plan_r2r_2d(mx, my, lhs, lhs, FFTW_REDFT01, FFTW_REDFT01, FFTW_MEASURE);
     #else // _FLOAT_PRECISION_
       const int retval = fftwf_init_threads();
       fftwf_plan_with_nthreads(desired_threads);
       rhs = fftwf_alloc_real(mx * my);
-      fwd = fftwf_plan_r2r_2d(mx, my, rhs, rhs, FFTW_REDFT10, FFTW_REDFT10, FFTW_MEASURE);
-      bwd = fftwf_plan_r2r_2d(mx, my, rhs, rhs, FFTW_REDFT01, FFTW_REDFT01, FFTW_MEASURE);
+      lhs = fftwf_alloc_real(mx * my);
+      fwd = fftwf_plan_r2r_2d(mx, my, rhs, lhs, FFTW_REDFT10, FFTW_REDFT10, FFTW_MEASURE);
+      bwd = fftwf_plan_r2r_2d(mx, my, lhs, lhs, FFTW_REDFT01, FFTW_REDFT01, FFTW_MEASURE);
     #endif // _FLOAT_PRECISION_
     if(retval==0) {
       cout << "FFTWBase::setup(): Oops the call to fftw_init_threads() returned zero. Aborting\n";
@@ -88,11 +90,13 @@ public:
       fftw_destroy_plan(fwd);
       fftw_destroy_plan(bwd);
       fftw_free(rhs);
+      fftw_free(lhs);
     #else // _FLOAT_PRECISION_
       fftwf_cleanup_threads();
       fftwf_destroy_plan(fwd);
       fftwf_destroy_plan(bwd);
       fftwf_free(rhs);
+      fftwf_free(lhs);
     #endif // _FLOAT_PRECISION_
   }
 };

@@ -89,14 +89,16 @@ class PoissonSolverFreespace: public PoissonSolverBase
       const int retval = fftw_init_threads();
       fftw_plan_with_nthreads(desired_threads);
       rhs = fftw_alloc_real(2 * mx * my_hat);
-      fwd = fftw_plan_dft_r2c_2d(mx, my, rhs, (mycomplex *)rhs, FFTW_MEASURE);
-      bwd = fftw_plan_dft_c2r_2d(mx, my, (mycomplex *)rhs, rhs, FFTW_MEASURE);
+      lhs = fftw_alloc_real(2 * mx * my_hat);
+      fwd = fftw_plan_dft_r2c_2d(mx, my, rhs, (mycomplex *)lhs, FFTW_MEASURE);
+      bwd = fftw_plan_dft_c2r_2d(mx, my, (mycomplex *)lhs, lhs, FFTW_MEASURE);
     #else // _FLOAT_PRECISION_
       const int retval = fftwf_init_threads();
       fftwf_plan_with_nthreads(desired_threads);
       rhs = fftwf_alloc_real(2 * mx * my_hat);
-      fwd = fftwf_plan_dft_r2c_2d(mx, my, rhs, (mycomplex *)rhs, FFTW_MEASURE);
-      bwd = fftwf_plan_dft_c2r_2d(mx, my, (mycomplex *)rhs, rhs, FFTW_MEASURE);
+      lhs = fftwf_alloc_real(2 * mx * my_hat);
+      fwd = fftwf_plan_dft_r2c_2d(mx, my, rhs, (mycomplex *)lhs, FFTW_MEASURE);
+      bwd = fftwf_plan_dft_c2r_2d(mx, my, (mycomplex *)lhs, lhs, FFTW_MEASURE);
     #endif // _FLOAT_PRECISION_
     if(retval==0) {
       cout << "Call fftw_init_threads() returned zero.\n"; fflush(0); abort();
@@ -115,7 +117,7 @@ class PoissonSolverFreespace: public PoissonSolverBase
     #endif // _FLOAT_PRECISION_
     //const double t1 = omp_get_wtime();
 
-    mycomplex * const in_out = (mycomplex *)rhs;
+    mycomplex * const in_out = (mycomplex *)lhs;
     const Real* const G_hat = m_kernel;
     #pragma omp parallel for schedule(static)
     for(size_t i=0; i<mx;     ++i)
@@ -135,7 +137,7 @@ class PoissonSolverFreespace: public PoissonSolverBase
 
     //printf("UP:%f S:%f DW:%f\n", t1-t0, t2-t1, t3-t2);
     _fftw2cub();
-    memset(rhs, 0, 2 * mx * my_hat * sizeof(Real));
+    //memset(rhs, 0, 2 * mx * my_hat * sizeof(Real));
   }
 
   ~PoissonSolverFreespace() {
@@ -145,12 +147,14 @@ class PoissonSolverFreespace: public PoissonSolverBase
       fftw_destroy_plan(fwd);
       fftw_destroy_plan(bwd);
       fftw_free(rhs);
+      fftw_free(lhs);
     #else // _FLOAT_PRECISION_
       fftwf_free(m_kernel);
       fftwf_cleanup_threads();
       fftwf_destroy_plan(fwd);
       fftwf_destroy_plan(bwd);
       fftwf_free(rhs);
+      fftwf_free(lhs);
     #endif // _FLOAT_PRECISION_
   }
 };

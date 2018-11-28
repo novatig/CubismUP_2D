@@ -19,22 +19,7 @@ class PoissonSolverBase
   const size_t my_hat;
 
   Real * rhs = nullptr; // rhs in _setup, out in cub2fftw and fftw2cub
-
-  inline void _cub2fftw() const {
-    #pragma omp parallel for schedule(static)
-    for(size_t i=0; i<infos.size(); ++i) {
-      const BlockInfo& info = infos[i];
-      BlockType& b = *(BlockType*)infos[i].ptrBlock;
-      const size_t blocki = bs[0]*info.index[0], blockj = bs[1]*info.index[1];
-      const size_t offset = blocki + 2*my_hat * blockj;
-
-      for(int iy=0; iy<BlockType::sizeY; iy++)
-      for(int ix=0; ix<BlockType::sizeX; ix++) {
-        const size_t dest_index = offset + ix + 2*my_hat * iy;
-        rhs[dest_index] = b(ix,iy).tmp;
-      }
-    }
-  }
+  Real * lhs = nullptr; // lhs in _setup, out in cub2fftw and fftw2cub
 
   inline void _fftw2cub() const {
     #pragma omp parallel for schedule(static)
@@ -47,7 +32,7 @@ class PoissonSolverBase
       for(int iy=0; iy<BlockType::sizeY; iy++)
       for(int ix=0; ix<BlockType::sizeX; ix++) {
         const size_t src_index = offset + ix + 2*my_hat * iy;
-        b(ix,iy).tmp = rhs[src_index];
+        b(ix,iy).tmp = lhs[src_index];
       }
     }
   }
@@ -72,5 +57,9 @@ class PoissonSolverBase
   inline void _cub2fftw(const size_t offset, const int iy, const int ix, const Real ret) const {
     const size_t dest_index = _dest(offset, iy, ix);
     rhs[dest_index] = ret;
+  }
+  inline void _add2fftw(const size_t offset, const int iy, const int ix, const Real ret) const {
+    const size_t dest_index = _dest(offset, iy, ix);
+    rhs[dest_index] += ret;
   }
 };

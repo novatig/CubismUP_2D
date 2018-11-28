@@ -56,7 +56,8 @@ __global__ void kFreespace(const int mx, const int my_hat,
 }
 
 void dPeriodic(const cufftHandle&fwd, const cufftHandle&bwd, const int mx,
- const int my, const Real h, Real*const rhs,Real*const rhs_gpu) {
+ const int my, const Real h, Real*const rhs,Real*const rhs_gpu)
+{
   const int my_hat = my/2 +1;
   const Real facX = 2.0*M_PI/(mx*h);
   const Real facY = 2.0*M_PI/(my*h);
