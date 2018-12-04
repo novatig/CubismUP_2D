@@ -20,9 +20,9 @@ struct ObstacleBlock
   static const int sizeY = _BS_;
 
   // bulk quantities:
-  Real chi[sizeX][sizeY];
-  Real rho[sizeX][sizeY]; //maybe unused
-  Real udef[sizeX][sizeY][2];
+  Real chi[sizeY][sizeX];
+  //Real rho[sizeY][sizeX]; //maybe unused
+  Real udef[sizeY][sizeX][2];
 
   //surface quantities:
   size_t n_surfPoints=0;
@@ -75,44 +75,23 @@ struct ObstacleBlock
   {
     clear_surface();
     memset(chi, 0, sizeof(Real)*sizeX*sizeY);
-    memset(rho, 0, sizeof(Real)*sizeX*sizeY);
+    //memset(rho, 0, sizeof(Real)*sizeX*sizeY);
     memset(udef, 0, sizeof(Real)*sizeX*sizeY*2);
   }
 
-  inline void write(const int ix, const int iy, const Real _udef, const Real _vdef, const Real _rho, const Real _chi, const Real delta, const Real gradUX, const Real gradUY, const Real h)
+  inline void write(const int ix, const int iy, const Real RHO, const Real CHI,
+    const Real delta, const Real gradUX, const Real gradUY)
   {
-    if(_chi<chi[iy][ix]) return;
+    if( CHI < chi[iy][ix] ) return;
     assert(!filled);
-    udef[iy][ix][0] = _udef; udef[iy][ix][1] = _vdef;
-    rho[iy][ix] = _rho; chi[iy][ix] = _chi;
+    //rho[iy][ix] = _rho;
+    chi[iy][ix] = CHI;
 
-    if (delta>0)
-    {
+    if ( delta > 0 ) {
       n_surfPoints++;
       // multiply by cell area h^2 and by 0.5/h due to finite diff of gradHX
-      const Real dchidx = -delta*gradUX * h*h * .5/h; //gcc will
-      const Real dchidy = -delta*gradUY * h*h * .5/h; //sort it out
-      const Real _delta =  delta        * h*h * .5/h;
-      surface.push_back(new surface_data(ix,iy,dchidx,dchidy,_delta));
-    }
-  }
-
-  //same without udef
-  inline void write(const int ix, const int iy, const Real _rho, const Real _chi, const Real delta, const Real gradUX, const Real gradUY, const Real h)
-  {
-    if(_chi<chi[iy][ix]) return;
-    assert(!filled);
-    udef[iy][ix][0] = 0; udef[iy][ix][1] = 0;
-    rho[iy][ix] = _rho; chi[iy][ix] = _chi;
-
-    if (delta>0)
-    {
-      n_surfPoints++;
-      // multiply by cell area h^2 and by 0.5/h due to finite diff of gradHX
-      const Real dchidx = -delta*gradUX * h*h * .5/h; //gcc will
-      const Real dchidy = -delta*gradUY * h*h * .5/h; //sort it out
-      const Real _delta =  delta        * h*h * .5/h;
-      surface.push_back(new surface_data(ix,iy,dchidx,dchidy,_delta));
+      const Real dchidx = -delta*gradUX, dchidy = -delta*gradUY;
+      surface.push_back( new surface_data(ix, iy, dchidx, dchidy, delta) );
     }
   }
 

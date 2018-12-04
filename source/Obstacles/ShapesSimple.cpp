@@ -26,19 +26,15 @@ void Disk::create(const vector<BlockInfo>& vInfo)
   {
     FillBlocks_Cylinder kernel(radius, h, center, rhoS);
 
-    #pragma omp for schedule(dynamic)
+    #pragma omp for schedule(dynamic, 1)
     for(size_t i=0; i<vInfo.size(); i++)
-      if(kernel._is_touching(vInfo[i]))
+      if(kernel.is_touching(vInfo[i]))
       {
         assert(obstacleBlocks[vInfo[i].blockID] == nullptr);
         obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
         obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
-
-        const auto pos = obstacleBlocks[vInfo[i].blockID];
-        assert(pos not_eq nullptr);
-
-        FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-        kernel(vInfo[i], b, pos);
+        ScalarBlock& b = *(ScalarBlock*)vInfo[i].ptrBlock;
+        kernel(vInfo[i], b, *obstacleBlocks[vInfo[i].blockID] );
       }
   }
 
@@ -46,17 +42,18 @@ void Disk::create(const vector<BlockInfo>& vInfo)
   for (auto & o : obstacleBlocks) if(o not_eq nullptr) o->allocate_surface();
 }
 
-void Disk::computeVelocities()
+void Disk::updateVelocity(double dt)
 {
-  Shape::computeVelocities();
+  Shape::updateVelocity(dt);
   if(tAccel > 0) {
     if(bForcedx && sim.time < tAccel) u = (sim.time/tAccel)*forcedu;
     if(bForcedy && sim.time < tAccel) v = (sim.time/tAccel)*forcedv;
   }
 }
-void HalfDisk::computeVelocities()
+
+void HalfDisk::updateVelocity(double dt)
 {
-  Shape::computeVelocities();
+  Shape::updateVelocity(dt);
   if(tAccel > 0) {
     if(bForcedx && sim.time < tAccel) u = (sim.time/tAccel)*forcedu;
     if(bForcedy && sim.time < tAccel) v = (sim.time/tAccel)*forcedv;
@@ -74,19 +71,15 @@ void HalfDisk::create(const vector<BlockInfo>& vInfo)
   {
     FillBlocks_HalfCylinder kernel(radius, h, center, rhoS, orientation);
 
-    #pragma omp for schedule(dynamic)
+    #pragma omp for schedule(dynamic, 1)
     for(size_t i=0; i<vInfo.size(); i++)
-      if(kernel._is_touching(vInfo[i]))
+      if(kernel.is_touching(vInfo[i]))
       {
         assert(obstacleBlocks[vInfo[i].blockID] == nullptr);
         obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
         obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
-
-        const auto pos = obstacleBlocks[vInfo[i].blockID];
-        assert(pos not_eq nullptr);
-
-        FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-        kernel(vInfo[i], b, pos);
+        ScalarBlock& b = *(ScalarBlock*)vInfo[i].ptrBlock;
+        kernel(vInfo[i], b, *obstacleBlocks[vInfo[i].blockID]);
       }
   }
 
@@ -105,25 +98,19 @@ void Ellipse::create(const vector<BlockInfo>& vInfo)
   {
     FillBlocks_Ellipse kernel(semiAxis[0], semiAxis[1], h, center, orientation, rhoS);
 
-    #pragma omp for schedule(dynamic)
+    #pragma omp for schedule(dynamic, 1)
     for(size_t i=0; i<vInfo.size(); i++)
-      if(kernel._is_touching(vInfo[i]))
+      if(kernel.is_touching(vInfo[i]))
       {
         assert(obstacleBlocks[vInfo[i].blockID] == nullptr);
         obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
         obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
-
-        const auto pos = obstacleBlocks[vInfo[i].blockID];
-        assert(pos not_eq nullptr);
-
-        FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-        kernel(vInfo[i], b, pos);
+        ScalarBlock& b = *(ScalarBlock*)vInfo[i].ptrBlock;
+        kernel(vInfo[i], b, *obstacleBlocks[vInfo[i].blockID]);
       }
   }
 
-  const FillBlocks_EllipseFinalize finalize(h, rhoS);
-  compute(finalize, vInfo);
-
+  removeMoments(vInfo);
   for (auto & o : obstacleBlocks) if(o not_eq nullptr) o->allocate_surface();
 }
 
@@ -138,19 +125,15 @@ void DiskVarDensity::create(const vector<BlockInfo>& vInfo)
   {
     FillBlocks_VarRhoCylinder kernel(radius, h, center, rhoTop, rhoBot, orientation);
 
-    #pragma omp for schedule(dynamic)
+    #pragma omp for schedule(dynamic, 1)
     for(size_t i=0; i<vInfo.size(); i++)
-      if(kernel._is_touching(vInfo[i]))
+      if(kernel.is_touching(vInfo[i]))
       {
         assert(obstacleBlocks[vInfo[i].blockID] == nullptr);
         obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
         obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
-
-        const auto pos = obstacleBlocks[vInfo[i].blockID];
-        assert(pos not_eq nullptr);
-
-        FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-        kernel(vInfo[i], b, pos);
+        ScalarBlock& b = *(ScalarBlock*)vInfo[i].ptrBlock;
+        kernel(vInfo[i], b, *obstacleBlocks[vInfo[i].blockID]);
       }
   }
 
@@ -167,26 +150,20 @@ void EllipseVarDensity::create(const vector<BlockInfo>& vInfo)
 
   #pragma omp parallel
   {
-    FillBlocks_Ellipse kernel(semiAxisX, semiAxisY, h, center, orientation, rhoTop);
+    FillBlocks_VarRhoEllipse kernel(semiAxisX, semiAxisY, h, center, orientation, rhoTop, rhoBot);
 
-    #pragma omp for schedule(dynamic)
+    #pragma omp for schedule(dynamic, 1)
     for(size_t i=0; i<vInfo.size(); i++)
-      if(kernel._is_touching(vInfo[i]))
+      if(kernel.is_touching(vInfo[i]))
       {
         assert(obstacleBlocks[vInfo[i].blockID] == nullptr);
         obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
         obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
-
-        const auto pos = obstacleBlocks[vInfo[i].blockID];
-        assert(pos not_eq nullptr);
-
-        FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-        kernel(vInfo[i], b, pos);
+        ScalarBlock& b = *(ScalarBlock*)vInfo[i].ptrBlock;
+        kernel(vInfo[i], b, *obstacleBlocks[vInfo[i].blockID]);
       }
   }
 
-  const FillBlocks_VarRhoEllipseFinalize finalize(h, center, rhoTop, rhoBot, orientation);
-  compute(finalize, vInfo);
   removeMoments(vInfo);
   for (auto & o : obstacleBlocks) if(o not_eq nullptr) o->allocate_surface();
 }

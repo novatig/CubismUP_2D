@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "Shape.h"
+#include "../Shape.h"
 #define TERM_REW_FAC 50
 #define HEIGHT_PENAL 10
 
@@ -42,7 +42,7 @@ class Disk : public Shape
   }
 
   void create(const vector<BlockInfo>& vInfo) override;
-  void computeVelocities() override;
+  void updateVelocity(double dt) override;
 };
 
 class HalfDisk : public Shape
@@ -72,7 +72,7 @@ class HalfDisk : public Shape
   }
 
   void create(const vector<BlockInfo>& vInfo) override;
-  void computeVelocities() override;
+  void updateVelocity(double dt) override;
 };
 
 class Ellipse : public Shape

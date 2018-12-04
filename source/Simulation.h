@@ -9,10 +9,8 @@
 //
 
 #pragma once
-#include "Definitions.h"
-//#include "ProcessOperatorsOMP.h"
-#include "GenericCoordinator.h"
-#include "GenericOperator.h"
+#include "SimulationData.h"
+#include "Operator.h"
 
 #include <vector>
 #include <sys/types.h>
@@ -28,7 +26,7 @@ class Simulation
  protected:
   ArgumentParser parser;
   Profiler * profiler = nullptr;
-  vector<GenericCoordinator*> pipeline;
+  std::vector<Operator*> pipeline;
 
   void createShapes();
   void parseRuntime();

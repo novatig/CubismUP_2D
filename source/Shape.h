@@ -13,8 +13,7 @@
 
 #pragma once
 
-#include "common.h"
-#include "Definitions.h"
+#include "SimulationData.h"
 #include "ObstacleBlock.h"
 
 class Shape
@@ -36,9 +35,9 @@ class Shape
   double u = 0; // in lab frame, not sim frame
   double v = 0; // in lab frame, not sim frame
   double omega = 0;
-  double computedu = 0;
-  double computedv = 0;
-  double computedo = 0;
+  double Fx = 0;
+  double Fy = 0;
+  double Tz = 0;
   double area_penal = 0;
   double mass_penal = 0;
   double forcex_penal = 0;
@@ -75,9 +74,9 @@ class Shape
     u = 0;
     v = 0;
     omega = 0;
-    computedu = 0;
-    computedv = 0;
-    computedo = 0;
+    Fx = 0;
+    Fy = 0;
+    Tz = 0;
     d_gm[0] = 0;
     d_gm[1] = 0;
     for(auto & entry : obstacleBlocks) delete entry;
@@ -118,6 +117,7 @@ class Shape
   virtual Real getCharLength() const = 0;
   virtual void create(const vector<BlockInfo>& vInfo) = 0;
 
+  virtual void updateVelocity(double dt);
   virtual void updatePosition(double dt);
 
   void setCentroid(double C[2])
@@ -183,63 +183,15 @@ class Shape
       x(c.x), y(c.y), m(c.m), j(c.j), u(c.u), v(c.v), a(c.a) {}
   };
 
-  Integrals integrateObstBlock(const vector<BlockInfo>& vInfo);
+  Integrals integrateObstBlock(const std::vector<BlockInfo>& vInfo);
 
-  void removeMoments(const vector<BlockInfo>& vInfo);
-
-  virtual void computeVelocities();
+  void removeMoments(const std::vector<BlockInfo>& vInfo);
 
   void updateLabVelocity( int nSum[2], double uSum[2] );
 
   void penalize();
 
   void diagnostics();
-
-  void characteristic_function();
-  void deformation_velocities();
-
-  template <typename Kernel>
-  void compute(const Kernel& kernel, const vector<BlockInfo>& vInfo)
-  {
-    #pragma omp parallel
-    {
-      Lab mylab;
-      mylab.prepare(*(sim.grid), kernel.stencil_start, kernel.stencil_end, false);
-
-      #pragma omp for schedule(dynamic)
-      for (size_t i=0; i<vInfo.size(); i++)
-      {
-        const auto pos = obstacleBlocks[vInfo[i].blockID];
-        if(pos == nullptr) continue; //obstacle is not in the block
-        mylab.load(vInfo[i], 0);
-        FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-        kernel(mylab, vInfo[i], b, pos);
-      }
-    }
-  }
-
-  template <typename Kernel>
-  void compute_surface(const Kernel& kernel, const vector<BlockInfo>& vInfo)
-  {
-    #pragma omp parallel
-    {
-      Lab mylab;
-      mylab.prepare(*(sim.grid), kernel.stencil_start, kernel.stencil_end, false);
-
-      #pragma omp for schedule(dynamic)
-      for (size_t i=0; i<vInfo.size(); i++)
-      {
-        const auto pos = obstacleBlocks[vInfo[i].blockID];
-        if(pos == nullptr) continue; //obstacle is not in the block
-        assert(pos->filled);
-        if(!pos->n_surfPoints) continue; //does not contain surf points
-
-        mylab.load(vInfo[i], 0);
-        FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-        kernel(mylab, vInfo[i], b, pos);
-      }
-    }
-  }
 
   void computeForces();
 };

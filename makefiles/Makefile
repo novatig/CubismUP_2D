@@ -65,10 +65,17 @@ endif
 
 BUILDDIR = .
 SRC_DIR = $(BUILDDIR)/../source/
-CUBISM_DIR = $(BUILDDIR)/../Cubism/source/
-OBJECTS = Simulation.o Definitions.o Shape.o ShapeLibrary.o ShapesSimple.o BlowFish.o Fish.o FishLibrary.o StefanFish.o BufferedLogger.o CarlingFish.o
+DIRS = $(sort $(dir $(wildcard ../source/*/)))
 
-VPATH := $(SRC_DIR):$(CUBISM_DIR)
+CUBISM_DIR = $(BUILDDIR)/../Cubism/source/
+#OBJECTS = Simulation.o Definitions.o Shape.o ShapeLibrary.o ShapesSimple.o BlowFish.o Fish.o FishLibrary.o StefanFish.o BufferedLogger.o CarlingFish.o
+OBJECTS = Simulation.o SimulationData.o Shape.o ShapeLibrary.o ShapesSimple.o BufferedLogger.o \
+Helpers.o HYPRE_solver.o IC.o PressureIterator.o PutObjectsOnGrid.o RKstep1.o RKstep2.o UpdateObjects.o 
+CPP_FILES = $(notdir $(OBJECTS:.o=.cpp))
+
+VPATH := $(DIRS) $(CUBISM_DIR)
+#  vpath %.cpp $(DIRS)
+#  vpath %.h   $(DIRS)
 
 ifneq "$(smarties)" "false"
 SMARTIESDIR ?= ../../smarties/source/

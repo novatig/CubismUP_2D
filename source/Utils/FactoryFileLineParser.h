@@ -21,7 +21,6 @@
 #include <functional>
 #include <cctype>
 #include <locale>
-#include <common.h>
 
 class FactoryFileLineParser: public ArgumentParser
 {

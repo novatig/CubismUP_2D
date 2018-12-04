@@ -4,6 +4,14 @@ LD=g++-8
 endif
 
 SMARTIESDIR = /Users/novatig/code/smarties/source/
+MPICXX=mpic++
+
+ifeq "$(poisson)" "hyprecpu"
+#LIBS+=-L/cluster/home/novatig/hypre/build/lib/ -lHYPRE
+#CPPFLAGS+=-I/cluster/home/novatig/hypre/build/include/
+LIBS+= -lHYPRE
+endif
+
 
 ifeq "0" "1"
 

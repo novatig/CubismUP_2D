@@ -8,361 +8,181 @@
 
 #pragma once
 
-#include "common.h"
-#include "BoundaryConditions.h"
+#include <cassert>
+#include <sstream>
+#include <cmath>
+#include <cstdio>
+#include <vector>
+
+using namespace std;
+
+#ifndef _FLOAT_PRECISION_
+using Real = double;
+#else // _FLOAT_PRECISION_
+using Real = float;
+#endif // _FLOAT_PRECISION_
+
+#include <ArgumentParser.h>
+#include <Grid.h>
+#include <BlockInfo.h>
+#include <BlockLab.h>
+#include "StencilInfo.h"
 
 #ifndef _BS_
 #define _BS_ 32
 #endif//_BS_
 
-struct FluidElement
-{
-  Real u, v, tmpU, tmpV; //used by advection and diffusion
-  Real invRho, tmp, p, pOld; //used by pressure
+#ifndef _DIM_
+#define _DIM_ 2
+#endif//_BS_
 
-  FluidElement() :
-  u(0), v(0), tmpU(0), tmpV(0), invRho(0), tmp(0), p(0), pOld(0)
-  {}
-
-  void clear()
-  {
-    u = v = tmpU = tmpV = invRho = tmp = p = pOld = 0;
-  }
+struct ScalarElement {
+  Real s = 0;
+  inline void clear() { s = 0; }
 };
 
-struct FluidVTKStreamer
-{
-  static const int channels = 5;
+struct VectorElement {
+  static constexpr int DIM = _DIM_;
+  Real u[DIM];
 
-  void operate(FluidElement input, Real output[channels])
-  {
-    output[0] = 1/input.invRho;
-    output[1] = input.u;
-    output[2] = input.v;
-    output[3] = input.p;
-    output[4] = input.tmp;
-  }
+  VectorElement() { clear(); }
+
+  inline void clear() { for(int i=0; i<DIM; ++i) u[i] = 0; }
 };
 
-struct FluidBlock
+template <typename Element>
+struct GridBlock
 {
-  //these identifiers are required by cubism!
-  static const int sizeX = _BS_;
-  static const int sizeY = _BS_;
-  static const int sizeZ = 1;
-  typedef FluidElement ElementType;
-  FluidElement data[1][sizeY][sizeX];
+  static constexpr int sizeX = _BS_;
+  static constexpr int sizeY = _BS_;
+  static constexpr int sizeZ = _DIM_ > 2 ? _BS_ : 1;
 
-  //required from Grid.h
-  void clear()
-  {
-      FluidElement * entry = &data[0][0][0];
-      const int N = sizeX*sizeY;
+  using ElementType = Element;
+  ElementType data[sizeZ][sizeY][sizeX];
 
-      for(int i=0; i<N; ++i)
-          entry[i].clear();
+  inline void clear() {
+      ElementType * const entry = &data[0][0][0];
+      for(int i=0; i<sizeX*sizeY*sizeZ; ++i) entry[i].clear();
   }
 
-  FluidElement& operator()(int ix, int iy=0, int iz=0) {
+  const ElementType& operator()(int ix, int iy=0, int iz=0) const {
       assert(ix>=0); assert(ix<sizeX);
       assert(iy>=0); assert(iy<sizeY);
-
-      return data[0][iy][ix];
+      assert(iz>=0); assert(iz<sizeZ);
+      return data[iz][iy][ix];
   }
-  const FluidElement& operator()(int ix, int iy=0, int iz=0) const {
+  ElementType& operator()(int ix, int iy=0, int iz=0) {
       assert(ix>=0); assert(ix<sizeX);
       assert(iy>=0); assert(iy<sizeY);
-
-      return data[0][iy][ix];
+      assert(iz>=0); assert(iz<sizeZ);
+      return data[iz][iy][ix];
   }
 
   template <typename Streamer>
-  inline void Write(ofstream& output, Streamer streamer) const
-  {
-    for(int iy=0; iy<sizeY; iy++)
-      for(int ix=0; ix<sizeX; ix++)
-        streamer.operate(data[0][iy][ix], output);
+  inline void Write(ofstream& output, const Streamer& streamer) const {
+      ElementType * const entry = &data[0][0][0];
+      for(int i=0; i<sizeX*sizeY*sizeZ; ++i) streamer.operate(entry[i], output);
   }
-
   template <typename Streamer>
-  inline void Read(ifstream& input, Streamer streamer)
-  {
-    for(int iy=0; iy<sizeY; iy++)
-      for(int ix=0; ix<sizeX; ix++)
-        streamer.operate(input, data[0][iy][ix]);
+  inline void Read(ifstream& input, const Streamer& streamer) {
+      ElementType * const entry = &data[0][0][0];
+      for(int i=0; i<sizeX*sizeY*sizeZ; ++i) streamer.operate(input, entry[i]);
   }
 };
 
-struct StreamerSerialization
+template<typename BlockType,
+         template<typename X> class allocator = std::allocator>
+class BlockLabOpen: public BlockLab<BlockType, allocator>
 {
-  static const int NCHANNELS = 5;
+ public:
+  using ElementType = typename BlockType::ElementType;
+  static constexpr int sizeX = BlockType::sizeX;
+  static constexpr int sizeY = BlockType::sizeY;
+  static constexpr int sizeZ = BlockType::sizeZ;
 
-  FluidBlock& ref;
+  // Used for Boundary Conditions:
+  int s[3] = {0,0,0}, e[3] = {0,0,0};
 
-  StreamerSerialization(FluidBlock& b): ref(b) {}
-
-  void operate(const int ix, const int iy, const int iz, Real output[NCHANNELS]) const
+  // Apply bc on face of direction dir and side side (0 or 1):
+  template<int dir, int side> void applyBCface()
   {
-    const FluidElement& input = ref.data[iz][iy][ix];
-    output[0] = input.invRho;
-    output[1] = input.u;
-    output[2] = input.v;
-    output[3] = input.p;
-    output[4] = input.pOld;
-    //output[6] = input.tmpU;
-    //output[7] = input.tmpV;
-    //output[8] = input.tmp;
-    //output[9] = input.divU;
+    const int* const stenBeg = this->m_stencilStart;
+    const int* const stenEnd = this->m_stencilEnd;
+    s[0] =  dir==0 ? (side==0 ? stenBeg[0] : sizeX ) : stenBeg[0];
+    s[1] =  dir==1 ? (side==0 ? stenBeg[1] : sizeY ) : stenBeg[1];
+    #if _DIM_ > 2
+    s[2] =  dir==2 ? (side==0 ? stenBeg[2] : sizeZ ) : stenBeg[2];
+    #endif
+
+    e[0] =  dir==0 ? (side==0 ? 0 : sizeX + stenEnd[0]-1 )
+                   : sizeX +  stenEnd[0]-1;
+    e[1] =  dir==1 ? (side==0 ? 0 : sizeY + stenEnd[1]-1 )
+                   : sizeY +  stenEnd[1]-1;
+    #if _DIM_ > 2
+    e[2] =  dir==2 ? (side==0 ? 0 : sizeZ + stenEnd[2]-1 )
+                   : sizeZ +  stenEnd[2]-1;
+
+    for(int iz=s[2]; iz<e[2]; iz++)
+    #else
+    static constexpr int iz = 0;
+    #endif
+    for(int iy=s[1]; iy<e[1]; iy++)
+    for(int ix=s[0]; ix<e[0]; ix++)
+      (*this)(ix,iy,iz) = (*this)(
+                                   dir==0? (side==0? 0: sizeX-1):ix,
+                                   dir==1? (side==0? 0: sizeY-1):iy,
+    #if _DIM_ > 2
+                                   dir==2? (side==0? 0: sizeZ-1):iz
+    #else
+                                   0
+    #endif
+                                 );
   }
 
-  void operate(const Real input[NCHANNELS], const int ix, const int iy, const int iz) const
+  // Called by Cubism:
+  void _apply_bc(const BlockInfo& info, const Real t = 0)
   {
-    FluidElement& output = ref.data[iz][iy][ix];
-    output.invRho  = input[0];
-    output.u    = input[1];
-    output.v    = input[2];
-    output.p    = input[3];
-    output.pOld = input[4];
-    //output.tmpU = input[6];
-    //output.tmpV = input[7];
-    //output.tmp  = input[8];
-    //output.divU = input[9];
+    if( info.index[0]==0 )           this->applyBCface<0,0>();
+    if( info.index[0]==this->NX-1 )  this->applyBCface<0,1>();
+    if( info.index[1]==0 )           this->applyBCface<1,0>();
+    if( info.index[1]==this->NY-1 )  this->applyBCface<1,1>();
   }
 
-  void operate(const int ix, const int iy, const int iz, Real *ovalue, const int field) const
-  {
-    const FluidElement& input = ref.data[iz][iy][ix];
-
-    switch(field) {
-      case 0: *ovalue = input.invRho; break;
-      case 1: *ovalue = input.u; break;
-      case 2: *ovalue = input.v; break;
-      case 3: *ovalue = input.p; break;
-      case 4: *ovalue = input.pOld; break;
-      //case 6: *ovalue = input.tmpU; break;
-      //case 7: *ovalue = input.tmpV; break;
-      //case 8: *ovalue = input.tmp; break;
-      //case 9: *ovalue = input.divU; break;
-      default: throw std::invalid_argument("unknown field!"); break;
-    }
-  }
-
-  void operate(const Real ivalue, const int ix, const int iy, const int iz, const int field) const
-  {
-    FluidElement& output = ref.data[iz][iy][ix];
-
-    switch(field) {
-      case 0:  output.invRho  = ivalue; break;
-      case 1:  output.u    = ivalue; break;
-      case 2:  output.v    = ivalue; break;
-      case 3:  output.p    = ivalue; break;
-      case 4:  output.pOld = ivalue; break;
-      //case 6:  output.tmpU = ivalue; break;
-      //case 7:  output.tmpV = ivalue; break;
-      //case 8:  output.tmp  = ivalue; break;
-      //case 9:  output.divU = ivalue; break;
-      default: throw std::invalid_argument("unknown field!"); break;
-    }
-  }
-
-  static const char * getAttributeName() { return "Tensor"; }
-};
-
-template<typename BlockType, template<typename X> class allocator=std::allocator>
-class BlockLabOpen: public BlockLab<BlockType,allocator>
-{
-  typedef typename BlockType::ElementType ElementTypeBlock;
-
-  public:
-  ElementTypeBlock pDirichlet;
   BlockLabOpen(): BlockLab<BlockType,allocator>(){}
-  void _apply_bc(const BlockInfo& info, const Real t=0) {
-    BoundaryCondition<BlockType,ElementTypeBlock,allocator> bc(this->m_stencilStart, this->m_stencilEnd, this->m_cacheBlock);
-    if (info.index[0]==0)           bc.template applyBC_absorbing<0,0>();
-    if (info.index[0]==this->NX-1)  bc.template applyBC_absorbing<0,1>();
-    if (info.index[1]==0)           bc.template applyBC_absorbing<1,0>();
-    if (info.index[1]==this->NY-1)  bc.template applyBC_absorbing<1,1>();
+};
+
+struct StreamerScalar {
+  static constexpr int NCHANNELS = 1;
+  template <typename TBlock, typename T>
+  static inline void operate(const TBlock& b,
+    const int ix, const int iy, const int iz, T output[NCHANNELS]) {
+    output[0] = b(ix,iy,iz).s;
   }
+  static std::string prefix() { return std::string(""); }
+  static const char * getAttributeName() { return "Scalar"; }
 };
 
+struct StreamerVector {
+  static constexpr int NCHANNELS = 3;
 
-struct StreamerChi
-{
-    static const int NCHANNELS = 1;
-    static const int CLASS = 0;
-
-    template <typename TBlock, typename T>
-    static inline void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS])
-    {
-      output[0] = b(ix,iy,iz).chi;
-    }
-    static std::string prefix()
-    {
-      return std::string("chi_");
-    }
-
-    static const char * getAttributeName() { return "Scalar"; }
-};
-
-struct StreamerVelocityVector
-{
-    static const int NCHANNELS = 3;
-    static const int CLASS = 0;
-    // Write
-    template <typename TBlock, typename T>
-    static inline void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS])
-    {
-        output[0] = b(ix,iy).u;
-        output[1] = b(ix,iy).v;
-        output[2] = b(ix,iy).tmp;
-    }
-    // Read
-    template <typename TBlock, typename T>
-    static inline void operate(TBlock& b, const T input[NCHANNELS], const int ix, const int iy, const int iz)
-    {
-        b(ix,iy).u = input[0];
-        b(ix,iy).v = input[1];
-    }
-    static std::string prefix()
-    {
-      return std::string("vel_");
-    }
-    static const char * getAttributeName() { return "Vector"; }
-};
-
-struct StreamerTmpVector
-{
-    static const int NCHANNELS = 3;
-    static const int CLASS = 0;
-    // Write
-    template <typename TBlock, typename T>
-    static inline void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS])
-    {
-        output[0] = b(ix,iy).tmpU;
-        output[1] = b(ix,iy).tmpV;
-        output[2] = b(ix,iy).tmp;
-    }
-    static std::string prefix()
-    {
-      return std::string("tmp_");
-    }
-    static const char * getAttributeName() { return "Vector"; }
-};
-
-struct StreamerPressure
-{
-    static const int NCHANNELS = 1;
-    static const int CLASS = 0;
-    template <typename TBlock, typename T>
-    static inline void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS])
-    {
-      output[0] = b(ix,iy).p;
-    }
-    static std::string prefix()
-    {
-      return std::string("pres_");
-    }
-    static const char * getAttributeName() { return "Scalar"; }
-};
-struct StreamerRho
-{
-    static const int NCHANNELS = 1;
-    static const int CLASS = 0;
-    template <typename TBlock, typename T>
-    static inline void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS])
-    {
-      output[0] = b(ix,iy).invRho;
-    }
-    static std::string prefix()
-    {
-      return std::string("invRho_");
-    }
-    static const char * getAttributeName() { return "Scalar"; }
-};
-
-typedef Grid<FluidBlock, std::allocator> FluidGrid;
-
-//#ifndef _MIXED_
-//#ifndef _BOX_
-//#ifndef _OPENBOX_
-//typedef BlockLab<FluidBlock, std::allocator> Lab;
-typedef BlockLabOpen<FluidBlock, std::allocator> Lab;
-//#else
-//  typedef BlockLabOpenBox<FluidBlock, std::allocator> Lab;
-//#endif // _OPENBOX_
-//#else
-//  typedef BlockLabBox<FluidBlock, std::allocator> Lab;
-//#endif // _BOX_
-//#else
-//  typedef BlockLabBottomWall<FluidBlock, std::allocator> Lab;
-//#endif // _MIXED_
-
-class Shape;
-
-struct SimulationData
-{
-  FluidGrid * grid = nullptr;
-  vector<Shape*> shapes;
-
-  double time = 0;
-  int step = 0;
-
-  Real uinfx = 0;
-  Real uinfy = 0;
-
-  double lambda = 0;
-  double nu = 0;
-  double dlm = -1;
-
-  Real gravity[2] = { (Real) 0.0, (Real) -9.80665 };
-  // nsteps==0 means that this stopping criteria is not active
-  int nsteps = 0;
-  // endTime==0  means that this stopping criteria is not active
-  double endTime = 0;
-
-  double dt = 0;
-  double CFL = 0.1;
-
-  bool verbose = true;
-  bool muteAll = false;
-  int poissonType = 0;
-  bool bVariableDensity = false;
-  // output
-  // dumpFreq==0 means that this dumping frequency (in #steps) is not active
-  int dumpFreq = 0;
-  // dumpTime==0 means that this dumping frequency (in time)   is not active
-  double dumpTime = 0;
-  double nextDumpTime = 0;
-  bool _bDump = false;
-  bool bPing = false;
-  bool bRestart = false;
-
-  string path4serialization;
-  string path2file;
-
-  void resetAll();
-  bool bDump()
-  {
-    const bool timeDump = dumpTime>0 && time >= nextDumpTime;
-    const bool stepDump = dumpFreq>0 && (step % dumpFreq) == 0;
-    _bDump = stepDump || timeDump;
-    return _bDump;
-  }
-  void registerDump();
-  bool bOver() const
-  {
-    const bool timeEnd = endTime>0 && time >= endTime;
-    const bool stepEnd =  nsteps>0 && step > nsteps;
-    return timeEnd || stepEnd;
-  }
-  double minRho() const;
-  double maxSpeed() const;
-  double maxRelSpeed() const;
-  void checkVariableDensity();
-  double getH() const
-  {
-    return grid->getBlocksInfo().front().h_gridpoint; // yikes
+  template <typename TBlock, typename T>
+  static inline void operate(const TBlock& b,
+    const int ix, const int iy, const int iz, T output[NCHANNELS]) {
+      for (int i = 0; i < _DIM_; i++) output[i] = b(ix,iy,iz).u[i];
   }
 
-  ~SimulationData();
+  template <typename TBlock, typename T>
+  static inline void operate(TBlock& b, const T input[NCHANNELS],
+    const int ix, const int iy, const int iz) {
+      for (int i = 0; i < _DIM_; i++) b(ix,iy,iz).u[i] = input[i];
+  }
+  static std::string prefix() { return std::string(""); }
+  static const char * getAttributeName() { return "Vector"; }
 };
+
+using ScalarBlock = GridBlock<ScalarElement>;
+using VectorBlock = GridBlock<VectorElement>;
+using VectorGrid = Grid<VectorBlock, std::allocator>;
+using ScalarGrid = Grid<ScalarBlock, std::allocator>;
+using VectorLab = BlockLabOpen<VectorBlock, std::allocator>;
+using ScalarLab = BlockLabOpen<ScalarBlock, std::allocator>;
