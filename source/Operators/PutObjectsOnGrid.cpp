@@ -92,6 +92,9 @@ void PutObjectsOnGrid::towers(Shape * const shape) const
       }
     }
   }
+
+
+  for (auto & o : OBLOCK) if(o not_eq nullptr) o->allocate_surface();
 }
 
 // sets pRHS to div(F_{t}) and tmpV to (F_{t})
@@ -111,20 +114,22 @@ void PutObjectsOnGrid::presRHS_step1(const double dt) const
     for (size_t i=0; i < Nblocks; i++) {
       chi_lab.load(chiInfo[i], 0); // loads chi_t field with ghosts
       fpenlab.load(forceInfo[i], 0); // loads penl force field with ghosts
-      const ScalarLab& __restrict__ CHI  = chi_lab;
-      const VectorLab& __restrict__ FPNL = fpenlab;
+      const ScalarLab& __restrict__ X = chi_lab;
+      const VectorLab& __restrict__ F = fpenlab;
+
       VectorBlock & __restrict__ TMPV = *(VectorBlock*)tmpVInfo[i].ptrBlock;
       ScalarBlock & __restrict__ PRHS = *(ScalarBlock*)pRHSInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY; iy++)
       for(int ix=0; ix<VectorBlock::sizeX; ix++) {
-        const Real cpx = CHI(ix+1, iy).s, cpy = CHI(ix, iy+1).s;
-        const Real clx = CHI(ix-1, iy).s, cly = CHI(ix, iy-1).s;
-        const Real fpx = FPNL(ix+1, iy).u[0], gpy = FPNL(ix, iy+1).u[0];
-        const Real flx = FPNL(ix-1, iy).u[1], gly = FPNL(ix, iy-1).u[1];
 
-        TMPV(ix,iy).u[0] = rk23fac * FPNL(ix,iy).u[0] * CHI(ix,iy).s;
-        TMPV(ix,iy).u[1] = rk23fac * FPNL(ix,iy).u[1] * CHI(ix,iy).s;
+        const Real cpx = X(ix+1, iy).s, cpy = X(ix, iy+1).s;
+        const Real clx = X(ix-1, iy).s, cly = X(ix, iy-1).s;
+        const Real fpx = F(ix+1, iy).u[0], gpy = F(ix, iy+1).u[0];
+        const Real flx = F(ix-1, iy).u[1], gly = F(ix, iy-1).u[1];
+
+        TMPV(ix,iy).u[0] = rk23fac * F(ix,iy).u[0] * X(ix,iy).s;
+        TMPV(ix,iy).u[1] = rk23fac * F(ix,iy).u[1] * X(ix,iy).s;
         PRHS(ix,iy).s = i2h*((cpx*fpx - clx*flx) + (cpy*gpy - cly*gly));
       }
     }
@@ -149,6 +154,7 @@ void PutObjectsOnGrid::presRHS_step2(const double dt) const
       udeflab.load(uDefInfo[i], 0); // loads def velocity field with ghosts
       const ScalarLab& __restrict__ CHI  = chi_lab;
       const VectorLab& __restrict__ UDEF = udeflab;
+
       ScalarBlock & __restrict__ RHS = *(ScalarBlock*)pRHSInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY; iy++)
@@ -166,27 +172,38 @@ void PutObjectsOnGrid::presRHS_step2(const double dt) const
 void PutObjectsOnGrid::operator()(const double dt)
 {
   // 1) put div(f^t_penl) in pres RHS and f^t_penl in tmpV for vel step
+  sim.startProfiler("PutObjectsOnGrid::presRHS_step1");
   presRHS_step1(dt);
+  sim.stopProfiler();
 
   // 2) clear chi^t and udef^t
+  sim.startProfiler("PutObjectsOnGrid::clear");
   #pragma omp parallel for schedule(static)
   for (size_t i=0; i < Nblocks; i++) {
     auto & CHI  = *(ScalarBlock*) chiInfo[i].ptrBlock; // dest
     auto & UDEF = *(VectorBlock*)uDefInfo[i].ptrBlock; // dest
     CHI.clear(); UDEF.clear();
   }
+  sim.stopProfiler();
 
   // 3) put objects' signed dist function and udef on the obstacle blocks:
+  sim.startProfiler("PutObjectsOnGrid::create");
   const std::vector<BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
   for(const auto& shape : sim.shapes) shape->create(tmpInfo);
+  sim.stopProfiler();
 
   // 4) for each obstacle, from signed distance, put new chi on blocks
+  sim.startProfiler("PutObjectsOnGrid::towers");
   for(const auto& shape : sim.shapes) towers( shape );
+  sim.stopProfiler();
 
   // 5) compute second component of pressure RHS: - div(\chi^{t+1} Udef^{t+1})
+  sim.startProfiler("PutObjectsOnGrid::presRHS_step2");
   presRHS_step2(dt);
+  sim.stopProfiler();
 
   // 6) prepare force: multiply previous penl force by 0 if new chi is 0
+  sim.startProfiler("PutObjectsOnGrid::guess");
   #pragma omp parallel for schedule(static)
   for (size_t i=0; i < Nblocks; i++) {
     const auto & CHI  = *(ScalarBlock*) chiInfo[i].ptrBlock; // dest
@@ -197,4 +214,5 @@ void PutObjectsOnGrid::operator()(const double dt)
       FPNL(ix,iy).u[1] *= CHI(ix,iy).s > 0;
     }
   }
+  sim.stopProfiler();
 }

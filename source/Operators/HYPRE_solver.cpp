@@ -58,7 +58,9 @@ void HYPRE_solver::solve()
   HYPRE_Int ilower[2] = {0,0};
   HYPRE_Int iupper[2] = {(int)totNx-1, (int)totNy-1};
 
+  sim.startProfiler("HYPRE_solver::rhs_cub2lin");
   rhs_cub2lin();
+  sim.stopProfiler();
 
   if(not bPeriodic)
   {
@@ -67,18 +69,26 @@ void HYPRE_solver::solve()
     buffer[totNx*(totNy-1) + totNx-2] -= pLast;
   }
 
+  sim.startProfiler("HYPRE_solver::setBoxVals");
   HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, buffer);
+  sim.stopProfiler();
 
+  sim.startProfiler("HYPRE_solver::solve");
   if (solver == "gmres")
     HYPRE_StructGMRESSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   else if (solver == "smg")
     HYPRE_StructSMGSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   else
     HYPRE_StructPCGSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
+  sim.stopProfiler();
 
+  sim.startProfiler("HYPRE_solver::getBoxVals");
   HYPRE_StructVectorGetBoxValues(hypre_sol, ilower, iupper, buffer);
+  sim.stopProfiler();
 
+  sim.startProfiler("HYPRE_solver::sol_lin2cub");
   sol_lin2cub();
+  sim.stopProfiler();
 }
 
 HYPRE_solver::HYPRE_solver(SimulationData& s) : sim(s)

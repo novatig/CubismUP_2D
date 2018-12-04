@@ -77,17 +77,6 @@ struct GridBlock
       assert(iz>=0); assert(iz<sizeZ);
       return data[iz][iy][ix];
   }
-
-  template <typename Streamer>
-  inline void Write(ofstream& output, const Streamer& streamer) const {
-      ElementType * const entry = &data[0][0][0];
-      for(int i=0; i<sizeX*sizeY*sizeZ; ++i) streamer.operate(entry[i], output);
-  }
-  template <typename Streamer>
-  inline void Read(ifstream& input, const Streamer& streamer) {
-      ElementType * const entry = &data[0][0][0];
-      for(int i=0; i<sizeX*sizeY*sizeZ; ++i) streamer.operate(input, entry[i]);
-  }
 };
 
 template<typename BlockType,
@@ -101,17 +90,19 @@ class BlockLabOpen: public BlockLab<BlockType, allocator>
   static constexpr int sizeZ = BlockType::sizeZ;
 
   // Used for Boundary Conditions:
-  int s[3] = {0,0,0}, e[3] = {0,0,0};
 
   // Apply bc on face of direction dir and side side (0 or 1):
   template<int dir, int side> void applyBCface()
   {
+    Matrix3D<ElementType, true, allocator> * const cb = this->m_cacheBlock;
+
+    int s[3] = {0,0,0}, e[3] = {0,0,0};
     const int* const stenBeg = this->m_stencilStart;
     const int* const stenEnd = this->m_stencilEnd;
     s[0] =  dir==0 ? (side==0 ? stenBeg[0] : sizeX ) : stenBeg[0];
     s[1] =  dir==1 ? (side==0 ? stenBeg[1] : sizeY ) : stenBeg[1];
     #if _DIM_ > 2
-    s[2] =  dir==2 ? (side==0 ? stenBeg[2] : sizeZ ) : stenBeg[2];
+      s[2] =  dir==2 ? (side==0 ? stenBeg[2] : sizeZ ) : stenBeg[2];
     #endif
 
     e[0] =  dir==0 ? (side==0 ? 0 : sizeX + stenEnd[0]-1 )
@@ -119,33 +110,34 @@ class BlockLabOpen: public BlockLab<BlockType, allocator>
     e[1] =  dir==1 ? (side==0 ? 0 : sizeY + stenEnd[1]-1 )
                    : sizeY +  stenEnd[1]-1;
     #if _DIM_ > 2
-    e[2] =  dir==2 ? (side==0 ? 0 : sizeZ + stenEnd[2]-1 )
-                   : sizeZ +  stenEnd[2]-1;
+      e[2] =  dir==2 ? (side==0 ? 0 : sizeZ + stenEnd[2]-1 )
+                     : sizeZ +  stenEnd[2]-1;
 
-    for(int iz=s[2]; iz<e[2]; iz++)
+      for(int iz=s[2]; iz<e[2]; iz++)
     #else
-    static constexpr int iz = 0;
+      static constexpr int iz = 0;
     #endif
     for(int iy=s[1]; iy<e[1]; iy++)
     for(int ix=s[0]; ix<e[0]; ix++)
-      (*this)(ix,iy,iz) = (*this)(
-                                   dir==0? (side==0? 0: sizeX-1):ix,
-                                   dir==1? (side==0? 0: sizeY-1):iy,
-    #if _DIM_ > 2
-                                   dir==2? (side==0? 0: sizeZ-1):iz
-    #else
-                                   0
-    #endif
-                                 );
+      cb->Access(ix-stenBeg[0], iy-stenBeg[1], iz) = cb->Access
+        (
+          ( dir==0? (side==0? 0: sizeX-1):ix ) - stenBeg[0],
+          ( dir==1? (side==0? 0: sizeY-1):iy ) - stenBeg[1],
+          #if _DIM_ > 2
+            ( dir==2? (side==0? 0: sizeZ-1):iz ) - stenBeg[2]
+          #else
+            0
+          #endif
+        );
   }
 
   // Called by Cubism:
   void _apply_bc(const BlockInfo& info, const Real t = 0)
   {
-    if( info.index[0]==0 )           this->applyBCface<0,0>();
-    if( info.index[0]==this->NX-1 )  this->applyBCface<0,1>();
-    if( info.index[1]==0 )           this->applyBCface<1,0>();
-    if( info.index[1]==this->NY-1 )  this->applyBCface<1,1>();
+    if( info.index[0]==0 )           this->template applyBCface<0,0>();
+    if( info.index[0]==this->NX-1 )  this->template applyBCface<0,1>();
+    if( info.index[1]==0 )           this->template applyBCface<1,0>();
+    if( info.index[1]==this->NY-1 )  this->template applyBCface<1,1>();
   }
 
   BlockLabOpen(): BlockLab<BlockType,allocator>(){}

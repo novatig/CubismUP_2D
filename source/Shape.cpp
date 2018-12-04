@@ -22,13 +22,11 @@ bool Shape::bVariableDensity() const {
 
 void Shape::updateVelocity(double dt)
 {
-  if(bForcedx) u  = forcedu;
-  else         u += dt * Fx;
+  if(not bForcedx) u += dt * Fx;
 
-  if(bForcedy) v  = forcedv;
-  else         v += dt * Fy;
+  if(not bForcedy) v += dt * Fy;
 
-  if(not bBlockang) omega = omega + dt * Tz;
+  if(not bBlockang) omega += dt * Tz;
 }
 
 void Shape::updateLabVelocity( int nSum[2], double uSum[2] )

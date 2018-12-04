@@ -35,6 +35,7 @@ static inline Real dV_adv_dif(const VectorLab&V, const Real uinf[2],
 
 void RKstep2::operator()(const double dt)
 {
+  sim.startProfiler("RKstep2");
   static constexpr int stenBeg[3] = {-2,-2, 0}, stenEnd[3] = { 3, 3, 1};
   const Real U[2]= {sim.uinfx, sim.uinfy}, h = sim.getH();
   //const Real G[]= {sim.gravity[0],sim.gravity[1]};
@@ -79,4 +80,5 @@ void RKstep2::operator()(const double dt)
         pRHS(ix,sizeY-1).s += divFac * dV_adv_dif(TMP,U,afac,dfac,ix,sizeY);
     }
   }
+  sim.stopProfiler();
 }

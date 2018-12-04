@@ -56,9 +56,12 @@ void UpdateObjects::operator()(const double dt)
 {
   // penalization force is now assumed to be finalized
   // 1) integrate momentum
+  sim.startProfiler("UpdateObjects::integrateForce");
   for(Shape * const shape : sim.shapes) integrateForce(shape);
+  sim.stopProfiler();
 
   // 2) update objects' velocities
+  sim.startProfiler("UpdateObjects::update");
   for(Shape * const shape : sim.shapes) shape->updateVelocity(dt);
 
   // 3) update simulation frame's velocity
@@ -81,4 +84,5 @@ void UpdateObjects::operator()(const double dt)
       exit(0);
     }
   }
+  sim.stopProfiler();
 }

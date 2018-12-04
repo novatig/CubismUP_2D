@@ -121,17 +121,25 @@ void PressureIterator::operator()(const double dt)
 {
   for(int iter = 0; iter < 100; iter++)
   {
+    sim.startProfiler("PressureIterator::updatePenalizationForce");
     const Real max_RelDforce = updatePenalizationForce(dt);
+    sim.stopProfiler();
     printf("iter:%02d - max relative error: %f\n", iter, max_RelDforce);
 
     if(max_RelDforce > 0.01)
     {
+      sim.startProfiler("PressureIterator::updatePressureRHS");
       updatePressureRHS();
+      sim.stopProfiler();
+
       pressureSolver->solve();
     }
     else
     {
+      sim.startProfiler("PressureIterator::finalizeVelocity");
       finalizeVelocity(dt);
+      sim.stopProfiler();
+      break;
     }
   }
 }

@@ -109,6 +109,7 @@ bool SimulationData::bDump()
 
 void SimulationData::startProfiler(std::string name)
 {
+  //std::cout << name << std::endl;
   #ifndef SMARTIES_APP
     profiler->push_start(name);
   #endif

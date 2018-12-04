@@ -240,14 +240,7 @@ bool Simulation::advance(const double dt)
   assert(dt>2.2e-16);
   const bool bDump = sim.bDump();
 
-  for (size_t c=0; c<pipeline.size(); c++)
-  {
-    sim.startProfiler(pipeline[c]->getName());
-    (*pipeline[c])(sim.dt);
-    sim.stopProfiler();
-    // stringstream ss; ss<<path2file<<"avemaria_"<<pipeline[c]->getName();
-    // ss<<"_"<<std::setfill('0')<<std::setw(7)<<step<<".vti"; dump(ss);
-  }
+  for (size_t c=0; c<pipeline.size(); c++) (*pipeline[c])(sim.dt);
 
   sim.time += sim.dt;
   sim.step++;

@@ -39,7 +39,6 @@ void Disk::create(const vector<BlockInfo>& vInfo)
   }
 
   removeMoments(vInfo);
-  for (auto & o : obstacleBlocks) if(o not_eq nullptr) o->allocate_surface();
 }
 
 void Disk::updateVelocity(double dt)
@@ -84,7 +83,6 @@ void HalfDisk::create(const vector<BlockInfo>& vInfo)
   }
 
   removeMoments(vInfo);
-  for (auto & o : obstacleBlocks) if(o not_eq nullptr) o->allocate_surface();
 }
 
 void Ellipse::create(const vector<BlockInfo>& vInfo)
@@ -111,7 +109,6 @@ void Ellipse::create(const vector<BlockInfo>& vInfo)
   }
 
   removeMoments(vInfo);
-  for (auto & o : obstacleBlocks) if(o not_eq nullptr) o->allocate_surface();
 }
 
 void DiskVarDensity::create(const vector<BlockInfo>& vInfo)
@@ -138,7 +135,6 @@ void DiskVarDensity::create(const vector<BlockInfo>& vInfo)
   }
 
   removeMoments(vInfo);
-  for (auto & o : obstacleBlocks) if(o not_eq nullptr) o->allocate_surface();
 }
 
 void EllipseVarDensity::create(const vector<BlockInfo>& vInfo)
@@ -165,5 +161,4 @@ void EllipseVarDensity::create(const vector<BlockInfo>& vInfo)
   }
 
   removeMoments(vInfo);
-  for (auto & o : obstacleBlocks) if(o not_eq nullptr) o->allocate_surface();
 }

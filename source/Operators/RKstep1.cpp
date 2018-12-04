@@ -10,6 +10,7 @@
 
 void RKstep1::operator()(const double dt)
 {
+  sim.startProfiler("RKstep1");
   static constexpr int stenBeg[3] = {-1, -1, 0};
   static constexpr int stenEnd[3] = { 2,  2, 1};
   const Real U[]= {sim.uinfx, sim.uinfy}, h = sim.getH();
@@ -57,4 +58,5 @@ void RKstep1::operator()(const double dt)
       }
     }
   }
+  sim.stopProfiler();
 }
