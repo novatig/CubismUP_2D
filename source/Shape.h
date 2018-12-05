@@ -29,11 +29,23 @@ class Shape
   double d_gm[2] = {0,0}; // distance of center of geometry to center of mass
   double labCenterOfMass[2] = {0,0};
   double orientation;
+
+  const double rhoS;
+  const bool bForced;
+  const bool bFixed;
+  const bool bForcedx;
+  const bool bForcedy;
+  const bool bBlockang;
+  const bool bFixedx;
+  const bool bFixedy;
+  const double forcedu;
+  const double forcedv;
+
   double M = 0;
   double V = 0;
   double J = 0;
-  double u = 0; // in lab frame, not sim frame
-  double v = 0; // in lab frame, not sim frame
+  double u = forcedu; // in lab frame, not sim frame
+  double v = forcedv; // in lab frame, not sim frame
   double omega = 0;
   double Fx = 0;
   double Fy = 0;
@@ -49,17 +61,6 @@ class Shape
   double drag=0, thrust=0, circulation=0, Pout=0, PoutBnd=0, defPower=0;
   double defPowerBnd=0, Pthrust=0, Pdrag=0, EffPDef=0, EffPDefBnd=0;
 
-  const double rhoS;
-  const bool bForced;
-  const bool bFixed;
-  const bool bForcedx;
-  const bool bForcedy;
-  const bool bBlockang;
-  const bool bFixedx;
-  const bool bFixedy;
-  const double forcedu;
-  const double forcedv;
-
   virtual void resetAll() {
              center[0] = origC[0];
              center[1] = origC[1];
@@ -71,8 +72,8 @@ class Shape
     M = 0;
     V = 0;
     J = 0;
-    u = 0;
-    v = 0;
+    u = forcedu;
+    v = forcedv;
     omega = 0;
     Fx = 0;
     Fy = 0;

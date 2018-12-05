@@ -32,13 +32,10 @@ void Disk::create(const vector<BlockInfo>& vInfo)
       {
         assert(obstacleBlocks[vInfo[i].blockID] == nullptr);
         obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
-        obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
         ScalarBlock& b = *(ScalarBlock*)vInfo[i].ptrBlock;
         kernel(vInfo[i], b, *obstacleBlocks[vInfo[i].blockID] );
       }
   }
-
-  removeMoments(vInfo);
 }
 
 void Disk::updateVelocity(double dt)
@@ -76,13 +73,10 @@ void HalfDisk::create(const vector<BlockInfo>& vInfo)
       {
         assert(obstacleBlocks[vInfo[i].blockID] == nullptr);
         obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
-        obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
         ScalarBlock& b = *(ScalarBlock*)vInfo[i].ptrBlock;
         kernel(vInfo[i], b, *obstacleBlocks[vInfo[i].blockID]);
       }
   }
-
-  removeMoments(vInfo);
 }
 
 void Ellipse::create(const vector<BlockInfo>& vInfo)
@@ -102,13 +96,10 @@ void Ellipse::create(const vector<BlockInfo>& vInfo)
       {
         assert(obstacleBlocks[vInfo[i].blockID] == nullptr);
         obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
-        obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
         ScalarBlock& b = *(ScalarBlock*)vInfo[i].ptrBlock;
         kernel(vInfo[i], b, *obstacleBlocks[vInfo[i].blockID]);
       }
   }
-
-  removeMoments(vInfo);
 }
 
 void DiskVarDensity::create(const vector<BlockInfo>& vInfo)
@@ -128,13 +119,10 @@ void DiskVarDensity::create(const vector<BlockInfo>& vInfo)
       {
         assert(obstacleBlocks[vInfo[i].blockID] == nullptr);
         obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
-        obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
         ScalarBlock& b = *(ScalarBlock*)vInfo[i].ptrBlock;
         kernel(vInfo[i], b, *obstacleBlocks[vInfo[i].blockID]);
       }
   }
-
-  removeMoments(vInfo);
 }
 
 void EllipseVarDensity::create(const vector<BlockInfo>& vInfo)
@@ -154,11 +142,8 @@ void EllipseVarDensity::create(const vector<BlockInfo>& vInfo)
       {
         assert(obstacleBlocks[vInfo[i].blockID] == nullptr);
         obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
-        obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
         ScalarBlock& b = *(ScalarBlock*)vInfo[i].ptrBlock;
         kernel(vInfo[i], b, *obstacleBlocks[vInfo[i].blockID]);
       }
   }
-
-  removeMoments(vInfo);
 }

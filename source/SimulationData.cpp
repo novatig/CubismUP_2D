@@ -1,8 +1,8 @@
 #include "Definitions.h"
 #include "Shape.h"
-#include "Operators/IC.h"
 #include "Operators/Helpers.h"
 
+#include <HDF5Dumper.h>
 void SimulationData::allocateGrid()
 {
   chi   = new ScalarGrid(bpdx, bpdy, 1);
@@ -14,6 +14,47 @@ void SimulationData::allocateGrid()
   pRHS  = new ScalarGrid(bpdx, bpdy, 1);
   tmpV  = new VectorGrid(bpdx, bpdy, 1);
   tmp   = new ScalarGrid(bpdx, bpdy, 1);
+}
+
+void SimulationData::dumpChi(std::string name) {
+  stringstream ss; ss<<name<<std::setfill('0')<<std::setw(7)<<step;
+  DumpHDF5<ScalarGrid,StreamerScalar>(*(chi), step, time,
+    "chi_" + ss.str(), path4serialization);
+}
+void SimulationData::dumpPres(std::string name) {
+  stringstream ss; ss<<name<<std::setfill('0')<<std::setw(7)<<step;
+  DumpHDF5<ScalarGrid,StreamerScalar>(*(pres), step, time,
+    "pres_" + ss.str(), path4serialization);
+}
+void SimulationData::dumpPrhs(std::string name) {
+  stringstream ss; ss<<name<<std::setfill('0')<<std::setw(7)<<step;
+  DumpHDF5<ScalarGrid,StreamerScalar>(*(pRHS), step, time,
+    "pRHS_" + ss.str(), path4serialization);
+}
+void SimulationData::dumpTmp(std::string name) {
+  stringstream ss; ss<<name<<std::setfill('0')<<std::setw(7)<<step;
+  DumpHDF5<ScalarGrid,StreamerScalar>(*(tmp), step, time,
+    "tmp_" + ss.str(), path4serialization);
+}
+void SimulationData::dumpVel(std::string name) {
+  stringstream ss; ss<<name<<std::setfill('0')<<std::setw(7)<<step;
+  DumpHDF5<VectorGrid,StreamerVector>(*(vel), step, time,
+    "vel_" + ss.str(), path4serialization);
+}
+void SimulationData::dumpUobj(std::string name) {
+  stringstream ss; ss<<name<<std::setfill('0')<<std::setw(7)<<step;
+  DumpHDF5<VectorGrid,StreamerVector>(*(uDef), step, time,
+    "uobj_" + ss.str(), path4serialization);
+}
+void SimulationData::dumpForce(std::string name) {
+  stringstream ss; ss<<name<<std::setfill('0')<<std::setw(7)<<step;
+  DumpHDF5<VectorGrid,StreamerVector>(*(force), step, time,
+    "force_" + ss.str(), path4serialization);
+}
+void SimulationData::dumpTmpV(std::string name) {
+  stringstream ss; ss<<name<<std::setfill('0')<<std::setw(7)<<step;
+  DumpHDF5<VectorGrid,StreamerVector>(*(tmpV), step, time,
+    "tmpV_" + ss.str(), path4serialization);
 }
 
 void SimulationData::resetAll()
@@ -110,12 +151,18 @@ bool SimulationData::bDump()
 void SimulationData::startProfiler(std::string name)
 {
   //std::cout << name << std::endl;
+  Checker check (*this);
+  check.run("before" + name);
+
   #ifndef SMARTIES_APP
     profiler->push_start(name);
   #endif
 }
 void SimulationData::stopProfiler()
 {
+  Checker check (*this);
+  check.run("after" + profiler->currentAgentName());
+
   #ifndef SMARTIES_APP
     profiler->pop_stop();
   #endif

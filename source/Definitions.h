@@ -39,6 +39,7 @@ using Real = float;
 struct ScalarElement {
   Real s = 0;
   inline void clear() { s = 0; }
+  inline void set(const Real v) { s = v; }
 };
 
 struct VectorElement {
@@ -48,6 +49,7 @@ struct VectorElement {
   VectorElement() { clear(); }
 
   inline void clear() { for(int i=0; i<DIM; ++i) u[i] = 0; }
+  inline void set(const Real v) { for(int i=0; i<DIM; ++i) u[i] = v; }
 };
 
 template <typename Element>
@@ -58,11 +60,15 @@ struct GridBlock
   static constexpr int sizeZ = _DIM_ > 2 ? _BS_ : 1;
 
   using ElementType = Element;
-  ElementType data[sizeZ][sizeY][sizeX];
+  alignas(32) ElementType data[sizeZ][sizeY][sizeX];
 
   inline void clear() {
       ElementType * const entry = &data[0][0][0];
       for(int i=0; i<sizeX*sizeY*sizeZ; ++i) entry[i].clear();
+  }
+  inline void set(const Real v) {
+      ElementType * const entry = &data[0][0][0];
+      for(int i=0; i<sizeX*sizeY*sizeZ; ++i) entry[i].set(v);
   }
 
   const ElementType& operator()(int ix, int iy=0, int iz=0) const {

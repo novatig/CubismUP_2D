@@ -19,13 +19,14 @@
 #include <array>
 #include <fstream>
 
+
 inline bool _is_touching(
   const BlockInfo& INFO, const Real BBOX[2][2], const Real safety )
 {
   Real MINP[2], MAXP[2];
   INFO.pos(MINP, 0, 0);
   INFO.pos(MAXP, ObstacleBlock::sizeX-1, ObstacleBlock::sizeY-1);
-  for(int i=0; i<2; ++i) { MINP[i] -= safety; MAXP[i] += safety; }
+  //for(int i=0; i<2; ++i) { MINP[i] -= safety; MAXP[i] += safety; }
   const Real intrsct[2][2] = {
    { std::max(MINP[0], BBOX[0][0]), std::min(MAXP[0], BBOX[0][1]) },
    { std::max(MINP[1], BBOX[1][0]), std::min(MAXP[1], BBOX[1][1]) }

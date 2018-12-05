@@ -91,4 +91,13 @@ struct SimulationData
   void stopProfiler();
   void printResetProfiler();
   ~SimulationData();
+
+  void dumpChi  (std::string name);
+  void dumpPres (std::string name);
+  void dumpPrhs (std::string name);
+  void dumpTmp  (std::string name);
+  void dumpVel  (std::string name);
+  void dumpUobj (std::string name);
+  void dumpForce(std::string name);
+  void dumpTmpV (std::string name);
 };

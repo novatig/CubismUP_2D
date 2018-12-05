@@ -39,6 +39,7 @@ struct ObstacleBlock
 
   ObstacleBlock()
   {
+    clear();
     //rough estimate of surface cutting the block diagonally
     //with 2 points needed on each side of surface
     surface.reserve(4*_BS_);
@@ -50,7 +51,9 @@ struct ObstacleBlock
 
   void clear_surface()
   {
-    n_surfPoints = perimeter = forcex = forcey = forcex_P = forcey_P = 0;
+    filled = false;
+    n_surfPoints = 0;
+    perimeter = forcex = forcey = forcex_P = forcey_P = 0;
     forcex_V = forcey_V = torque = torque_P = torque_V = drag = thrust = 0;
     Pout = PoutBnd = defPower = defPowerBnd = circulation = 0;
 

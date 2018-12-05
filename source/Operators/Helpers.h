@@ -25,3 +25,32 @@ class findMaxU
     return "findMaxU";
   }
 };
+
+class Checker
+{
+  SimulationData& sim;
+  const vector<BlockInfo>& velInfo = sim.vel->getBlocksInfo();
+  const size_t Nblocks = velInfo.size();
+ public:
+  Checker(SimulationData& s) : sim(s) { }
+
+  void run(std::string when) const;
+
+  string getName()
+  {
+    return "Checker";
+  }
+};
+
+class IC : public Operator
+{
+  public:
+  IC(SimulationData& s) : Operator(s) { }
+
+  void operator()(const double dt);
+
+  string getName()
+  {
+    return "IC";
+  }
+};

@@ -12,7 +12,6 @@
 //#include <ZBinDumper.h>
 
 #include "Operators/Helpers.h"
-#include "Operators/IC.h"
 #include "Operators/PressureIterator.h"
 #include "Operators/PutObjectsOnGrid.h"
 #include "Operators/UpdateObjects.h"
@@ -36,16 +35,10 @@ static inline vector<string> split(const string &s, const char delim) {
 }
 
 void Simulation::dump(string fname) {
-  stringstream ss;
-  ss<<"avemaria_"<<fname<<std::setfill('0')<<std::setw(7)<<sim.step;
-
-  DumpHDF5<VectorGrid,StreamerVector>(*(sim.vel ), sim.step, sim.time,
-    "vel_" + ss.str(), sim.path4serialization);
-  //if(sim.bVariableDensity)
-  DumpHDF5<ScalarGrid,StreamerScalar>(*(sim.pres), sim.step, sim.time,
-    "pres_" + ss.str(), sim.path4serialization);
-  //DumpZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
-  //ReadZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
+  sim.dumpVel("avemaria_"+fname);
+  sim.dumpPres("avemaria_"+fname);
+  sim.dumpChi("avemaria_"+fname);
+  sim.dumpForce("avemaria_"+fname);
 }
 
 Simulation::Simulation(int argc, char ** argv) : parser(argc,argv)

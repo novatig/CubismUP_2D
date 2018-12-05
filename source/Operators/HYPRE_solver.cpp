@@ -48,9 +48,14 @@ void HYPRE_solver::sol_lin2cub()
       b(ix,iy).s = P; _avgP += fac * P;
     }
   }
-  avgP = 0.99 * avgP + 0.01 * _avgP;
-  pLast = buffer[totNx*totNy-1] - avgP;
-  printf("Avg Pressure:%f\n",avgP);
+  {
+    for (size_t i = 0; i < totNy*totNx; i++) buffer[i] -= _avgP;
+    HYPRE_Int ilower[2] = {0,0};
+    HYPRE_Int iupper[2] = {(int)totNx-1, (int)totNy-1};
+    HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, buffer);
+    pLast = buffer[totNx*totNy-1];
+    printf("Avg Pressure:%f\n",_avgP);
+  }
 }
 
 void HYPRE_solver::solve()

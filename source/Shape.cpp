@@ -132,8 +132,7 @@ void Shape::removeMoments(const std::vector<BlockInfo>& vInfo)
         I.u, I.v, I.a, I.x-centerOfMass[0], I.y-centerOfMass[1]);
   #endif
   //update the center of mass, this operation should not move 'center'
-  //cout << centerOfMass[0]<<" "<<I.x<<" "<<centerOfMass[1]<<" "<<I.y << endl;
-  //cout << center[0]<<" "<<I.X<<" "<<center[1]<<" "<<I.Y << endl;
+  cout << centerOfMass[0]<<" "<<I.x<<" "<<centerOfMass[1]<<" "<<I.y << endl;
   centerOfMass[0] = I.x; centerOfMass[1] = I.y;
   //center[0] = I.X; center[1] = I.Y;
   const double dCx = center[0]-centerOfMass[0];

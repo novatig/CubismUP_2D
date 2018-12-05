@@ -29,7 +29,7 @@ void FillBlocks_Cylinder::operator()(const BlockInfo& I,
   for(int ix=0; ix<ObstacleBlock::sizeX; ix++)
   {
     Real p[2]; I.pos(p, ix, iy); p[0] -= pos[0]; p[1] -= pos[1];
-    B(ix,iy).s = distanceTocylinder(p[0], p[1]);
+    B(ix,iy).s = std::max( B(ix,iy).s, distanceTocylinder(p[0], p[1]) );
     //B(ix,iy).invRho = H / rhoS + block(ix, iy).invRho*(1-H);
   }
 }
@@ -44,7 +44,7 @@ void FillBlocks_HalfCylinder::operator()(const BlockInfo& I,
     for(int ix=0; ix<ObstacleBlock::sizeX; ix++)
     {
       Real p[2]; I.pos(p, ix, iy); p[0] -= pos[0]; p[1] -= pos[1];
-      B(ix,iy).s = distanceTocylinder(p[0], p[1]);
+      B(ix,iy).s = std::max( B(ix,iy).s, distanceTocylinder(p[0], p[1]) );
       //B(ix,iy).invRho = H / rhoS + block(ix, iy).invRho*(1-H);
     }
   }
@@ -60,7 +60,7 @@ void FillBlocks_VarRhoCylinder::operator()(const BlockInfo& I,
     for(int ix=0; ix<ObstacleBlock::sizeX; ix++)
     {
       Real p[2]; I.pos(p, ix, iy); p[0] -= pos[0]; p[1] -= pos[1];
-      B(ix,iy).s = distanceTocylinder(p[0],p[1]);
+      B(ix,iy).s = std::max( B(ix,iy).s, distanceTocylinder(p[0], p[1]) );
       //const Real x =  p[0]*cosang + p[1]*sinang;
       //const Real y = -p[0]*sinang + p[1]*cosang;
       //const Real Y = 0.5*y/h; //>0 is top, <0 is bottom
@@ -83,7 +83,7 @@ void FillBlocks_Plate::operator()(const BlockInfo& I,
     {
       Real p[2]; I.pos(p, ix, iy); p[0] -= pos[0]; p[1] -= pos[1];
       O.udef[iy][ix][0] = -p[1]*angvel; O.udef[iy][ix][1] =  p[0]*angvel;
-      B(ix,iy).s = distance(p[0], p[1]);
+      B(ix,iy).s = std::max( B(ix,iy).s, distance(p[0], p[1]) );
     }
   }
 }
@@ -101,15 +101,16 @@ void FillBlocks_Ellipse::operator()(const BlockInfo& I,
       I.pos(p, ix, iy); p[0] -= pos[0]; p[1] -= pos[1];
       const Real t[2] = {cosang*p[0]-sinang*p[1], sinang*p[0]+cosang*p[1]};
       const Real sqDist = p[0]*p[0] + p[1]*p[1];
-
-      if (fabs(t[0]) > e[0]+safety || fabs(t[1]) > e[1]+safety )
-        B(ix, iy).s = -1; //is outside
+      Real dist = 0;
+      if (std::fabs(t[0]) > e[0]+safety || std::fabs(t[1]) > e[1]+safety )
+        dist = -1; //is outside
       else if (sqDist + safety*safety < sqMinSemiAx)
-        B(ix, iy).s =  1; //is inside
+        dist =  1; //is inside
       else {
         const int sign = sqDist > (xs[0]*xs[0]+xs[1]*xs[1]) ? -1 : 1;
-        B(ix, iy).s = sign * distPointEllipse (e, t, xs);
+        dist = sign * distPointEllipse (e, t, xs);
       }
+      B(ix,iy).s = std::max( B(ix,iy).s, dist );
     }
   }
 }
@@ -127,20 +128,21 @@ void FillBlocks_VarRhoEllipse::operator()(const BlockInfo& I,
       I.pos(p, ix, iy); p[0] -= pos[0]; p[1] -= pos[1];
       const Real t[2] = {cosang*p[0]-sinang*p[1], sinang*p[0]+cosang*p[1]};
       const Real sqDist = p[0]*p[0] + p[1]*p[1];
-
-      if (fabs(t[0]) > e[0]+safety || fabs(t[1]) > e[1]+safety )
-        B(ix, iy).s = -1; //is outside
+      Real dist = 0;
+      if (std::fabs(t[0]) > e[0]+safety || std::fabs(t[1]) > e[1]+safety )
+        dist = -1; //is outside
       else if (sqDist + safety*safety < sqMinSemiAx)
-        B(ix, iy).s =  1; //is inside
+        dist =  1; //is inside
       else {
         const int sign = sqDist > (xs[0]*xs[0]+xs[1]*xs[1]) ? -1 : 1;
-        B(ix, iy).s = sign * distPointEllipse (e, t, xs);
+        dist = sign * distPointEllipse (e, t, xs);
       }
+      B(ix,iy).s = std::max( B(ix,iy).s, dist );
+    }
       //const Real y = -p[0]*sinang + p[1]*cosang;
       //const Real Y = 0.5 * y / h; //>0 is top, <0 is bottom
       //const Real moll = Y>1 ? 0 : (Y<-1 ? 1 : mollified_heaviside(Y));
       //const Real rhoS = (1-moll)*rhoTop + moll*rhoBot;
-    }
   }
 }
 

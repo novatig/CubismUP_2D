@@ -41,8 +41,8 @@ Real PressureIterator::updatePenalizationForce(const double dt) const
         const Real fPenly = ffac * F(ix,iy).u[1] * X;
         const Real Unxt = VEL(ix,iy).u[0] + pGradx + fPenlx;
         const Real Vnxt = VEL(ix,iy).u[1] + pGrady + fPenly;
-        const Real dFx = lambda * ( Unxt - UDEF(ix,iy).u[0] );
-        const Real dFy = lambda * ( Vnxt - UDEF(ix,iy).u[1] );
+        const Real dFx = lambda * ( UDEF(ix,iy).u[0] - Unxt );
+        const Real dFy = lambda * ( UDEF(ix,iy).u[1] - Vnxt );
         TMPV(ix,iy).u[0] = X * dFx;
         TMPV(ix,iy).u[1] = X * dFy;
         F(ix,iy).u[0] += dFx;
@@ -121,14 +121,14 @@ void PressureIterator::operator()(const double dt)
 {
   for(int iter = 0; iter < 100; iter++)
   {
-    sim.startProfiler("PressureIterator::updatePenalizationForce");
+    sim.startProfiler("PressureIterator_updatePenalizationForce");
     const Real max_RelDforce = updatePenalizationForce(dt);
     sim.stopProfiler();
     printf("iter:%02d - max relative error: %f\n", iter, max_RelDforce);
 
-    if(max_RelDforce > 0.01)
+    if(max_RelDforce > 0.02)
     {
-      sim.startProfiler("PressureIterator::updatePressureRHS");
+      sim.startProfiler("PressureIterator_updatePressureRHS");
       updatePressureRHS();
       sim.stopProfiler();
 
@@ -136,7 +136,7 @@ void PressureIterator::operator()(const double dt)
     }
     else
     {
-      sim.startProfiler("PressureIterator::finalizeVelocity");
+      sim.startProfiler("PressureIterator_finalizeVelocity");
       finalizeVelocity(dt);
       sim.stopProfiler();
       break;
