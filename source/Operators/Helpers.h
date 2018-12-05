@@ -54,3 +54,16 @@ class IC : public Operator
     return "IC";
   }
 };
+
+class ApplyObjVel : public Operator
+{
+  public:
+  ApplyObjVel(SimulationData& s) : Operator(s) { }
+
+  void operator()(const double dt);
+
+  string getName()
+  {
+    return "ApplyObjVel";
+  }
+};

@@ -17,6 +17,7 @@
 #include "Operators/UpdateObjects.h"
 #include "Operators/RKstep1.h"
 #include "Operators/RKstep2.h"
+#include "Operators/presRHS_step1.h"
 #include "Utils/FactoryFileLineParser.h"
 
 #include "Obstacles/ShapesSimple.h"
@@ -179,14 +180,26 @@ void Simulation::init()
   pipeline.clear();
 
   pipeline.push_back( new PutObjectsOnGrid(sim) );
-  pipeline.push_back( new RKstep1(sim) );
-  pipeline.push_back( new RKstep2(sim) );
+  pipeline.push_back( new    presRHS_step1(sim) );
+  pipeline.push_back( new          RKstep1(sim) );
+  pipeline.push_back( new          RKstep2(sim) );
   pipeline.push_back( new PressureIterator(sim) );
-  pipeline.push_back( new UpdateObjects(sim) );
+  pipeline.push_back( new    UpdateObjects(sim) );
 
   cout << "Operator ordering:\n";
   for (size_t c=0; c<pipeline.size(); c++)
     cout << "\t" << pipeline[c]->getName() << endl;
+
+  reset();
+}
+
+void Simulation::reset()
+{
+   sim.resetAll();
+   // put objects on grid
+   (*pipeline[0])(0);
+   ApplyObjVel initVel(sim);
+   initVel(0);
 }
 
 void Simulation::simulate() {
@@ -214,7 +227,7 @@ double Simulation::calcMaxTimestep()
   if(sim.dlm >= 1) sim.lambda = sim.dlm / sim.dt;
   if (sim.step < 100) {
     const double x = (sim.step+1.0)/100;
-    const double rampCFL = std::exp(std::log(1e-3)*(1-x) + std::log(sim.CFL)*x);
+    const double rampCFL = std::exp(std::log(1e-2)*(1-x) + std::log(sim.CFL)*x);
     sim.dt = rampCFL*std::min({dtCFL, dtFourier, dtBody});
   }
   #ifndef RL_TRAIN

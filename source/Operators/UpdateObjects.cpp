@@ -40,10 +40,10 @@ void UpdateObjects::integrateForce(Shape * const shape) const
       if (chihs <= 0) continue;
       double p[2]; forceInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;
       _M += chihs;
-      UM += chihs * FPNL(ix,iy).u[0];
-      VM += chihs * FPNL(ix,iy).u[1];
+      UM += hsq * FPNL(ix,iy).u[0];
+      VM += hsq * FPNL(ix,iy).u[1];
       _J += chihs * (p[0]*p[0] + p[1]*p[1]);
-      AM += chihs * (p[0]*FPNL(ix,iy).u[1] - p[1]*FPNL(ix,iy).u[0]);
+      AM += hsq * (p[0]*FPNL(ix,iy).u[1] - p[1]*FPNL(ix,iy).u[0]);
     }
   }
 

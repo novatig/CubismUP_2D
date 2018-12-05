@@ -22,10 +22,12 @@ class PressureIterator : public Operator
 
   const std::vector<BlockInfo>& pRHSInfo  = sim.pRHS->getBlocksInfo();
   const std::vector<BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
+  const std::vector<BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
 
   HYPRE_solver * const pressureSolver;
 
   Real updatePenalizationForce(const double dt) const;
+  void initPenalizationForce(const double dt) const;
   void finalizeVelocity(const double dt) const;
   void updatePressureRHS() const;
 

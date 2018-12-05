@@ -38,7 +38,7 @@ public:
   Simulation(int argc, char ** argv);
   ~Simulation();
 
-  void reset() { sim.resetAll(); }
+  void reset();
   void init();
   void simulate();
   double calcMaxTimestep();

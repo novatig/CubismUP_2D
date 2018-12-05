@@ -10,9 +10,10 @@
 
 class RKstep1 : public Operator
 {
-  const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
-  const std::vector<BlockInfo>& tmpVInfo = sim.tmpV->getBlocksInfo();
-  const std::vector<BlockInfo>& pRHSInfo = sim.pRHS->getBlocksInfo();
+  const std::vector<BlockInfo>& presInfo  = sim.pres->getBlocksInfo();
+  const std::vector<BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
+  const std::vector<BlockInfo>& pRHSInfo  = sim.pRHS->getBlocksInfo();
+  const std::vector<BlockInfo>& forceInfo = sim.force->getBlocksInfo();
 
  public:
   RKstep1(SimulationData& s) : Operator(s) { }

@@ -63,7 +63,7 @@ void HYPRE_solver::solve()
   HYPRE_Int ilower[2] = {0,0};
   HYPRE_Int iupper[2] = {(int)totNx-1, (int)totNy-1};
 
-  sim.startProfiler("HYPRE_solver::rhs_cub2lin");
+  sim.startProfiler("HYPRE_solver_rhs_cub2lin");
   rhs_cub2lin();
   sim.stopProfiler();
 
@@ -74,11 +74,11 @@ void HYPRE_solver::solve()
     buffer[totNx*(totNy-1) + totNx-2] -= pLast;
   }
 
-  sim.startProfiler("HYPRE_solver::setBoxVals");
+  sim.startProfiler("HYPRE_solver_setBoxVals");
   HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, buffer);
   sim.stopProfiler();
 
-  sim.startProfiler("HYPRE_solver::solve");
+  sim.startProfiler("HYPRE_solver_solve");
   if (solver == "gmres")
     HYPRE_StructGMRESSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   else if (solver == "smg")
@@ -87,11 +87,11 @@ void HYPRE_solver::solve()
     HYPRE_StructPCGSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   sim.stopProfiler();
 
-  sim.startProfiler("HYPRE_solver::getBoxVals");
+  sim.startProfiler("HYPRE_solver_getBoxVals");
   HYPRE_StructVectorGetBoxValues(hypre_sol, ilower, iupper, buffer);
   sim.stopProfiler();
 
-  sim.startProfiler("HYPRE_solver::sol_lin2cub");
+  sim.startProfiler("HYPRE_solver_sol_lin2cub");
   sol_lin2cub();
   sim.stopProfiler();
 }

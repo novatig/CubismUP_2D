@@ -13,25 +13,18 @@ This operator assumes that obects have put signed distance on the grid
 
 #include "../Operator.h"
 
-class Shape;
-
-class PutObjectsOnGrid : public Operator
+class presRHS_step1 : public Operator
 {
-  const std::vector<BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
   const std::vector<BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
   const std::vector<BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
-  const std::vector<BlockInfo>& forceInfo = sim.force->getBlocksInfo();
-
-  void putChiOnGrid(Shape * const shape) const;
-  void putObjectVelOnGrid(Shape * const shape) const;
 
  public:
-  PutObjectsOnGrid(SimulationData& s) : Operator(s) { }
+  presRHS_step1(SimulationData& s) : Operator(s) { }
 
   void operator()(const double dt);
 
   string getName()
   {
-    return "PutObjectsOnGrid";
+    return "presRHS_step1";
   }
 };

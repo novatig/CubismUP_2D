@@ -194,3 +194,22 @@ void Checker::run(std::string when) const
     }
   }
 }
+
+void ApplyObjVel::operator()(const double dt)
+{
+  const std::vector<BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
+  const std::vector<BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
+
+  #pragma omp parallel for schedule(static)
+  for (size_t i=0; i < Nblocks; i++)
+  {
+    VectorBlock& UF = *(VectorBlock*)  velInfo[i].ptrBlock;
+    VectorBlock& US = *(VectorBlock*) uDefInfo[i].ptrBlock;
+    ScalarBlock& X  = *(ScalarBlock*)  chiInfo[i].ptrBlock;
+    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+    for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
+     UF(ix,iy).u[0]= UF(ix,iy).u[0] *(1-X(ix,iy).s) +US(ix,iy).u[0] *X(ix,iy).s;
+     UF(ix,iy).u[1]= UF(ix,iy).u[1] *(1-X(ix,iy).s) +US(ix,iy).u[1] *X(ix,iy).s;
+    }
+  }
+}

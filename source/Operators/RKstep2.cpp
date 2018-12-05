@@ -37,9 +37,9 @@ void RKstep2::operator()(const double dt)
 {
   sim.startProfiler("RKstep2");
   static constexpr int stenBeg[3] = {-2,-2, 0}, stenEnd[3] = { 3, 3, 1};
-  const Real U[2]= {sim.uinfx, sim.uinfy}, h = sim.getH();
+  const Real UINF[2]= {sim.uinfx, sim.uinfy}, h = sim.getH();
   //const Real G[]= {sim.gravity[0],sim.gravity[1]};
-  const Real dfac = sim.nu/h/h, afac = -0.5/h, divFac = 0.5/h;
+  const Real dfac = sim.nu/h/h, afac = -0.5/h, divFac = 0.5*h;
 
   #pragma omp parallel
   {
@@ -54,16 +54,16 @@ void RKstep2::operator()(const double dt)
       ScalarBlock & __restrict__ pRHS = *(ScalarBlock*)pRHSInfo[i].ptrBlock;
 
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-        pRHS(ix,0).s -= divFac * dV_adv_dif(TMP,U,afac,dfac,ix,-1);
+        pRHS(ix,0).s -= divFac * dV_adv_dif(TMP,UINF,afac,dfac,ix,-1);
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       {
-        pRHS(0,iy).s -= divFac * dU_adv_dif(TMP,U,afac,dfac,-1,iy);
+        pRHS(0,iy).s -= divFac * dU_adv_dif(TMP,UINF,afac,dfac,-1,iy);
 
         for(int ix=0; ix<VectorBlock::sizeX; ++ix)
         {
-          const Real dU = dU_adv_dif(TMP, U, afac, dfac, ix, iy);
-          const Real dV = dV_adv_dif(TMP, U, afac, dfac, ix, iy);
+          const Real dU = dU_adv_dif(TMP, UINF, afac, dfac, ix, iy);
+          const Real dV = dV_adv_dif(TMP, UINF, afac, dfac, ix, iy);
 
           vel(ix,iy).u[0] = vel(ix,iy).u[0] + dt * dU;
           vel(ix,iy).u[1] = vel(ix,iy).u[1] + dt * dV;
@@ -73,11 +73,11 @@ void RKstep2::operator()(const double dt)
           if(iy<sizeY-1) pRHS(ix  ,iy+1).s -= divFac * dV;
         }
 
-        pRHS(sizeX-1,iy).s += divFac * dU_adv_dif(TMP,U,afac,dfac,sizeX,iy);
+        pRHS(sizeX-1,iy).s += divFac * dU_adv_dif(TMP,UINF,afac,dfac,sizeX,iy);
       }
 
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-        pRHS(ix,sizeY-1).s += divFac * dV_adv_dif(TMP,U,afac,dfac,ix,sizeY);
+        pRHS(ix,sizeY-1).s += divFac * dV_adv_dif(TMP,UINF,afac,dfac,ix,sizeY);
     }
   }
   sim.stopProfiler();

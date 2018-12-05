@@ -17,7 +17,7 @@ void RKstep1::operator()(const double dt)
   //const Real G[]= {sim.gravity[0],sim.gravity[1]};
 
   const Real dfac = (sim.nu/h) * (.5*dt/h), afac = - 0.5 * dt / (2*h);
-  const Real divFac = 1.0 / (2*h) / dt,     pfac = - 0.5 * dt / (2*h);
+  const Real divFac = 0.5 * h / dt, pfac = - 0.5 * dt / (2*h), ffac = 0.5*dt;
 
   #pragma omp parallel
   {
@@ -31,8 +31,9 @@ void RKstep1::operator()(const double dt)
       plab.load(presInfo[i], 0); // loads pres field with ghosts
       const ScalarLab& __restrict__ P = plab;
       const VectorLab& __restrict__ V = vlab;
-      ScalarBlock & __restrict__ PRHS = *(ScalarBlock*)pRHSInfo[i].ptrBlock;
-      VectorBlock & __restrict__ TMPV = *(VectorBlock*)tmpVInfo[i].ptrBlock;
+      ScalarBlock & __restrict__ PRHS = *(ScalarBlock*) pRHSInfo[i].ptrBlock;
+      VectorBlock & __restrict__ TMPV = *(VectorBlock*) tmpVInfo[i].ptrBlock;
+      VectorBlock & __restrict__    F = *(VectorBlock*)forceInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
@@ -52,8 +53,8 @@ void RKstep1::operator()(const double dt)
         const Real duPres = pfac*(P(ix+1, iy  ).s - P(ix-1, iy  ).s);
         const Real dvPres = pfac*(P(ix  , iy+1).s - P(ix  , iy-1).s);
 
-        TMPV(ix,iy).u[0] += ucc + duPres + duDiff + duAdvc;
-        TMPV(ix,iy).u[1] += vcc + dvPres + dvDiff + dvAdvc;
+        TMPV(ix,iy).u[0] = ucc + duPres + duDiff + duAdvc + ffac*F(ix,iy).u[0];
+        TMPV(ix,iy).u[1] = vcc + dvPres + dvDiff + dvAdvc + ffac*F(ix,iy).u[1];
         PRHS(ix,iy).s += divFac * ((upx - ulx) + (vpy - vly));
       }
     }
