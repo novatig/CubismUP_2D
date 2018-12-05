@@ -7,6 +7,7 @@
 //
 
 #include "HYPRE_solver.h"
+//#define CONSISTENT
 
 void HYPRE_solver::rhs_cub2lin()
 {
@@ -70,8 +71,13 @@ void HYPRE_solver::solve()
   if(not bPeriodic)
   {
     buffer[totNx*totNy-1] = pLast;
-    buffer[totNx*(totNy-2) + totNx-1] -= pLast;
-    buffer[totNx*(totNy-1) + totNx-2] -= pLast;
+    #ifdef CONSISTENT
+      static constexpr int SHIFT = 2;
+    #else
+      static constexpr int SHIFT = 1;
+    #endif
+    buffer[totNx*(totNy-1-SHIFT) + totNx-1] -= pLast;
+    buffer[totNx*(totNy-1) + totNx-1-SHIFT] -= pLast;
   }
 
   sim.startProfiler("HYPRE_solver_setBoxVals");
@@ -106,6 +112,9 @@ HYPRE_solver::HYPRE_solver(SimulationData& s) : sim(s)
 
   HYPRE_StructGridSetExtents(hypre_grid, ilower, iupper);
 
+  //HYPRE_Int ghosts[2] = {2, 2};
+  //HYPRE_StructGridSetNumGhost(hypre_grid, ghosts);
+
   if(bPeriodic)
   {
     // if grid is periodic, this function takes the period
@@ -116,7 +125,11 @@ HYPRE_solver::HYPRE_solver(SimulationData& s) : sim(s)
   HYPRE_StructGridAssemble(hypre_grid);
 
   { // Stencil
-    HYPRE_Int offsets[5][2] = {{0,0}, {-1,0}, {1,0}, {0,-1}, {0,1}};
+    #ifdef CONSISTENT
+      HYPRE_Int offsets[5][2] = {{0,0}, {-2,0}, {2,0}, {0,-2}, {0,2}};
+    #else
+      HYPRE_Int offsets[5][2] = {{0,0}, {-1,0}, {1,0}, {0,-1}, {0,1}};
+    #endif
     HYPRE_StructStencilCreate(2, 5, &hypre_stencil);
     for (int j = 0; j < 5; ++j)
       HYPRE_StructStencilSetElement(hypre_stencil, j, offsets[j]);
@@ -130,42 +143,79 @@ HYPRE_solver::HYPRE_solver(SimulationData& s) : sim(s)
     HYPRE_Int inds[5] = {0, 1, 2, 3, 4};
     using RowType = Real[5];
     RowType * vals = new RowType[totNy*totNx];
+    #ifdef CONSISTENT
+      static constexpr Real COEF = 0.25;
+    #else
+      static constexpr Real COEF = 1;
+    #endif
 
     #pragma omp parallel for schedule(static)
     for (size_t j = 0; j < totNy; j++)
     for (size_t i = 0; i < totNx; i++) {
-      vals[j*totNx + i][0] = -4; // center
-      vals[j*totNx + i][1] =  1; // west
-      vals[j*totNx + i][2] =  1; // east
-      vals[j*totNx + i][3] =  1; // south
-      vals[j*totNx + i][4] =  1; // north
+      vals[j*totNx + i][0] = -4*COEF; // center
+      vals[j*totNx + i][1] =  1*COEF; // west
+      vals[j*totNx + i][2] =  1*COEF; // east
+      vals[j*totNx + i][3] =  1*COEF; // south
+      vals[j*totNx + i][4] =  1*COEF; // north
     }
 
     if(not bPeriodic) // 0 Neumann BC
     {
       #pragma omp parallel for schedule(static)
       for (size_t i = 0; i < totNx; i++) {
-        vals[totNx*(0)       +i][0] += 1; // center
+        // first south row
+        vals[totNx*(0)       +i][0] += COEF; // center
         vals[totNx*(0)       +i][3]  = 0; // south
-        vals[totNx*(totNy-1) +i][0] += 1; // center
-        vals[totNx*(totNy-1) +i][4]  = 1; // north
+        #ifdef CONSISTENT
+        // second south row
+        vals[totNx*(1)       +i][0] += COEF; // center
+        vals[totNx*(1)       +i][3]  = 0; // south
+        #endif
+
+        // first north row
+        vals[totNx*(totNy-1) +i][0] += COEF; // center
+        vals[totNx*(totNy-1) +i][4]  = 0; // north
+        #ifdef CONSISTENT
+        // second north row
+        vals[totNx*(totNy-2) +i][0] += COEF; // center
+        vals[totNx*(totNy-2) +i][4]  = 0; // north
+        #endif
       }
       #pragma omp parallel for schedule(static)
       for (size_t j = 0; j < totNy; j++) {
-        vals[totNx*j +       0][0] += 1; // center
-        vals[totNx*j +       0][1]  = 1; // west
-        vals[totNx*j + totNx-1][0] += 1; // center
-        vals[totNx*j + totNx-1][2]  = 1; // east
+        // first west col
+        vals[totNx*j +       0][0] += COEF; // center
+        vals[totNx*j +       0][1]  = 0; // west
+        #ifdef CONSISTENT
+        // second west col
+        vals[totNx*j +       1][0] += COEF; // center
+        vals[totNx*j +       1][1]  = 0; // west
+        #endif
+        // first east col
+        vals[totNx*j + totNx-1][0] += COEF; // center
+        vals[totNx*j + totNx-1][2]  = 0; // east
+        #ifdef CONSISTENT
+        // second east col
+        vals[totNx*j + totNx-2][0] += COEF; // center
+        vals[totNx*j + totNx-2][2]  = 0; // east
+        #endif
       }
 
-      // set last corner such that last point has pressure pLast
-      vals[totNx*(totNy-1) + totNx-1][0] = 1; // center
-      vals[totNx*(totNy-1) + totNx-1][1] = 0; // west
-      vals[totNx*(totNy-1) + totNx-1][2] = 0; // east
-      vals[totNx*(totNy-1) + totNx-1][3] = 0; // south
-      vals[totNx*(totNy-1) + totNx-1][4] = 0; // north
-      vals[totNx*(totNy-2) + totNx-1][4] = 0;
-      vals[totNx*(totNy-1) + totNx-2][2] = 0;
+      {
+        #ifdef CONSISTENT
+          static constexpr int SHIFT = 2;
+        #else
+          static constexpr int SHIFT = 1;
+        #endif
+        // set last corner such that last point has pressure pLast
+        vals[totNx*(totNy-1) + totNx-1][0] = 1; // center
+        vals[totNx*(totNy-1) + totNx-1][1] = 0; // west
+        vals[totNx*(totNy-1) + totNx-1][2] = 0; // east
+        vals[totNx*(totNy-1) + totNx-1][3] = 0; // south
+        vals[totNx*(totNy-1) + totNx-1][4] = 0; // north
+        vals[totNx*(totNy-1-SHIFT) + totNx-1][4] = 0;
+        vals[totNx*(totNy-1) + totNx-1-SHIFT][2] = 0;
+      }
     }
 
     Real * const linV = (Real*) vals;

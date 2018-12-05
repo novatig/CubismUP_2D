@@ -16,8 +16,8 @@ void RKstep1::operator()(const double dt)
   const Real U[]= {sim.uinfx, sim.uinfy}, h = sim.getH();
   //const Real G[]= {sim.gravity[0],sim.gravity[1]};
 
-  const Real dfac = (sim.nu/h) * (.5*dt/h), afac = - 0.5 * dt / (2*h);
-  const Real divFac = 0.5 * h / dt, pfac = - 0.5 * dt / (2*h), ffac = 0.5*dt;
+  const Real dfac = (sim.nu/h)*(0.5*dt/h), afac = -0.5*dt/(2*h);
+  const Real divFac = h/dt/2, pfac = -0.5*dt/(2*h), ffac = 0.5*dt;
 
   #pragma omp parallel
   {
@@ -31,9 +31,9 @@ void RKstep1::operator()(const double dt)
       plab.load(presInfo[i], 0); // loads pres field with ghosts
       const ScalarLab& __restrict__ P = plab;
       const VectorLab& __restrict__ V = vlab;
-      ScalarBlock & __restrict__ PRHS = *(ScalarBlock*) pRHSInfo[i].ptrBlock;
-      VectorBlock & __restrict__ TMPV = *(VectorBlock*) tmpVInfo[i].ptrBlock;
-      VectorBlock & __restrict__    F = *(VectorBlock*)forceInfo[i].ptrBlock;
+            ScalarBlock&__restrict__ PRHS =*(ScalarBlock*) pRHSInfo[i].ptrBlock;
+            VectorBlock&__restrict__ TMPV =*(VectorBlock*) tmpVInfo[i].ptrBlock;
+      const VectorBlock&__restrict__    F =*(VectorBlock*)forceInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)

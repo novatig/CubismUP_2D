@@ -28,8 +28,7 @@ class PressureIterator : public Operator
 
   Real updatePenalizationForce(const double dt) const;
   void initPenalizationForce(const double dt) const;
-  void finalizeVelocity(const double dt) const;
-  void updatePressureRHS() const;
+  void updatePressureRHS(const double dt) const;
 
  public:
   void operator()(const double dt);

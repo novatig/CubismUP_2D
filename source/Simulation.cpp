@@ -227,7 +227,7 @@ double Simulation::calcMaxTimestep()
   if(sim.dlm >= 1) sim.lambda = sim.dlm / sim.dt;
   if (sim.step < 100) {
     const double x = (sim.step+1.0)/100;
-    const double rampCFL = std::exp(std::log(1e-2)*(1-x) + std::log(sim.CFL)*x);
+    const double rampCFL = std::exp(std::log(1e-3)*(1-x) + std::log(sim.CFL)*x);
     sim.dt = rampCFL*std::min({dtCFL, dtFourier, dtBody});
   }
   #ifndef RL_TRAIN

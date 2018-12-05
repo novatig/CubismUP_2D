@@ -34,7 +34,7 @@ void presRHS_step1::operator()(const double dt)
       for(int ix=0; ix<VectorBlock::sizeX; ix++) {
         const Real upx = UDEF(ix+1, iy).u[0], vpy = UDEF(ix, iy+1).u[1];
         const Real ulx = UDEF(ix-1, iy).u[0], vly = UDEF(ix, iy-1).u[1];
-        RHS(ix,iy).s = - divFac*CHI(ix,iy).s*((upx - ulx)+(vpy-vly));
+        RHS(ix,iy).s = - divFac * CHI(ix,iy).s * ((upx - ulx)+(vpy-vly));
       }
     }
   }
