@@ -30,7 +30,7 @@ class HYPRE_solver
   HYPRE_StructVector   hypre_sol;
   HYPRE_StructSolver   hypre_solver;
   HYPRE_StructSolver   hypre_precond;
-  Real avgP = 0, pLast = 0;
+  Real pLast = 0;
 
   void rhs_cub2lin();
 

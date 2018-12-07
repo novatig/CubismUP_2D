@@ -14,18 +14,25 @@ void HYPRE_solver::rhs_cub2lin()
   const std::vector<BlockInfo>& tmpInfo = sim.tmp->getBlocksInfo();
   const size_t nBlocks = tmpInfo.size();
 
-  #pragma omp parallel for schedule(static, 1)
+  Real _avgRHS = 0;
+  const Real fac = 1.0 / (totNx * totNy);
+  #pragma omp parallel for schedule(static, 1) reduction(+:_avgRHS)
   for(size_t i=0; i<nBlocks; i++)
   {
     const BlockInfo& info = tmpInfo[i];
     const size_t blocki = VectorBlock::sizeX * info.index[0];
     const size_t blockj = VectorBlock::sizeY * info.index[1];
     const size_t blockStart = blocki + totNx * blockj;
-    ScalarBlock& b = *(ScalarBlock*)info.ptrBlock;
+    const ScalarBlock& b = *(ScalarBlock*)info.ptrBlock;
     for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-    for(int ix=0; ix<VectorBlock::sizeX; ++ix)
+    for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
       buffer[blockStart + ix + totNx*iy] = b(ix,iy).s;
+      _avgRHS += b(ix,iy).s * fac;
+    }
   }
+  printf("Avg RHS was:%f\n",_avgRHS);
+  if(not bPeriodic) // Neumann BC + divergence theorem
+    for (size_t i = 0; i < totNy*totNx; i++) buffer[i] -= _avgRHS;
 }
 
 void HYPRE_solver::sol_lin2cub()
