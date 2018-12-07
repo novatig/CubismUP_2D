@@ -100,4 +100,14 @@ struct SimulationData
   void dumpUobj (std::string name);
   void dumpForce(std::string name);
   void dumpTmpV (std::string name);
+  void dumpAll(std::string name) {
+    dumpChi  (name);
+    dumpPres (name);
+    dumpPrhs (name);
+    dumpTmp  (name);
+    dumpVel  (name);
+    dumpUobj (name);
+    dumpForce(name);
+    dumpTmpV (name);
+  }
 };

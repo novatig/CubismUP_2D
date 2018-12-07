@@ -60,15 +60,13 @@ void SimulationData::dumpTmpV(std::string name) {
 void SimulationData::resetAll()
 {
   for(const auto& shape : shapes) shape->resetAll();
-  this->time = 0;
+  time = 0;
   step = 0;
   uinfx = 0;
   uinfy = 0;
   nextDumpTime = 0;
   _bDump = false;
   bPing = false;
-  IC ic(*this);
-  ic(0);
 }
 
 void SimulationData::registerDump()
@@ -142,6 +140,7 @@ bool SimulationData::bOver() const
 
 bool SimulationData::bDump()
 {
+  cout << "MFing dumpFreq is "<<dumpFreq<<endl;
   const bool timeDump = dumpTime>0 && time >= nextDumpTime;
   const bool stepDump = dumpFreq>0 && (step % dumpFreq) == 0;
   _bDump = stepDump || timeDump;

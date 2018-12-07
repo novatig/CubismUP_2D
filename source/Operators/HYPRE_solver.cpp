@@ -217,6 +217,7 @@ HYPRE_solver::HYPRE_solver(SimulationData& s) : sim(s)
         vals[totNx*(totNy-1) + totNx-1-SHIFT][2] = 0;
       }
     }
+    // TODO fix last dof for periodic BC
 
     Real * const linV = (Real*) vals;
     HYPRE_StructMatrixSetBoxValues(hypre_mat, ilower, iupper, 5, inds, linV);

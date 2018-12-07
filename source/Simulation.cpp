@@ -35,13 +35,6 @@ static inline vector<string> split(const string &s, const char delim) {
   return tokens;
 }
 
-void Simulation::dump(string fname) {
-  sim.dumpVel("avemaria_"+fname);
-  sim.dumpPres("avemaria_"+fname);
-  sim.dumpChi("avemaria_"+fname);
-  sim.dumpForce("avemaria_"+fname);
-}
-
 Simulation::Simulation(int argc, char ** argv) : parser(argc,argv)
 {
   cout << "=================================================================\n";
@@ -169,14 +162,6 @@ void Simulation::init()
   parseRuntime();
   createShapes();
 
-  // setup initial conditions
-  {
-    IC ic(sim);
-    sim.startProfiler(ic.getName());
-    ic(0);
-    sim.stopProfiler();
-  }
-
   pipeline.clear();
 
   pipeline.push_back( new PutObjectsOnGrid(sim) );
@@ -191,11 +176,14 @@ void Simulation::init()
     cout << "\t" << pipeline[c]->getName() << endl;
 
   reset();
+  sim.dumpAll("IC");
 }
 
 void Simulation::reset()
 {
    sim.resetAll();
+   IC ic(sim);
+   ic(0);
    // put objects on grid
    (*pipeline[0])(0);
    ApplyObjVel initVel(sim);
@@ -255,7 +243,7 @@ bool Simulation::advance(const double dt)
   sim.startProfiler("Dump");
   if(bDump) {
     sim.registerDump();
-    dump();
+    sim.dumpAll("avemaria_");
   }
   sim.stopProfiler();
 

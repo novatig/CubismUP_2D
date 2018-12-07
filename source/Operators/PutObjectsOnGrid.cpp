@@ -83,7 +83,7 @@ void PutObjectsOnGrid::putObjectVelOnGrid(Shape * const shape) const
   const double u_s = shape->u, v_s = shape->v, omega_s = shape->omega;
   const double Cx = shape->centerOfMass[0], Cy = shape->centerOfMass[1];
 
-  #pragma omp parallel for schedule(static)
+  #pragma omp parallel for schedule(dynamic)
   for (size_t i=0; i < Nblocks; i++)
   {
     if(OBLOCK[uDefInfo[i].blockID] == nullptr) continue; //obst not in block

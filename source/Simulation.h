@@ -30,7 +30,6 @@ class Simulation
 
   void createShapes();
   void parseRuntime();
-  void dump(string fname = "");
   // should this stuff be moved? - serialize method will do that
   //void _dumpSettings(ostream& outStream);
 
