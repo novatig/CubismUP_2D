@@ -16,7 +16,7 @@ void HYPRE_solver::rhs_cub2lin()
 
   Real _avgRHS = 0;
   const Real fac = 1.0 / (totNx * totNy);
-  #pragma omp parallel for schedule(static, 1) reduction(+:_avgRHS)
+  #pragma omp parallel for schedule(static) reduction(+:_avgRHS)
   for(size_t i=0; i<nBlocks; i++)
   {
     const BlockInfo& info = tmpInfo[i];
@@ -31,8 +31,10 @@ void HYPRE_solver::rhs_cub2lin()
     }
   }
   printf("Avg RHS was:%f\n",_avgRHS);
-  if(not bPeriodic) // Neumann BC + divergence theorem
+  if(not bPeriodic) {// Neumann BC + divergence theorem
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < totNy*totNx; i++) buffer[i] -= _avgRHS;
+  }
 }
 
 void HYPRE_solver::sol_lin2cub()
@@ -42,7 +44,7 @@ void HYPRE_solver::sol_lin2cub()
 
   Real _avgP = 0;
   const Real fac = 1.0 / (totNx * totNy);
-  #pragma omp parallel for schedule(static, 1) reduction(+:_avgP)
+  #pragma omp parallel for schedule(static) reduction(+:_avgP)
   for(size_t i=0; i<nBlocks; i++)
   {
     const BlockInfo& info = presInfo[i];
@@ -57,6 +59,7 @@ void HYPRE_solver::sol_lin2cub()
     }
   }
   {
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < totNy*totNx; i++) buffer[i] -= _avgP;
     HYPRE_Int ilower[2] = {0,0};
     HYPRE_Int iupper[2] = {(int)totNx-1, (int)totNy-1};
@@ -262,7 +265,7 @@ HYPRE_solver::HYPRE_solver(SimulationData& s) : sim(s)
     HYPRE_StructSMGCreate(COMM, &hypre_solver);
     //HYPRE_StructSMGSetMemoryUse(hypre_solver, 0);
     HYPRE_StructSMGSetMaxIter(hypre_solver, 100);
-    HYPRE_StructSMGSetTol(hypre_solver, 1e-2);
+    HYPRE_StructSMGSetTol(hypre_solver, 1e-3);
     //HYPRE_StructSMGSetRelChange(hypre_solver, 0);
     HYPRE_StructSMGSetPrintLevel(hypre_solver, 3);
     HYPRE_StructSMGSetNumPreRelax(hypre_solver, 1);

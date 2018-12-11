@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstdio>
 #include <vector>
+#include <omp.h>
 
 using namespace std;
 
@@ -26,7 +27,7 @@ using Real = float;
 #include <Grid.h>
 #include <BlockInfo.h>
 #include <BlockLab.h>
-#include "StencilInfo.h"
+#include <StencilInfo.h>
 
 #ifndef _BS_
 #define _BS_ 32

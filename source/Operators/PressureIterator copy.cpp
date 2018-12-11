@@ -33,18 +33,15 @@ void PressureIterator::initPenalizationForce(const double dt) const
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
-        TMPV(ix,iy).u[0] = VEL(ix,iy).u[0]; // copy vel before P and F onto temp
-        TMPV(ix,iy).u[1] = VEL(ix,iy).u[1]; // copy vel before P and F onto temp
-        const Real X= CHI(ix,iy).s, US= UDEF(ix,iy).u[0], VS= UDEF(ix,iy).u[1];
         const Real Unxt = VEL(ix,iy).u[0] + pFac*(P(ix+1,iy).s - P(ix-1,iy).s);
         const Real Vnxt = VEL(ix,iy).u[1] + pFac*(P(ix,iy+1).s - P(ix,iy-1).s);
-        #ifdef SOFT_PENL
-          const Real uTgt = (Unxt + X*US)/(1+X), vTgt = (Vnxt + X*VS)/(1+X);
-        #else
-          const Real uTgt = US, vTgt = VS;
-        #endif
-        F(ix,iy).u[0] = X * invDt * ( uTgt - Unxt );
-        F(ix,iy).u[1] = X * invDt * ( vTgt - Vnxt );
+        const Real uTgt = (Unxt+CHI(ix,iy).s*UDEF(ix,iy).u[0])/(1+CHI(ix,iy).s);
+        const Real vTgt = (Vnxt+CHI(ix,iy).s*UDEF(ix,iy).u[1])/(1+CHI(ix,iy).s);
+
+        F(ix,iy).u[0] = CHI(ix,iy).s * invDt * ( UDEF(ix,iy).u[0] - Unxt );
+        F(ix,iy).u[1] = CHI(ix,iy).s * invDt * ( UDEF(ix,iy).u[1] - Vnxt );
+        TMPV(ix,iy).u[0] = VEL(ix,iy).u[0]; // copy vel before P and F onto temp
+        TMPV(ix,iy).u[1] = VEL(ix,iy).u[1]; // copy vel before P and F onto temp
         VEL(ix,iy).u[0] = Unxt + dt * F(ix,iy).u[0];
         VEL(ix,iy).u[1] = Vnxt + dt * F(ix,iy).u[1];
       }
@@ -78,24 +75,18 @@ Real PressureIterator::updatePenalizationForce(const double dt) const
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
-        const Real US = UDEF(ix,iy).u[0], VS = UDEF(ix,iy).u[1];
         const Real X = CHI(ix,iy).s, IN = (1-X) < EPS;
         const Real Unxt = TMPV(ix,iy).u[0] + pFac*(P(ix+1,iy).s - P(ix-1,iy).s);
         const Real Vnxt = TMPV(ix,iy).u[1] + pFac*(P(ix,iy+1).s - P(ix,iy-1).s);
-        #ifdef SOFT_PENL
-          const Real uTgt = (Unxt + X*US)/(1+X), vTgt = (Vnxt + X*VS)/(1+X);
-        #else
-          const Real uTgt = US, vTgt = VS;
-        #endif
-        F(ix,iy).u[0] = X * invDt * ( uTgt - Unxt );
-        F(ix,iy).u[1] = X * invDt * ( vTgt - Vnxt );
         VEL(ix,iy).u[0] = Unxt + dt * F(ix,iy).u[0];
         VEL(ix,iy).u[1] = Vnxt + dt * F(ix,iy).u[1];
-
-        MX = std::max( MX, IN * std::fabs(uTgt                  ) );
-        EX = std::max( EX, IN * std::fabs(uTgt - VEL(ix,iy).u[0]) );
-        MY = std::max( MY, IN * std::fabs(vTgt                  ) );
-        EY = std::max( EY, IN * std::fabs(vTgt - VEL(ix,iy).u[1]) );
+        F(ix,iy).u[0] = X * invDt *( UDEF(ix,iy).u[0] - Unxt );
+        F(ix,iy).u[1] = X * invDt *( UDEF(ix,iy).u[1] - Vnxt );
+        //TMP(ix,iy).s = X * (UDEF(ix,iy).u[0] - VEL(ix,iy).u[0]);
+        MX = std::max( MX, IN * std::fabs(UDEF(ix,iy).u[0]                  ) );
+        EX = std::max( EX, IN * std::fabs(UDEF(ix,iy).u[0] - VEL(ix,iy).u[0]) );
+        MY = std::max( MY, IN * std::fabs(UDEF(ix,iy).u[1]                  ) );
+        EY = std::max( EY, IN * std::fabs(UDEF(ix,iy).u[1] - VEL(ix,iy).u[1]) );
       }
     }
   }

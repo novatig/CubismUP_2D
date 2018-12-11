@@ -7,7 +7,7 @@
 //
 
 #include "RKstep2.h"
-
+#define DIV_ADVECT
 static constexpr int sizeY = VectorBlock::sizeY;
 static constexpr int sizeX = VectorBlock::sizeX;
 
@@ -53,12 +53,16 @@ void RKstep2::operator()(const double dt)
       VectorBlock & __restrict__ vel  = *(VectorBlock*) velInfo[i].ptrBlock;
       ScalarBlock & __restrict__ pRHS = *(ScalarBlock*)pRHSInfo[i].ptrBlock;
 
-      for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-        pRHS(ix,0).s -= divFac * dV_adv_dif(TMP,UINF,afac,dfac,ix,-1);
+      #ifdef DIV_ADVECT
+        for(int ix=0; ix<VectorBlock::sizeX; ++ix)
+          pRHS(ix,0).s -= divFac * dV_adv_dif(TMP,UINF,afac,dfac,ix,-1);
+      #endif
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       {
-        pRHS(0,iy).s -= divFac * dU_adv_dif(TMP,UINF,afac,dfac,-1,iy);
+        #ifdef DIV_ADVECT
+          pRHS(0,iy).s -= divFac * dU_adv_dif(TMP,UINF,afac,dfac,-1,iy);
+        #endif
 
         for(int ix=0; ix<VectorBlock::sizeX; ++ix)
         {
@@ -67,17 +71,23 @@ void RKstep2::operator()(const double dt)
 
           vel(ix,iy).u[0] = vel(ix,iy).u[0] + dt * dU;
           vel(ix,iy).u[1] = vel(ix,iy).u[1] + dt * dV;
-          if(ix>      0) pRHS(ix-1,iy  ).s += divFac * dU;
-          if(iy>      0) pRHS(ix  ,iy-1).s += divFac * dV;
-          if(ix<sizeX-1) pRHS(ix+1,iy  ).s -= divFac * dU;
-          if(iy<sizeY-1) pRHS(ix  ,iy+1).s -= divFac * dV;
+          #ifdef DIV_ADVECT
+            if(ix>      0) pRHS(ix-1,iy  ).s += divFac * dU;
+            if(iy>      0) pRHS(ix  ,iy-1).s += divFac * dV;
+            if(ix<sizeX-1) pRHS(ix+1,iy  ).s -= divFac * dU;
+            if(iy<sizeY-1) pRHS(ix  ,iy+1).s -= divFac * dV;
+          #endif
         }
 
-        pRHS(sizeX-1,iy).s += divFac * dU_adv_dif(TMP,UINF,afac,dfac,sizeX,iy);
+        #ifdef DIV_ADVECT
+         pRHS(sizeX-1,iy).s += divFac * dU_adv_dif(TMP,UINF,afac,dfac,sizeX,iy);
+        #endif
       }
 
-      for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-        pRHS(ix,sizeY-1).s += divFac * dV_adv_dif(TMP,UINF,afac,dfac,ix,sizeY);
+      #ifdef DIV_ADVECT
+       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
+         pRHS(ix,sizeY-1).s += divFac * dV_adv_dif(TMP,UINF,afac,dfac,ix,sizeY);
+      #endif
     }
   }
   sim.stopProfiler();
