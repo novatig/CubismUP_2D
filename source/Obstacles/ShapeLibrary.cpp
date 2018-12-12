@@ -107,8 +107,9 @@ void FillBlocks_Ellipse::operator()(const BlockInfo& I,
       else if (sqDist + safety*safety < sqMinSemiAx)
         dist =  1; //is inside
       else {
+        const Real absdist = distPointEllipse (e, t, xs);
         const int sign = sqDist > (xs[0]*xs[0]+xs[1]*xs[1]) ? -1 : 1;
-        dist = sign * distPointEllipse (e, t, xs);
+        dist = sign * absdist;
       }
       B(ix,iy).s = std::max( B(ix,iy).s, dist );
     }
@@ -134,8 +135,9 @@ void FillBlocks_VarRhoEllipse::operator()(const BlockInfo& I,
       else if (sqDist + safety*safety < sqMinSemiAx)
         dist =  1; //is inside
       else {
+        const Real absdist = distPointEllipse (e, t, xs);
         const int sign = sqDist > (xs[0]*xs[0]+xs[1]*xs[1]) ? -1 : 1;
-        dist = sign * distPointEllipse (e, t, xs);
+        dist = sign * absdist;
       }
       B(ix,iy).s = std::max( B(ix,iy).s, dist );
     }
