@@ -6,76 +6,17 @@
 //  Copyright (c) 2015 ETHZ. All rights reserved.
 //
 
-#include "HYPRE_solver.h"
+#include "HYPREdirichlet.h"
 //#define CONSISTENT
 
-void HYPRE_solver::rhs_cub2lin()
-{
-  const std::vector<BlockInfo>& tmpInfo = sim.tmp->getBlocksInfo();
-  const size_t nBlocks = tmpInfo.size();
 
-  Real _avgRHS = 0;
-  const Real fac = 1.0 / (totNx * totNy);
-  #pragma omp parallel for schedule(static) reduction(+:_avgRHS)
-  for(size_t i=0; i<nBlocks; i++)
-  {
-    const BlockInfo& info = tmpInfo[i];
-    const size_t blocki = VectorBlock::sizeX * info.index[0];
-    const size_t blockj = VectorBlock::sizeY * info.index[1];
-    const size_t blockStart = blocki + totNx * blockj;
-    const ScalarBlock& b = *(ScalarBlock*)info.ptrBlock;
-    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-    for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-      buffer[blockStart + ix + totNx*iy] = b(ix,iy).s;
-      _avgRHS += b(ix,iy).s * fac;
-    }
-  }
-  printf("Avg RHS was:%f\n",_avgRHS);
-  if(not bPeriodic) {// Neumann BC + divergence theorem
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < totNy*totNx; i++) buffer[i] -= _avgRHS;
-  }
-}
-
-void HYPRE_solver::sol_lin2cub()
-{
-  const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
-  const size_t nBlocks = presInfo.size();
-
-  Real _avgP = 0;
-  const Real fac = 1.0 / (totNx * totNy);
-  #pragma omp parallel for schedule(static) reduction(+:_avgP)
-  for(size_t i=0; i<nBlocks; i++)
-  {
-    const BlockInfo& info = presInfo[i];
-    const size_t blocki = VectorBlock::sizeX * info.index[0];
-    const size_t blockj = VectorBlock::sizeY * info.index[1];
-    const size_t blockStart = blocki + totNx * blockj;
-    ScalarBlock& b = *(ScalarBlock*)info.ptrBlock;
-    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-    for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-      const Real P = buffer[blockStart + ix + totNx*iy];
-      b(ix,iy).s = P; _avgP += fac * P;
-    }
-  }
-  {
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < totNy*totNx; i++) buffer[i] -= _avgP;
-    HYPRE_Int ilower[2] = {0,0};
-    HYPRE_Int iupper[2] = {(int)totNx-1, (int)totNy-1};
-    HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, buffer);
-    pLast = buffer[totNx*totNy-1];
-    printf("Avg Pressure:%f\n",_avgP);
-  }
-}
-
-void HYPRE_solver::solve()
+void HYPREdirichlet::solve()
 {
   HYPRE_Int ilower[2] = {0,0};
   HYPRE_Int iupper[2] = {(int)totNx-1, (int)totNy-1};
 
-  sim.startProfiler("HYPRE_solver_rhs_cub2lin");
-  rhs_cub2lin();
+  sim.startProfiler("HYPRE_cub2rhs");
+  cub2rhs();
   sim.stopProfiler();
 
   if(not bPeriodic)
@@ -90,11 +31,11 @@ void HYPRE_solver::solve()
     buffer[totNx*(totNy-1) + totNx-1-SHIFT] -= pLast;
   }
 
-  sim.startProfiler("HYPRE_solver_setBoxVals");
+  sim.startProfiler("HYPRE_setBoxV");
   HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, buffer);
   sim.stopProfiler();
 
-  sim.startProfiler("HYPRE_solver_solve");
+  sim.startProfiler("HYPRE_solve");
   if (solver == "gmres")
     HYPRE_StructGMRESSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   else if (solver == "smg")
@@ -103,17 +44,29 @@ void HYPRE_solver::solve()
     HYPRE_StructPCGSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   sim.stopProfiler();
 
-  sim.startProfiler("HYPRE_solver_getBoxVals");
+  sim.startProfiler("HYPRE_getBoxV");
   HYPRE_StructVectorGetBoxValues(hypre_sol, ilower, iupper, buffer);
   sim.stopProfiler();
 
-  sim.startProfiler("HYPRE_solver_sol_lin2cub");
-  sol_lin2cub();
+  sim.startProfiler("HYPRE_sol2cub");
+  sol2cub();
+  {
+    Real * const nxtGuess = buffer;
+    for (size_t i = 0; i < totNy*totNx; i++) nxtGuess[i] -= avgP;
+    HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, buffer);
+    pLast = buffer[totNx*totNy-1];
+    printf("Avg Pressure:%f\n",avgP);
+  }
   sim.stopProfiler();
 }
 
-HYPRE_solver::HYPRE_solver(SimulationData& s) : sim(s)
+#define STRIDE s.vel->getBlocksPerDimension(0) * VectorBlock::sizeX
+
+HYPREdirichlet::HYPREdirichlet(SimulationData& s) : PoissonSolver(s, STRIDE),
+solver("smg")
 {
+  printf("Employing HYPRE-based Poisson solver with Dirichlet BCs.\n");
+  buffer = new Real[totNy * totNx];
   HYPRE_Int ilower[2] = {0,0};
   HYPRE_Int iupper[2] = {(int)totNx-1, (int)totNy-1};
   const auto COMM = MPI_COMM_SELF;
@@ -292,8 +245,10 @@ HYPRE_solver::HYPRE_solver(SimulationData& s) : sim(s)
     HYPRE_StructPCGSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   }
 }
+// let's relinquish STRIDE which was only added for clarity:
+#undef STRIDE
 
-HYPRE_solver::~HYPRE_solver()
+HYPREdirichlet::~HYPREdirichlet()
 {
   if (solver == "gmres")
     HYPRE_StructGMRESDestroy(hypre_solver);

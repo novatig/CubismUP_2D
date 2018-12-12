@@ -1,6 +1,6 @@
 #pragma once
 
-#include "PoissonSolverScalar.h"
+#include "PoissonSolver.h"
 
 #include <fftw3.h>
 #ifndef _FLOAT_PRECISION_
@@ -11,19 +11,18 @@ typedef fftwf_complex mycomplex;
 typedef fftwf_plan myplan;
 #endif // _FLOAT_PRECISION_
 
-class PoissonSolverFreespace: public PoissonSolverBase
+class FFTW_freespace: public PoissonSolver
 {
   Real * m_kernel = nullptr;
-
+  const size_t MX = 2*totNx - 1;
+  const size_t MY = 2*totNy - 1;
+  const size_t MX_hat = MX/2 +1;
   myplan fwd, bwd;
- protected:
-
-  void _init_green();
 
  public:
-  PoissonSolverFreespace(SimulationData& s);
+  FFTW_freespace(SimulationData& s);
 
-  void solve() const override;
+  void solve() override;
 
-  ~PoissonSolverFreespace();
+  ~FFTW_freespace();
 };

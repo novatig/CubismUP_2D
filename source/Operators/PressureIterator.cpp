@@ -7,8 +7,8 @@
 //
 
 #include "PressureIterator.h"
-#include "../Poisson/HYPRE_solver.h"
-#include "../Poisson/PoissonSolverScalarFFTW_freespace.h"
+#include "../Poisson/FFTW_freespace.h"
+#include "../Poisson/HYPREdirichlet.h"
 
 void PressureIterator::initPenalizationForce(const double dt) const
 {
@@ -57,8 +57,19 @@ Real PressureIterator::updatePenalizationForce(const double dt) const
   const Real h = sim.getH(), pFac = -0.5*dt/h, invDt = 1/dt;//, hsq = h*h;
   static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
 
-  Real MX = 0, MY = 0, EX = 0, EY = 0;
-  #pragma omp parallel reduction(max : MX,MY,EX,EY)
+  // If in debug we also make sure that flow velocity inside the obstacle
+  // Is exactly the same as obstacle's velocity. It should always be up to EPS.
+  #ifndef NDEBUG
+    Real Vx = 0, Vy = 0, dVx = 0, dVy = 0;
+  #endif
+  // Measure how much F has changed between iterations to check convergence:
+  Real Fx = 0, Fy = 0, dFx = 0, dFy = 0;
+
+  #ifndef NDEBUG
+  #pragma omp parallel reduction(max : Fx, Fy, dFx, dFy, Vx, Vy, dVx, dVy)
+  #else
+  #pragma omp parallel reduction(max : Fx, Fy, dFx, dFy)
+  #endif
   {
     static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 2, 2, 1};
     ScalarLab plab; plab.prepare(*(sim.pres), stenBeg, stenEnd, 0);
@@ -78,8 +89,7 @@ Real PressureIterator::updatePenalizationForce(const double dt) const
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
-        const Real US = UDEF(ix,iy).u[0], VS = UDEF(ix,iy).u[1];
-        const Real X = CHI(ix,iy).s, IN = (1-X) < EPS;
+        const Real US= UDEF(ix,iy).u[0], VS= UDEF(ix,iy).u[1], X= CHI(ix,iy).s;
         const Real Unxt = TMPV(ix,iy).u[0] + pFac*(P(ix+1,iy).s - P(ix-1,iy).s);
         const Real Vnxt = TMPV(ix,iy).u[1] + pFac*(P(ix,iy+1).s - P(ix,iy-1).s);
         #ifdef SOFT_PENL
@@ -87,20 +97,27 @@ Real PressureIterator::updatePenalizationForce(const double dt) const
         #else
           const Real uTgt = US, vTgt = VS;
         #endif
-        F(ix,iy).u[0] = X * invDt * ( uTgt - Unxt );
-        F(ix,iy).u[1] = X * invDt * ( vTgt - Vnxt );
-        VEL(ix,iy).u[0] = Unxt + dt * F(ix,iy).u[0];
-        VEL(ix,iy).u[1] = Vnxt + dt * F(ix,iy).u[1];
+        const Real FXnxt = X*invDt*(uTgt-Unxt), FYnxt = X*invDt*(vTgt-Vnxt);
+        Fx  = std::max(  Fx, std::fabs(FXnxt                ) );
+        Fy  = std::max(  Fy, std::fabs(FYnxt                ) );
+        dFx = std::max( dFx, std::fabs(FXnxt - F(ix,iy).u[0]) );
+        dFy = std::max( dFy, std::fabs(FYnxt - F(ix,iy).u[1]) );
 
-        MX = std::max( MX, IN * std::fabs(uTgt                  ) );
-        EX = std::max( EX, IN * std::fabs(uTgt - VEL(ix,iy).u[0]) );
-        MY = std::max( MY, IN * std::fabs(vTgt                  ) );
-        EY = std::max( EY, IN * std::fabs(vTgt - VEL(ix,iy).u[1]) );
+        F(ix,iy).u[0] = FXnxt; VEL(ix,iy).u[0] = Unxt + dt * FXnxt;
+        F(ix,iy).u[1] = FYnxt; VEL(ix,iy).u[1] = Vnxt + dt * FYnxt;
+
+        #ifndef NDEBUG
+          Vx  = std::max( Vx, ((1-X)<EPS) * std::fabs(uTgt                ) );
+          Vy  = std::max( Vy, ((1-X)<EPS) * std::fabs(vTgt                ) );
+          dVx = std::max(dVx, ((1-X)<EPS) * std::fabs(uTgt-VEL(ix,iy).u[0]) );
+          dVy = std::max(dVy, ((1-X)<EPS) * std::fabs(vTgt-VEL(ix,iy).u[1]) );
+        #endif
       }
     }
   }
-  cout <<EX<<" "<<EY<<" "<<MX<<" "<<MY<<endl;
-  return std::max(EX,EY) / (EPS + std::max(MX,MY));
+  // By definition of the eqns, velocity should be up to eps equal to imposed:
+  assert(std::max(dVx,dVy) / (EPS + std::max(Vx,Vy)) < std::sqrt(EPS));
+  return std::max(dFx,dFy) / (EPS + std::max(Fx,Fy));
 }
 
 void PressureIterator::updatePressureRHS(const double dt) const
@@ -140,20 +157,19 @@ void PressureIterator::updatePressureRHS(const double dt) const
 
 void PressureIterator::operator()(const double dt)
 {
-  sim.startProfiler("PressureIterator_initPenalizationForce");
+  sim.startProfiler("PIter_init");
   initPenalizationForce(dt);
   sim.stopProfiler();
 
   for(int iter = 0; iter < 100; iter++)
   {
-    sim.startProfiler("PressureIterator_updatePressureRHS");
+    sim.startProfiler("PIter_RHS");
     updatePressureRHS(dt);
     sim.stopProfiler();
 
-    fftwSolver->solve();
-    //pressureSolver->solve();
+    pressureSolver->solve();
     //sim.dumpPres("iter_"+std::to_string(iter)+"_");
-    sim.startProfiler("PressureIterator_updatePenalizationForce");
+    sim.startProfiler("PIter_update");
     const Real max_RelDforce = updatePenalizationForce(dt);
     //sim.dumpTmp("iter_"+std::to_string(iter)+"_");
     sim.stopProfiler();
@@ -163,8 +179,11 @@ void PressureIterator::operator()(const double dt)
 }
 
 PressureIterator::PressureIterator(SimulationData& s) : Operator(s),
-pressureSolver(new HYPRE_solver(sim)),
-fftwSolver(new PoissonSolverFreespace(sim)) {}
+pressureSolver(
+  s.poissonType=="hypre"? static_cast<PoissonSolver*>(new HYPREdirichlet(sim))
+                        : static_cast<PoissonSolver*>(new FFTW_freespace(sim)) )
+{
+}
 
 PressureIterator::~PressureIterator() {
   delete pressureSolver;

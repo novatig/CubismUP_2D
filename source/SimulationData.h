@@ -57,7 +57,7 @@ struct SimulationData
 
   bool verbose = true;
   bool muteAll = false;
-  int poissonType = 0;
+  std::string poissonType = "hypre";
   bool bVariableDensity = false;
   // output
   // dumpFreq==0 means that this dumping frequency (in #steps) is not active
@@ -69,8 +69,8 @@ struct SimulationData
   bool bPing = false;
   bool bRestart = false;
 
-  string path4serialization;
-  string path2file;
+  std::string path4serialization;
+  std::string path2file;
 
   void resetAll();
   bool bDump();

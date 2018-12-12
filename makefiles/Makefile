@@ -70,8 +70,8 @@ DIRS = $(sort $(dir $(wildcard ../source/*/)))
 CUBISM_DIR = $(BUILDDIR)/../Cubism/source/
 #OBJECTS = Simulation.o Definitions.o Shape.o ShapeLibrary.o ShapesSimple.o BlowFish.o Fish.o FishLibrary.o StefanFish.o BufferedLogger.o CarlingFish.o
 OBJECTS = Simulation.o SimulationData.o Shape.o ShapeLibrary.o ShapesSimple.o \
-BufferedLogger.o Helpers.o HYPRE_solver.o PressureIterator.o PutObjectsOnGrid.o \
-RKstep1.o RKstep2.o UpdateObjects.o presRHS_step1.o PoissonSolverScalar.o PoissonSolverScalarFFTW_freespace.o
+BufferedLogger.o Helpers.o HYPREdirichlet.o PressureIterator.o PutObjectsOnGrid.o \
+RKstep1.o RKstep2.o UpdateObjects.o presRHS_step1.o PoissonSolver.o FFTW_freespace.o
 CPP_FILES = $(notdir $(OBJECTS:.o=.cpp))
 
 VPATH := $(DIRS) $(CUBISM_DIR)

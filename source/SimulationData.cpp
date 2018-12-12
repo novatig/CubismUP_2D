@@ -140,7 +140,6 @@ bool SimulationData::bOver() const
 
 bool SimulationData::bDump()
 {
-  cout << "MFing dumpFreq is "<<dumpFreq<<endl;
   const bool timeDump = dumpTime>0 && time >= nextDumpTime;
   const bool stepDump = dumpFreq>0 && (step % dumpFreq) == 0;
   _bDump = stepDump || timeDump;

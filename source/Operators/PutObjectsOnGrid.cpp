@@ -111,7 +111,7 @@ void PutObjectsOnGrid::operator()(const double dt)
 {
   // TODO I NEED SIGNED DISTANCE PER OBSTACLE
   // 1) clear chi^t and udef^t
-  sim.startProfiler("PutObjectsOnGrid_clear");
+  sim.startProfiler("ObjGrid_clear");
   std::cout << "nblocks = " << Nblocks << std::endl;
   #pragma omp parallel for schedule(static)
   for (size_t i=0; i < Nblocks; i++) {
@@ -125,17 +125,17 @@ void PutObjectsOnGrid::operator()(const double dt)
   sim.stopProfiler();
 
   // 2) put objects' signed dist function and udef on the obstacle blocks:
-  sim.startProfiler("PutObjectsOnGrid_create");
+  sim.startProfiler("ObjGrid_make");
   for(const auto& shape : sim.shapes) shape->create(tmpInfo);
   sim.stopProfiler();
 
   // 3) for each obstacle, from signed distance, put new chi on blocks
-  sim.startProfiler("PutObjectsOnGrid_putChiOnGrid");
+  sim.startProfiler("ObjGrid_chi");
   for(const auto& shape : sim.shapes) putChiOnGrid( shape );
   sim.stopProfiler();
 
   // 4) remove moments from characteristic function and put on grid U_s
-  sim.startProfiler("PutObjectsOnGrid_putObjectVelOnGrid");
+  sim.startProfiler("ObjGrid_uobj");
   for(const auto& shape : sim.shapes) {
     shape->removeMoments(chiInfo); // now that we have CHI, remove moments
     putObjectVelOnGrid( shape ); // put actual vel on the object vel grid

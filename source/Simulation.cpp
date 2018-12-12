@@ -73,11 +73,8 @@ void Simulation::parseRuntime()
 
   sim.path2file = parser("-file").asString("./");
   sim.path4serialization = parser("-serialization").asString(sim.path2file);
-  if ( parser("-bFreeSpace").asInt(0) )
-    sim.poissonType = 1;
-  if ( parser("-bNeumann").asInt(0) )
-    sim.poissonType = 2;
 
+  sim.poissonType = parser("-poissonType").asString("hypre");
   // simulation settings
   sim.CFL = parser("-CFL").asDouble(.1);
   sim.lambda = parser("-lambda").asDouble(1e5);

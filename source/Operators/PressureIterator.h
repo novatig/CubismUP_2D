@@ -10,8 +10,7 @@
 
 #include "../Operator.h"
 
-class HYPRE_solver;
-class PoissonSolverBase;
+class PoissonSolver;
 
 class PressureIterator : public Operator
 {
@@ -25,8 +24,7 @@ class PressureIterator : public Operator
   const std::vector<BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
   const std::vector<BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
 
-  HYPRE_solver * const pressureSolver;
-  PoissonSolverBase * const fftwSolver;
+  PoissonSolver * const pressureSolver;
 
   Real updatePenalizationForce(const double dt) const;
   void initPenalizationForce(const double dt) const;
