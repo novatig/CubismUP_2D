@@ -1,9 +1,9 @@
 //
-//  IF2D_FishOperator.cpp
-//  IF2D_ROCKS
+//  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Created by Wim van Rees on 17/11/14.
-//
+//  Created by Guido Novati (novatig@ethz.ch).
 //
 
 

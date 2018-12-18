@@ -1,12 +1,11 @@
 //
-//  Sim_FSI_Gravity.h
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Class for the simulation of gravity driven FSI
+//  Created by Guido Novati (novatig@ethz.ch).
 //
-//  Created by Christian Conti on 1/26/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
-//
+
 
 #pragma once
 #include "SimulationData.h"

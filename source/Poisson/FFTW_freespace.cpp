@@ -1,8 +1,18 @@
+//
+//  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
+//
+//  Created by Guido Novati (novatig@ethz.ch).
+//
+
 
 #include "FFTW_freespace.h"
 
 void FFTW_freespace::solve()
 {
+  memset(buffer, 0, 2 * MY * MX_hat * sizeof(Real));
+
   sim.startProfiler("FFTW_cub2fft");
   cub2rhs();
   sim.stopProfiler();
@@ -39,7 +49,6 @@ void FFTW_freespace::solve()
 
   sim.startProfiler("FFTW_fft2cub");
   sol2cub();
-  memset(buffer, 0, 2 * MY * MX_hat * sizeof(Real));
   sim.stopProfiler();
 }
 
@@ -97,8 +106,10 @@ FFTW_freespace::FFTW_freespace(SimulationData& s) : PoissonSolver(s, STRIDE)
     #pragma omp parallel for schedule(static)
     for (size_t j = 0; j < MY; ++j)
     for (size_t i = 0; i < MX; ++i) {
-        const Real yi = j >= totNy ? MY-j : j, xi = i >= totNx ? MX-i : i;
-        buffer[i + 2*MX_hat*j] = fac * std::log(h * std::sqrt(xi*xi + yi*yi));
+        const Real yi = j >= totNy ? MY-j : j;
+        const Real xi = i >= totNx ? MX-i : i;
+        const Real r = std::sqrt(xi*xi + yi*yi);
+        buffer[i + 2*MX_hat*j] = fac * std::log(h*r);
     }
     // Set self-interaction, which right now reads NaN (log(0))
     // G = 1/4 * r_eq^2 * (2* ln(r_eq) - 1) where  r_eq = h / sqrt(pi)

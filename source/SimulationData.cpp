@@ -1,3 +1,11 @@
+//
+//  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
+//
+//  Created by Guido Novati (novatig@ethz.ch).
+//
+
 #include "Definitions.h"
 #include "Shape.h"
 #include "Operators/Helpers.h"
@@ -171,4 +179,15 @@ void SimulationData::printResetProfiler()
     profiler->printSummary();
     profiler->reset();
   #endif
+}
+void SimulationData::dumpAll(std::string name)
+{
+  dumpChi  (name);
+  dumpPres (name);
+  //dumpPrhs (name);
+  dumpTmp  (name);
+  dumpVel  (name);
+  //dumpUobj (name);
+  //dumpForce(name);
+  //dumpTmpV (name);
 }

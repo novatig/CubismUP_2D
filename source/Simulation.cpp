@@ -1,10 +1,11 @@
 //
-//  Sim_FSI_Gravity.cpp
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Created by Christian Conti on 1/26/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
+//  Created by Guido Novati (novatig@ethz.ch).
 //
+
 
 #include "Simulation.h"
 
@@ -13,10 +14,11 @@
 
 #include "Operators/Helpers.h"
 #include "Operators/PressureIterator.h"
+#include "Operators/PressureSingle.h"
 #include "Operators/PutObjectsOnGrid.h"
 #include "Operators/UpdateObjects.h"
-#include "Operators/RKstep1.h"
-#include "Operators/RKstep2.h"
+#include "Operators/advDiff_RK.h"
+#include "Operators/advDiff.h"
 #include "Operators/presRHS_step1.h"
 #include "Utils/FactoryFileLineParser.h"
 
@@ -162,10 +164,17 @@ void Simulation::init()
   pipeline.clear();
 
   pipeline.push_back( new PutObjectsOnGrid(sim) );
-  pipeline.push_back( new    presRHS_step1(sim) );
-  pipeline.push_back( new          RKstep1(sim) );
-  pipeline.push_back( new          RKstep2(sim) );
-  pipeline.push_back( new PressureIterator(sim) );
+  if(0)
+  {
+    pipeline.push_back( new          advDiff(sim) );
+    pipeline.push_back( new   PressureSingle(sim) );
+  }
+  else
+  {
+    pipeline.push_back( new    presRHS_step1(sim) );
+    pipeline.push_back( new       advDiff_RK(sim) );
+    pipeline.push_back( new PressureIterator(sim) );
+  }
   pipeline.push_back( new    UpdateObjects(sim) );
 
   cout << "Operator ordering:\n";
@@ -182,13 +191,15 @@ void Simulation::reset()
    IC ic(sim);
    ic(0);
    // put objects on grid
-   (*pipeline[0])(0);
-   ApplyObjVel initVel(sim);
-   initVel(0);
+   //(*pipeline[0])(0);
+   //ApplyObjVel initVel(sim);
+   //initVel(0);
 }
 
-void Simulation::simulate() {
-  while (1) {
+void Simulation::simulate()
+{
+  while (1)
+  {
     sim.startProfiler("DT");
     const double dt = calcMaxTimestep();
     sim.stopProfiler();
@@ -203,24 +214,20 @@ double Simulation::calcMaxTimestep()
 
   const double h = sim.getH();
   const double dtFourier = h*h/sim.nu, dtCFL = maxU<2.2e-16? 1 : h/maxU;
-  sim.dt = sim.CFL * std::min(dtCFL, dtFourier);
-
-  const double maxUb = sim.maxRelSpeed();
-  const double dtBody = maxUb<2.2e-16? 1 : h/maxUb;
-  sim.dt = std::min( sim.dt, sim.CFL*dtBody );
+  const double maxUb = sim.maxRelSpeed(), dtBody = maxUb<2.2e-16? 1 : h/maxUb;
+  sim.dt = sim.CFL * std::min({dtCFL, dtFourier, dtBody});
 
   if(sim.dlm >= 1) sim.lambda = sim.dlm / sim.dt;
-  if (sim.step < 100) {
+  if (sim.step < 100)
+  {
     const double x = (sim.step+1.0)/100;
     const double rampCFL = std::exp(std::log(1e-3)*(1-x) + std::log(sim.CFL)*x);
-    sim.dt = rampCFL*std::min({dtCFL, dtFourier, dtBody});
+    sim.dt = rampCFL * std::min({dtCFL, dtFourier, dtBody});
   }
   #ifndef RL_TRAIN
-  if(sim.verbose)
-    cout << "step, time, dt "// (Fourier, CFL, body): "
-    <<sim.step<<" "<<sim.time<<" "<<sim.dt<<" "<<sim.uinfx<<" "<<sim.uinfy
-    //<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody
-    <<endl;
+    if(sim.verbose)
+      printf("step:%d, time:%f, dt=%f, uinf:[%f %f], maxU:%f\n",
+        sim.step, sim.time, sim.dt, sim.uinfx, sim.uinfy, maxU);
   #endif
 
   return sim.dt;

@@ -1,14 +1,14 @@
 //
-//  CoordinatorPressure.h
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Created by Christian Conti on 3/30/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
+//  Created by Guido Novati (novatig@ethz.ch).
 //
+
 
 #include "HYPREdirichlet.h"
 //#define CONSISTENT
-
 
 void HYPREdirichlet::solve()
 {
@@ -49,14 +49,20 @@ void HYPREdirichlet::solve()
   sim.stopProfiler();
 
   sim.startProfiler("HYPRE_sol2cub");
-  sol2cub();
   {
+    Real avgP = 0;
+    const Real fac = 1.0 / (totNx * totNy);
     Real * const nxtGuess = buffer;
+    #pragma omp parallel for schedule(static) reduction(+ : avgP)
+    for (size_t i = 0; i < totNy*totNx; i++) avgP += fac * nxtGuess[i];
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < totNy*totNx; i++) nxtGuess[i] -= avgP;
     HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, buffer);
     pLast = buffer[totNx*totNy-1];
-    printf("Avg Pressure:%f\n",avgP);
+    printf("Avg Pressure:%f\n", avgP);
   }
+  sol2cub();
+
   sim.stopProfiler();
 }
 

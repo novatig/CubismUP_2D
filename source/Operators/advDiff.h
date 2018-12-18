@@ -1,27 +1,28 @@
 //
-//  CoordinatorDiffusion.h
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Created by Christian Conti on 3/27/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
+//  Created by Guido Novati (novatig@ethz.ch).
 //
+
 
 #pragma once
 
 #include "../Operator.h"
 
-class RKstep2 : public Operator
+class advDiff : public Operator
 {
   const std::vector<BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
   const std::vector<BlockInfo>& pRHSInfo  = sim.pRHS->getBlocksInfo();
 
  public:
-  RKstep2(SimulationData& s) : Operator(s) { }
+  advDiff(SimulationData& s) : Operator(s) { }
 
   void operator()(const double dt);
 
   string getName()
   {
-    return "RKstep2";
+    return "advDiff";
   }
 };

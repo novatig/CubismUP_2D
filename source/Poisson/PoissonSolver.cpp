@@ -1,3 +1,11 @@
+//
+//  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
+//
+//  Created by Guido Novati (novatig@ethz.ch).
+//
+
 
 #include "PoissonSolver.h"
 
@@ -27,20 +35,23 @@ void PoissonSolver::cub2rhs()
     }
   }
 
+  sumABS = std::max(std::numeric_limits<Real>::epsilon(), sumABS);
   const Real correction = sumRHS / sumABS;
   printf("Relative RHS correction:%e\n", correction);
-  #pragma omp parallel for schedule(static)
-  for (size_t iy = 0; iy < totNy; iy++)
-  for (size_t ix = 0; ix < totNx; ix++)
-    dest[ix + stride * iy] -=  std::fabs(dest[ix +stride * iy]) * correction;
-
-  #ifndef NDEBUG
-    Real sumRHSpost = 0;
-    #pragma omp parallel for schedule(static) reduction(+ : sumRHSpost)
+  #if 1
+    #pragma omp parallel for schedule(static)
     for (size_t iy = 0; iy < totNy; iy++)
-    for (size_t ix = 0; ix < totNx; ix++) sumRHSpost += dest[ix + stride * iy];
-    printf("Relative RHS correction:%e\n", sumRHSpost);
-    assert(sumRHSpost < std::sqrt(std::numeric_limits<Real>::epsilon()));
+    for (size_t ix = 0; ix < totNx; ix++)
+      dest[ix + stride * iy] -=  std::fabs(dest[ix +stride * iy]) * correction;
+
+    #ifndef NDEBUG
+      Real sumRHSpost = 0;
+      #pragma omp parallel for schedule(static) reduction(+ : sumRHSpost)
+      for(size_t iy = 0; iy < totNy; iy++)
+      for(size_t ix = 0; ix < totNx; ix++) sumRHSpost += dest[ix + stride * iy];
+      printf("Relative RHS correction:%e\n", sumRHSpost);
+      assert(sumRHSpost < std::sqrt(std::numeric_limits<Real>::epsilon()));
+    #endif
   #endif
 }
 
@@ -49,10 +60,8 @@ void PoissonSolver::sol2cub()
   const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
   const size_t nBlocks = presInfo.size();
 
-  Real _avgP = 0;
-  const Real fac = 1.0 / (totNx * totNy);
   const Real * __restrict__ const sorc = buffer;
-  #pragma omp parallel for schedule(static) reduction(+:_avgP)
+  #pragma omp parallel for schedule(static)
   for(size_t i=0; i<nBlocks; ++i)
   {
     const BlockInfo& info = presInfo[i];
@@ -62,12 +71,11 @@ void PoissonSolver::sol2cub()
     const size_t blockStart = blocki + stride * blockj;
 
     for(int iy=0; iy<VectorBlock::sizeY; iy++)
-    for(int ix=0; ix<VectorBlock::sizeX; ix++) {
-      const Real P = sorc[blockStart + ix + stride * iy];
-      _avgP += fac * P; b(ix,iy).s = P;
-    }
+    for(int ix=0; ix<VectorBlock::sizeX; ix++)
+    //b(ix,iy).s = (sorc[blockStart + ix + stride*iy] + b(ix,iy).s)/2;
+    //b(ix,iy).s = 2*sorc[blockStart + ix + stride*iy] - b(ix,iy).s;
+      b(ix,iy).s = sorc[blockStart + ix + stride * iy];
   }
-  avgP = _avgP;
 }
 
 PoissonSolver::PoissonSolver(SimulationData&s,long p): sim(s), stride(p) {}

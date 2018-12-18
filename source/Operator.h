@@ -1,13 +1,11 @@
 //
-//  GenericCoordinator.h
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  This class serves as the interface for a coordinator object
-//  A coordinator object schedules the processing of blocks with its operator
+//  Created by Guido Novati (novatig@ethz.ch).
 //
-//  Created by Christian Conti on 3/27/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
-//
+
 
 #pragma once
 

@@ -1,3 +1,12 @@
+//
+//  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
+//
+//  Created by Guido Novati (novatig@ethz.ch).
+//
+
+
 #pragma once
 
 #include "../Operator.h"
@@ -14,7 +23,6 @@ class PoissonSolver
 
   // memory buffer for mem transfers to/from solver:
   Real * buffer = nullptr; // rhs in cub2rhs, sol in sol2cub
-  Real avgP = 0;
 
   void cub2rhs();
   void sol2cub();

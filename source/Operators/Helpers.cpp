@@ -1,10 +1,11 @@
 //
-//  ProcessOperatorsOMP.h
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Created by Christian Conti on 1/8/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
+//  Created by Guido Novati (novatig@ethz.ch).
 //
+
 
 #include "Helpers.h"
 
@@ -44,25 +45,20 @@ void IC::operator()(const double dt)
 Real findMaxU::run() const
 {
   const Real UINF = sim.uinfx, VINF = sim.uinfy;
-  Real U=0, V=0, u=0, v=0;
+  Real U = 0, V = 0, u = 0, v = 0;
   #pragma omp parallel for schedule(static) reduction(max : U, V, u, v)
   for (size_t i=0; i < Nblocks; i++)
   {
-    VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;
+    const VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;
     for(int iy=0; iy<VectorBlock::sizeY; ++iy)
     for(int ix=0; ix<VectorBlock::sizeX; ++ix)
     {
-      const Real tU = std::fabs(VEL(ix,iy).u[0] + UINF);
-      const Real tV = std::fabs(VEL(ix,iy).u[1] + VINF);
-      const Real tu = std::fabs(VEL(ix,iy).u[0]);
-      const Real tv = std::fabs(VEL(ix,iy).u[1]);
-      U = std::max( U, tU );
-      V = std::max( V, tV );
-      u = std::max( u, tu );
-      v = std::max( v, tv );
+      U = std::max( U, std::fabs( VEL(ix,iy).u[0] + UINF ) );
+      V = std::max( V, std::fabs( VEL(ix,iy).u[1] + VINF ) );
+      u = std::max( u, std::fabs( VEL(ix,iy).u[0] ) );
+      v = std::max( v, std::fabs( VEL(ix,iy).u[1] ) );
     }
   }
-
   return std::max( { U, V, u, v } );
 }
 

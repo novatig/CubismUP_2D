@@ -1,15 +1,11 @@
 //
-//  Shape.h
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Virtual shape class which defines the interface
-//  Default simple geometries are also provided and can be used as references
+//  Created by Guido Novati (novatig@ethz.ch).
 //
-//  This class only contains static information (position, orientation,...), no dynamics are included (e.g. velocities,...)
-//
-//  Created by Christian Conti on 3/6/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
-//
+
 
 #include "Shape.h"
 //#include "OperatorComputeForces.h"
@@ -53,19 +49,19 @@ void Shape::updatePosition(double dt)
   center[1] = centerOfMass[1] + sinang*d_gm[0] + cosang*d_gm[1];
 
   #ifndef RL_TRAIN
-    if(sim.verbose)
-      printf("CM:[%f %f] C:[%f %f] u:%f v:%f omega:%f M:%f J:%f V:%f\n",
-      centerOfMass[0], centerOfMass[1], center[0], center[1], u, v, omega, M, J, V);
-    if(not sim.muteAll)
-    {
-      stringstream ssF;
-      ssF<<sim.path2file<<"/velocity_"<<obstacleID<<".dat";
-      std::stringstream &fileSpeed = logger.get_stream(ssF.str());
-      if(sim.step==0)
-        fileSpeed<<"time dt CMx CMy angle u v omega M J accx accy"<<std::endl;
+  if(sim.verbose)
+    printf("CM:[%.02f %.02f] C:[%.02f %.02f] u:%.03f v:%.03f omega:%.03f M:%.03e J:%.03e\n",
+    centerOfMass[0], centerOfMass[1], center[0], center[1], u, v, omega, M, J);
+  if(not sim.muteAll)
+  {
+    stringstream ssF;
+    ssF<<sim.path2file<<"/velocity_"<<obstacleID<<".dat";
+    std::stringstream &fileSpeed = logger.get_stream(ssF.str());
+    if(sim.step==0)
+      fileSpeed<<"time dt CMx CMy angle u v omega M J accx accy"<<std::endl;
 
-      fileSpeed<<sim.time<<" "<<sim.dt<<" "<<centerOfMass[0]<<" "<<centerOfMass[1]<<" "<<orientation<<" "<<u <<" "<<v<<" "<<omega <<" "<<M<<" "<<J<<endl;
-    }
+    fileSpeed<<sim.time<<" "<<sim.dt<<" "<<centerOfMass[0]<<" "<<centerOfMass[1]<<" "<<orientation<<" "<<u <<" "<<v<<" "<<omega <<" "<<M<<" "<<J<<endl;
+  }
   #endif
 }
 
@@ -124,6 +120,7 @@ Shape::Integrals Shape::integrateObstBlock(const std::vector<BlockInfo>& vInfo)
 void Shape::removeMoments(const std::vector<BlockInfo>& vInfo)
 {
   Shape::Integrals I = integrateObstBlock(vInfo);
+  M = I.m; V = I.m; J = I.j;
 
   #ifndef RL_TRAIN
     if(sim.verbose)
@@ -132,7 +129,6 @@ void Shape::removeMoments(const std::vector<BlockInfo>& vInfo)
         I.u, I.v, I.a, I.x-centerOfMass[0], I.y-centerOfMass[1]);
   #endif
   //update the center of mass, this operation should not move 'center'
-  cout << centerOfMass[0]<<" "<<I.x<<" "<<centerOfMass[1]<<" "<<I.y << endl;
   centerOfMass[0] = I.x; centerOfMass[1] = I.y;
   //center[0] = I.X; center[1] = I.Y;
   const double dCx = center[0]-centerOfMass[0];

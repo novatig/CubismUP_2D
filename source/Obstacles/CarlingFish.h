@@ -1,10 +1,11 @@
 //
-//  IF2D_StefanFishOperator.h
-//  IF2D_ROCKS
+//  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Created by Wim van Rees on 25/11/14.
+//  Created by Guido Novati (novatig@ethz.ch).
 //
-//
+
 
 #pragma once
 #include "Fish.h"

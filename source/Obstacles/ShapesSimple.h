@@ -1,15 +1,11 @@
 //
-//  Shape.h
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Virtual shape class which defines the interface
-//  Default simple geometries are also provided and can be used as references
+//  Created by Guido Novati (novatig@ethz.ch).
 //
-//  This class only contains static information (position, orientation,...), no dynamics are included (e.g. velocities,...)
-//
-//  Created by Christian Conti on 3/6/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
-//
+
 
 #pragma once
 

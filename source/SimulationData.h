@@ -1,10 +1,11 @@
 //
-//  DataStructures.h
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Created by Christian Conti on 1/7/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
+//  Created by Guido Novati (novatig@ethz.ch).
 //
+
 
 #pragma once
 
@@ -100,14 +101,5 @@ struct SimulationData
   void dumpUobj (std::string name);
   void dumpForce(std::string name);
   void dumpTmpV (std::string name);
-  void dumpAll(std::string name) {
-    dumpChi  (name);
-    dumpPres (name);
-    dumpPrhs (name);
-    dumpTmp  (name);
-    dumpVel  (name);
-    dumpUobj (name);
-    dumpForce(name);
-    dumpTmpV (name);
-  }
+  void dumpAll  (std::string name);
 };

@@ -1,10 +1,11 @@
 //
-//  DataStructures.h
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Created by Christian Conti on 1/7/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
+//  Created by Guido Novati (novatig@ethz.ch).
 //
+
 
 #pragma once
 
@@ -41,6 +42,9 @@ struct ScalarElement {
   Real s = 0;
   inline void clear() { s = 0; }
   inline void set(const Real v) { s = v; }
+  inline void copy(const ScalarElement& c) { s = c.s; }
+  ScalarElement(const ScalarElement& c) = delete;
+  ScalarElement& operator=(const ScalarElement& c) { s = c.s; return *this; }
 };
 
 struct VectorElement {
@@ -51,6 +55,14 @@ struct VectorElement {
 
   inline void clear() { for(int i=0; i<DIM; ++i) u[i] = 0; }
   inline void set(const Real v) { for(int i=0; i<DIM; ++i) u[i] = v; }
+  inline void copy(const VectorElement& c) {
+    for(int i=0; i<DIM; ++i) u[i] = c.u[i];
+  }
+  VectorElement(const VectorElement& c) = delete;
+  VectorElement& operator=(const VectorElement& c) {
+    for(int i=0; i<DIM; ++i) u[i] = c.u[i];
+    return *this;
+  }
 };
 
 template <typename Element>
@@ -71,19 +83,22 @@ struct GridBlock
       ElementType * const entry = &data[0][0][0];
       for(int i=0; i<sizeX*sizeY*sizeZ; ++i) entry[i].set(v);
   }
+  inline void copy(const GridBlock<Element>& c) {
+      ElementType * const entry = &data[0][0][0];
+      const ElementType * const source = &c.data[0][0][0];
+      for(int i=0; i<sizeX*sizeY*sizeZ; ++i) entry[i].copy(source[i]);
+  }
 
   const ElementType& operator()(int ix, int iy=0, int iz=0) const {
-      assert(ix>=0); assert(ix<sizeX);
-      assert(iy>=0); assert(iy<sizeY);
-      assert(iz>=0); assert(iz<sizeZ);
+      assert(ix>=0 && iy>=0 && iz>=0 && ix<sizeX && iy<sizeY && iz<sizeZ);
       return data[iz][iy][ix];
   }
   ElementType& operator()(int ix, int iy=0, int iz=0) {
-      assert(ix>=0); assert(ix<sizeX);
-      assert(iy>=0); assert(iy<sizeY);
-      assert(iz>=0); assert(iz<sizeZ);
+      assert(ix>=0 && iy>=0 && iz>=0 && ix<sizeX && iy<sizeY && iz<sizeZ);
       return data[iz][iy][ix];
   }
+  GridBlock(const GridBlock&) = delete;
+  GridBlock& operator=(const GridBlock&) = delete;
 };
 
 template<typename BlockType,
@@ -101,40 +116,26 @@ class BlockLabOpen: public BlockLab<BlockType, allocator>
   // Apply bc on face of direction dir and side side (0 or 1):
   template<int dir, int side> void applyBCface()
   {
-    Matrix3D<ElementType, true, allocator> * const cb = this->m_cacheBlock;
+    auto * const cb = this->m_cacheBlock;
 
     int s[3] = {0,0,0}, e[3] = {0,0,0};
     const int* const stenBeg = this->m_stencilStart;
     const int* const stenEnd = this->m_stencilEnd;
     s[0] =  dir==0 ? (side==0 ? stenBeg[0] : sizeX ) : stenBeg[0];
     s[1] =  dir==1 ? (side==0 ? stenBeg[1] : sizeY ) : stenBeg[1];
-    #if _DIM_ > 2
-      s[2] =  dir==2 ? (side==0 ? stenBeg[2] : sizeZ ) : stenBeg[2];
-    #endif
 
     e[0] =  dir==0 ? (side==0 ? 0 : sizeX + stenEnd[0]-1 )
                    : sizeX +  stenEnd[0]-1;
     e[1] =  dir==1 ? (side==0 ? 0 : sizeY + stenEnd[1]-1 )
                    : sizeY +  stenEnd[1]-1;
-    #if _DIM_ > 2
-      e[2] =  dir==2 ? (side==0 ? 0 : sizeZ + stenEnd[2]-1 )
-                     : sizeZ +  stenEnd[2]-1;
 
-      for(int iz=s[2]; iz<e[2]; iz++)
-    #else
-      static constexpr int iz = 0;
-    #endif
     for(int iy=s[1]; iy<e[1]; iy++)
     for(int ix=s[0]; ix<e[0]; ix++)
-      cb->Access(ix-stenBeg[0], iy-stenBeg[1], iz) = cb->Access
+      cb->Access(ix-stenBeg[0], iy-stenBeg[1], 0) = cb->Access
         (
           ( dir==0? (side==0? 0: sizeX-1):ix ) - stenBeg[0],
           ( dir==1? (side==0? 0: sizeY-1):iy ) - stenBeg[1],
-          #if _DIM_ > 2
-            ( dir==2? (side==0? 0: sizeZ-1):iz ) - stenBeg[2]
-          #else
-            0
-          #endif
+          0
         );
   }
 
@@ -148,6 +149,8 @@ class BlockLabOpen: public BlockLab<BlockType, allocator>
   }
 
   BlockLabOpen(): BlockLab<BlockType,allocator>(){}
+  BlockLabOpen(const BlockLabOpen&) = delete;
+  BlockLabOpen& operator=(const BlockLabOpen&) = delete;
 };
 
 struct StreamerScalar {

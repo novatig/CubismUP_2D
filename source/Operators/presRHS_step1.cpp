@@ -1,14 +1,14 @@
 //
-//  CoordinatorDiffusion.h
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Created by Christian Conti on 3/27/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
+//  Created by Guido Novati (novatig@ethz.ch).
 //
 
-/*
-This operator assumes that obects have put signed distance on the grid
-*/
+
+// This operator assumes that obects have put signed distance on the grid
+
 #include "presRHS_step1.h"
 
 // computes: - \chi_{t+1} div( Udef_{t+1})
@@ -34,7 +34,7 @@ void presRHS_step1::operator()(const double dt)
       for(int ix=0; ix<VectorBlock::sizeX; ix++) {
         const Real upx = UDEF(ix+1, iy).u[0], vpy = UDEF(ix, iy+1).u[1];
         const Real ulx = UDEF(ix-1, iy).u[0], vly = UDEF(ix, iy-1).u[1];
-        RHS(ix,iy).s = - divFac * CHI(ix,iy).s * ((upx - ulx)+(vpy-vly));
+        RHS(ix,iy).s = - divFac * CHI(ix,iy).s * ((upx-ulx)+(vpy-vly));
       }
     }
   }

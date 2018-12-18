@@ -1,14 +1,11 @@
 //
-//  Contains definitions of:
-// - cylinder
-// - half cylinder
-// - ellipse (TODO half ellipse?)
-// - plate, allows imposed angular velocity (eg, fins)
-// - cylinder with two densities
-// - ellipse with two densities.
-// All done with Tower's discretized heaviside chi and dirac delta
-// Ellipse, due to computational cost, requires first running FillBlocks_Ellipse
-// on all blocks, which writes onto tmp, then either EllipseFinalize or VarRho
+//  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
+//
+//  Created by Guido Novati (novatig@ethz.ch).
+//
+
 
 #include "ShapeLibrary.h"
 

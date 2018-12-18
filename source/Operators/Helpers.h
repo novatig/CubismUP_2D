@@ -1,10 +1,11 @@
 //
-//  ProcessOperatorsOMP.h
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Created by Christian Conti on 1/8/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
+//  Created by Guido Novati (novatig@ethz.ch).
 //
+
 
 #pragma once
 
@@ -13,15 +14,14 @@
 class findMaxU
 {
   SimulationData& sim;
-  const vector<BlockInfo>& velInfo = sim.vel->getBlocksInfo();
+  const std::vector<BlockInfo> & velInfo = sim.vel->getBlocksInfo();
   const size_t Nblocks = velInfo.size();
  public:
   findMaxU(SimulationData& s) : sim(s) { }
 
   Real run() const;
 
-  string getName()
-  {
+  std::string getName() const {
     return "findMaxU";
   }
 };
@@ -29,15 +29,14 @@ class findMaxU
 class Checker
 {
   SimulationData& sim;
-  const vector<BlockInfo>& velInfo = sim.vel->getBlocksInfo();
+  const std::vector<BlockInfo> & velInfo = sim.vel->getBlocksInfo();
   const size_t Nblocks = velInfo.size();
  public:
   Checker(SimulationData& s) : sim(s) { }
 
   void run(std::string when) const;
 
-  string getName()
-  {
+  std::string getName() const {
     return "Checker";
   }
 };
@@ -49,8 +48,7 @@ class IC : public Operator
 
   void operator()(const double dt);
 
-  string getName()
-  {
+  std::string getName() {
     return "IC";
   }
 };
@@ -62,8 +60,7 @@ class ApplyObjVel : public Operator
 
   void operator()(const double dt);
 
-  string getName()
-  {
+  std::string getName() {
     return "ApplyObjVel";
   }
 };

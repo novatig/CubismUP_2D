@@ -1,15 +1,11 @@
 //
-//  Shape.h
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Virtual shape class which defines the interface
-//  Default simple geometries are also provided and can be used as references
+//  Created by Guido Novati (novatig@ethz.ch).
 //
-//  This class only contains static information (position, orientation,...), no dynamics are included (e.g. velocities,...)
-//
-//  Created by Christian Conti on 3/6/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
-//
+
 
 #pragma once
 
@@ -61,11 +57,12 @@ class Shape
   double drag=0, thrust=0, circulation=0, Pout=0, PoutBnd=0, defPower=0;
   double defPowerBnd=0, Pthrust=0, Pdrag=0, EffPDef=0, EffPDefBnd=0;
 
-  virtual void resetAll() {
-             center[0] = origC[0];
-             center[1] = origC[1];
-       centerOfMass[0] = origC[0];
-       centerOfMass[1] = origC[1];
+  virtual void resetAll()
+  {
+    center[0] = origC[0];
+    center[1] = origC[1];
+    centerOfMass[0] = origC[0];
+    centerOfMass[1] = origC[1];
     labCenterOfMass[0] = 0;
     labCenterOfMass[1] = 0;
     orientation = origAng;
