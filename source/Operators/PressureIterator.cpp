@@ -46,7 +46,8 @@ void PressureIterator::initPenalizationForce(const double dt) const
           const Real uTgt = (Ufluid + X(ix,iy).s*US(ix,iy).u[0])/(1+X(ix,iy).s);
           const Real vTgt = (Vfluid + X(ix,iy).s*US(ix,iy).u[1])/(1+X(ix,iy).s);
         #else
-          const Real uTgt = US(ix,iy).u[0], vTgt = US(ix,iy).u[1];
+          const Real uTgt = X(ix,iy).s*US(ix,iy).u[0] + (1-X(ix,iy).s)*Ufluid;
+          const Real vTgt = X(ix,iy).s*US(ix,iy).u[1] + (1-X(ix,iy).s)*Vfluid;
         #endif
         const Real dFx = X(ix,iy).s * invDt * (uTgt - V(ix,iy).u[0]);
         const Real dFy = X(ix,iy).s * invDt * (vTgt - V(ix,iy).u[1]);
@@ -62,8 +63,8 @@ Real PressureIterator::updatePenalizationForce(const double dt) const
   static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
 
   // Measure how much F has changed between iterations to check convergence:
-  Real maxFx = 0, maxFy = 0, maxdFx = 0, maxdFy = 0;
-  #pragma omp parallel reduction(max : maxFx, maxFy, maxdFx, maxdFy)
+  Real sumFx = 0, sumFy = 0, sumdFx = 0, sumdFy = 0;
+  #pragma omp parallel reduction( + : sumFx, sumFy, sumdFx, sumdFy )
   {
     static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 2, 2, 1};
     ScalarLab plab; plab.prepare(*(sim.pres), stenBeg, stenEnd, 0);
@@ -91,24 +92,21 @@ Real PressureIterator::updatePenalizationForce(const double dt) const
           const Real uTgt = (Ufluid + X(ix,iy).s*US(ix,iy).u[0])/(1+X(ix,iy).s);
           const Real vTgt = (Vfluid + X(ix,iy).s*US(ix,iy).u[1])/(1+X(ix,iy).s);
         #else
-          const Real uTgt = US(ix,iy).u[0], vTgt = US(ix,iy).u[1];
+          const Real uTgt = X(ix,iy).s*US(ix,iy).u[0] + (1-X(ix,iy).s)*Ufluid;
+          const Real vTgt = X(ix,iy).s*US(ix,iy).u[1] + (1-X(ix,iy).s)*Vfluid;
         #endif
         const Real dFx = X(ix,iy).s * invDt * (uTgt - V(ix,iy).u[0]);
         const Real dFy = X(ix,iy).s * invDt * (vTgt - V(ix,iy).u[1]);
         F(ix,iy).u[0] += dFx; F(ix,iy).u[1] += dFy;
-        {
-          maxFx  = std::max( maxFx, std::fabs(F(ix,iy).u[0]) );
-          maxFy  = std::max( maxFy, std::fabs(F(ix,iy).u[1]) );
-          maxdFx = std::max(maxdFx, std::fabs(dFx) );
-          maxdFy = std::max(maxdFy, std::fabs(dFy) );
-        }
+        sumFx += std::fabs(F(ix,iy).u[0]); sumdFx += std::fabs(dFx);
+        sumFy += std::fabs(F(ix,iy).u[1]); sumdFy += std::fabs(dFy);
       }
     }
   }
 
   //assert(std::max(dVx,dVy) / (EPS + std::max(Vx,Vy)) < std::sqrt(EPS));
   //return std::max(dFx,dFy) / (EPS + std::max(Fx,Fy));
-  return std::max(maxdFx,maxdFy) / (EPS + std::max(maxFx,maxFy));
+  return std::max(sumdFx,sumdFy) / (EPS + std::max(sumFx,sumFy));
 }
 
 void PressureIterator::updatePressureRHS(const double dt) const
@@ -141,7 +139,7 @@ void PressureIterator::updatePressureRHS(const double dt) const
         const Real divFy = facDiv*(F(ix,iy+1).u[1] - F(ix,iy-1).u[1]);
         //const Real dUbndX = invDt*(UDEF(ix,iy).u[0] - VEL(ix,iy).u[0]);
         //const Real dUbndY = invDt*(UDEF(ix,iy).u[1] - VEL(ix,iy).u[1]);
-        TMP(ix, iy).s = pRHS(ix,iy).s +divFx +divFy;// -dChix*dUbndX -dChiy*dUbndY;
+        TMP(ix,iy).s = pRHS(ix,iy).s +divFx +divFy;//-dChix*dUbndX-dChiy*dUbndY;
       }
     }
   }
@@ -160,14 +158,16 @@ void PressureIterator::operator()(const double dt)
     fadeoutBorder(dt);
     sim.stopProfiler();
 
+    pressureSolver->iter = iter;
     pressureSolver->solve();
+
     //sim.dumpPres("iter_"+std::to_string(iter)+"_");
     sim.startProfiler("PIter_update");
     const Real max_RelDforce = updatePenalizationForce(dt);
     //sim.dumpTmp("iter_"+std::to_string(iter)+"_");
     sim.stopProfiler();
     printf("iter:%02d - max relative error: %f\n", iter, max_RelDforce);
-    if(max_RelDforce < 0.01) break;
+    if(max_RelDforce < 0.002) break;
   }
 }
 

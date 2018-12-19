@@ -59,7 +59,7 @@ void PoissonSolver::sol2cub()
 {
   const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
   const size_t nBlocks = presInfo.size();
-
+  const Real F = 0.2, A = F * iter / (1 + F * iter);
   const Real * __restrict__ const sorc = buffer;
   #pragma omp parallel for schedule(static)
   for(size_t i=0; i<nBlocks; ++i)
@@ -68,14 +68,18 @@ void PoissonSolver::sol2cub()
     const size_t blocki = VectorBlock::sizeX * info.index[0];
     const size_t blockj = VectorBlock::sizeY * info.index[1];
     ScalarBlock& b = *(ScalarBlock*)info.ptrBlock;
-    const size_t blockStart = blocki + stride * blockj;
+    const size_t blockStart = blocki + stride*blockj;
+    const size_t momSt = blocki + totNx*blockj;
 
     for(int iy=0; iy<VectorBlock::sizeY; iy++)
-    for(int ix=0; ix<VectorBlock::sizeX; ix++)
-    //b(ix,iy).s = (sorc[blockStart + ix + stride*iy] + b(ix,iy).s)/2;
-    //b(ix,iy).s = 2*sorc[blockStart + ix + stride*iy] - b(ix,iy).s;
-      b(ix,iy).s = sorc[blockStart + ix + stride * iy];
+    for(int ix=0; ix<VectorBlock::sizeX; ix++) {
+      const Real DP = sorc[blockStart + ix + stride*iy] - b(ix,iy).s;
+      presMom[momSt + ix + totNx*iy] = A*presMom[momSt + ix + totNx*iy] + DP;
+      b(ix,iy).s = b(ix,iy).s + presMom[momSt + ix + totNx*iy];
+    }
   }
 }
 
-PoissonSolver::PoissonSolver(SimulationData&s,long p): sim(s), stride(p) {}
+PoissonSolver::PoissonSolver(SimulationData&s,long p): sim(s), stride(p) {
+  std::fill(presMom, presMom + totNy * totNx, 0);
+}

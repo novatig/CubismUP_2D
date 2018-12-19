@@ -41,7 +41,7 @@ static inline std::vector<std::string> split(const std::string&s,const char dlm)
 Simulation::Simulation(int argc, char ** argv) : parser(argc,argv)
 {
  std::cout<<"===============================================================\n";
- std::cout<<"                  Flow past a falling obstacle                  ";
+ std::cout<<"                  Flow past a falling obstacle                 \n";
  std::cout<<"===============================================================\n";
 }
 
@@ -126,20 +126,20 @@ void Simulation::createShapes()
       Shape* shape = nullptr;
       if (objectName=="disk")
         shape = new Disk(             sim, ffparser, center);
-      //else if (objectName=="halfDisk")
-      //  shape = new HalfDisk(         sim, ffparser, center);
-      //else if (objectName=="ellipse")
-      //  shape = new Ellipse(          sim, ffparser, center);
-      //else if (objectName=="diskVarDensity")
-      //  shape = new DiskVarDensity(   sim, ffparser, center);
-      //else if (objectName=="ellipseVarDensity")
-      //  shape = new EllipseVarDensity(sim, ffparser, center);
-      //else if (objectName=="blowfish")
-      //  shape = new BlowFish(         sim, ffparser, center);
-      //else if (objectName=="stefanfish")
-      //  shape = new StefanFish(       sim, ffparser, center);
-      //else if (objectName=="carlingfish")
-      //  shape = new CarlingFish(      sim, ffparser, center);
+      else if (objectName=="halfDisk")
+        shape = new HalfDisk(         sim, ffparser, center);
+      else if (objectName=="ellipse")
+        shape = new Ellipse(          sim, ffparser, center);
+      else if (objectName=="diskVarDensity")
+        shape = new DiskVarDensity(   sim, ffparser, center);
+      else if (objectName=="ellipseVarDensity")
+        shape = new EllipseVarDensity(sim, ffparser, center);
+      else if (objectName=="blowfish")
+        shape = new BlowFish(         sim, ffparser, center);
+      else if (objectName=="stefanfish")
+        shape = new StefanFish(       sim, ffparser, center);
+      else if (objectName=="carlingfish")
+        shape = new CarlingFish(      sim, ffparser, center);
       else {
         std::cout << "FATAL - shape is not recognized!" << std::endl; abort();
       }

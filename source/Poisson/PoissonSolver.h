@@ -23,12 +23,12 @@ class PoissonSolver
 
   // memory buffer for mem transfers to/from solver:
   Real * buffer = nullptr; // rhs in cub2rhs, sol in sol2cub
-
+  Real * const presMom = new Real[totNy * totNx];
   void cub2rhs();
   void sol2cub();
 
  public:
-
+  int iter = 0;
   PoissonSolver(SimulationData& s, long stride);
 
   virtual void solve() = 0;

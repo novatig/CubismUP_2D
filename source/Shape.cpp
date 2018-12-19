@@ -119,16 +119,15 @@ Shape::Integrals Shape::integrateObstBlock(const std::vector<BlockInfo>& vInfo)
 
 void Shape::removeMoments(const std::vector<BlockInfo>& vInfo)
 {
+  static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
   Shape::Integrals I = integrateObstBlock(vInfo);
   M = I.m; V = I.m; J = I.j;
 
   #ifndef RL_TRAIN
-    if(sim.verbose) {
-      const Real Err = std::max({std::fabs(I.u),std::fabs(I.v),std::fabs(I.a)});
-      if(Err>10*std::numeric_limits<Real>::epsilon())
+    if(sim.verbose)
+      if( std::max({std::fabs(I.u), std::fabs(I.v), std::fabs(I.a)}) > 10*EPS )
         printf("Correct: lin mom [%f %f] ang mom [%f]. Error in CM=[%f %f]\n",
           I.u, I.v, I.a, I.x-centerOfMass[0], I.y-centerOfMass[1]);
-    }
   #endif
   //update the center of mass, this operation should not move 'center'
   centerOfMass[0] = I.x; centerOfMass[1] = I.y;
@@ -141,11 +140,11 @@ void Shape::removeMoments(const std::vector<BlockInfo>& vInfo)
   #ifndef NDEBUG
     Real Cxtest = center[0] -std::cos(orientation)*d_gm[0] + std::sin(orientation)*d_gm[1];
     Real Cytest = center[1] -std::sin(orientation)*d_gm[0] - std::cos(orientation)*d_gm[1];
-    if( std::abs(Cxtest-centerOfMass[0])>numeric_limits<Real>::epsilon() ||
-        std::abs(Cytest-centerOfMass[1])>numeric_limits<Real>::epsilon() ) {
-        printf("Error update of center of mass = [%f %f]\n",
-          Cxtest-centerOfMass[0], Cytest-centerOfMass[1]); fflush(0); abort();
-        }
+    if(std::fabs(Cxtest-centerOfMass[0])>EPS ||
+       std::fabs(Cytest-centerOfMass[1])>EPS ) {
+      printf("Error update of center of mass = [%f %f]\n",
+        Cxtest-centerOfMass[0], Cytest-centerOfMass[1]); fflush(0); abort();
+    }
   #endif
 
   #pragma omp parallel for schedule(dynamic)
@@ -166,11 +165,9 @@ void Shape::removeMoments(const std::vector<BlockInfo>& vInfo)
 
   #ifndef NDEBUG
    Shape::Integrals Itest = integrateObstBlock(vInfo);
-   if(std::abs(Itest.u)>10*numeric_limits<Real>::epsilon() ||
-      std::abs(Itest.v)>10*numeric_limits<Real>::epsilon() ||
-      std::abs(Itest.a)>10*numeric_limits<Real>::epsilon() ||
-      std::abs(Itest.x-centerOfMass[0])>10*numeric_limits<Real>::epsilon() ||
-      std::abs(Itest.y-centerOfMass[1])>10*numeric_limits<Real>::epsilon() ){
+   if( std::fabs(Itest.u)>10*EPS || std::fabs(Itest.x-centerOfMass[0])>10*EPS ||
+       std::fabs(Itest.v)>10*EPS || std::fabs(Itest.y-centerOfMass[1])>10*EPS ||
+       std::fabs(Itest.a)>10*EPS ) {
     printf("After correction: linm [%e %e] angm [%e] deltaCM=[%e %e]\n",
     Itest.u,Itest.v,Itest.a,Itest.x-centerOfMass[0],Itest.y-centerOfMass[1]);
     fflush(0); abort();

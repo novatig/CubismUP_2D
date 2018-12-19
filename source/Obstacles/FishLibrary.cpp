@@ -419,12 +419,15 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, ScalarBlock& b,
 {
   Real org[2];
   info.pos(org, 0, 0);
+  #ifndef NDEBUG
+    static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
+  #endif
   const Real h = info.h_gridpoint, invh = 1.0/info.h_gridpoint;
   const Real * const rX = cfish.rX, * const norX = cfish.norX;
   const Real * const rY = cfish.rY, * const norY = cfish.norY;
   const Real * const vX = cfish.vX, * const vNorX = cfish.vNorX;
   const Real * const vY = cfish.vY, * const vNorY = cfish.vNorY;
-  const Real* const width = cfish.width;
+  const Real * const width = cfish.width;
   static constexpr int BS[2] = {ScalarBlock::sizeX, ScalarBlock::sizeY};
   std::fill(o->dist[0], o->dist[0] + BS[1]*BS[0], -1);
   std::fill(o->chi [0], o->chi [0] + BS[1]*BS[0],  0);
@@ -580,8 +583,8 @@ void PutFishOnBlocks::constructInternl(const BlockInfo& info, ScalarBlock& b,
         {
           const Real wxwy = wghts[1][sy] * wghts[0][sx];
           const int idx = iap[0]+sx, idy = iap[1]+sy;
-          assert(idx>=0 && idx<FluidBlock::sizeX && wxwy>=0);
-          assert(idy>=0 && idy<FluidBlock::sizeY && wxwy<=1);
+          assert(idx>=0 && idx<ScalarBlock::sizeX && wxwy>=0);
+          assert(idy>=0 && idy<ScalarBlock::sizeY && wxwy<=1);
           o->udef[idy][idx][0] += wxwy*udef[0];
           o->udef[idy][idx][1] += wxwy*udef[1];
           o->chi [idy][idx] += wxwy;
