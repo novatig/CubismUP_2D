@@ -29,15 +29,15 @@ class Disk : public Shape
     return 2 * radius;
   }
 
-  void outputSettings(ostream &outStream) const override
+  void outputSettings(std::ostream &outStream) const override
   {
     outStream << "Disk\n";
-    outStream << "radius " << radius << endl;
+    outStream << "radius " << radius << std::endl;
 
     Shape::outputSettings(outStream);
   }
 
-  void create(const vector<BlockInfo>& vInfo) override;
+  void create(const std::vector<BlockInfo>& vInfo) override;
   void updateVelocity(double dt) override;
 };
 
@@ -59,15 +59,15 @@ class HalfDisk : public Shape
     return 2 * radius;
   }
 
-  void outputSettings(ostream &outStream) const override
+  void outputSettings(std::ostream &outStream) const override
   {
     outStream << "HalfDisk\n";
-    outStream << "radius " << radius << endl;
+    outStream << "radius " << radius << std::endl;
 
     Shape::outputSettings(outStream);
   }
 
-  void create(const vector<BlockInfo>& vInfo) override;
+  void create(const std::vector<BlockInfo>& vInfo) override;
   void updateVelocity(double dt) override;
 };
 
@@ -95,19 +95,19 @@ class Ellipse : public Shape
 
   Real getCharLength() const  override
   {
-    return 2 * max(semiAxis[1],semiAxis[0]);
+    return 2 * std::max(semiAxis[1],semiAxis[0]);
   }
 
-  void outputSettings(ostream &outStream) const override
+  void outputSettings(std::ostream &outStream) const override
   {
     outStream << "Ellipse\n";
-    outStream << "semiAxisX " << semiAxis[0] << endl;
-    outStream << "semiAxisY " << semiAxis[1] << endl;
+    outStream << "semiAxisX " << semiAxis[0] << "\n";
+    outStream << "semiAxisY " << semiAxis[1] << "\n";
 
     Shape::outputSettings(outStream);
   }
 
-  void create(const vector<BlockInfo>& vInfo) override;
+  void create(const std::vector<BlockInfo>& vInfo) override;
 };
 
 class DiskVarDensity : public Shape
@@ -137,20 +137,20 @@ class DiskVarDensity : public Shape
     return std::min(rhoTop, rhoBot);
   }
   bool bVariableDensity() const override {
-    assert(std::fabs(rhoTop-rhoBot)>numeric_limits<Real>::epsilon());
-    const bool bTop = std::fabs(rhoTop-1.0) > numeric_limits<Real>::epsilon();
-    const bool bBot = std::fabs(rhoBot-1.0) > numeric_limits<Real>::epsilon();
+    assert(std::fabs(rhoTop-rhoBot)>std::numeric_limits<Real>::epsilon());
+    const bool bTop = std::fabs(rhoTop-1.)>std::numeric_limits<Real>::epsilon();
+    const bool bBot = std::fabs(rhoBot-1.)>std::numeric_limits<Real>::epsilon();
     return bTop || bBot;
   }
 
-  void create(const vector<BlockInfo>& vInfo) override;
+  void create(const std::vector<BlockInfo>& vInfo) override;
 
-  void outputSettings(ostream &outStream) const override
+  void outputSettings(std::ostream &outStream) const override
   {
     outStream << "DiskVarDensity\n";
-    outStream << "radius " << radius << endl;
-    outStream << "rhoTop " << rhoTop << endl;
-    outStream << "rhoBot " << rhoBot << endl;
+    outStream << "radius " << radius << "\n";
+    outStream << "rhoTop " << rhoTop << "\n";
+    outStream << "rhoBot " << rhoBot << "\n";
 
     Shape::outputSettings(outStream);
   }
@@ -185,21 +185,21 @@ class EllipseVarDensity : public Shape
      return std::min(rhoTop, rhoBot);
    }
    bool bVariableDensity() const override {
-     assert(std::fabs(rhoTop-rhoBot)>numeric_limits<Real>::epsilon());
-     const bool bTop = std::fabs(rhoTop-1.0) > numeric_limits<Real>::epsilon();
-     const bool bBot = std::fabs(rhoBot-1.0) > numeric_limits<Real>::epsilon();
+     assert(std::fabs(rhoTop-rhoBot)>std::numeric_limits<Real>::epsilon());
+     const bool bTop= std::fabs(rhoTop-1.)>std::numeric_limits<Real>::epsilon();
+     const bool bBot= std::fabs(rhoBot-1.)>std::numeric_limits<Real>::epsilon();
      return bTop || bBot;
    }
 
-   void create(const vector<BlockInfo>& vInfo) override;
+   void create(const std::vector<BlockInfo>& vInfo) override;
 
-   void outputSettings(ostream &outStream) const override
+   void outputSettings(std::ostream &outStream) const override
    {
      outStream << "Ellipse\n";
-     outStream << "semiAxisX " << semiAxisX << endl;
-     outStream << "semiAxisY " << semiAxisY << endl;
-     outStream << "rhoTop " << rhoTop << endl;
-     outStream << "rhoBot " << rhoBot << endl;
+     outStream << "semiAxisX " << semiAxisX << "\n";
+     outStream << "semiAxisY " << semiAxisY << "\n";
+     outStream << "rhoTop " << rhoTop << "\n";
+     outStream << "rhoBot " << rhoBot << "\n";
 
      Shape::outputSettings(outStream);
    }

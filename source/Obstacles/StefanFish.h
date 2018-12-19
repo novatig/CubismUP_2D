@@ -24,11 +24,11 @@ class StefanFish: public Fish
   mutable double lastTact = 0;
   mutable double lastCurv = 0;
   mutable double oldrCurv = 0;
-  void act(const Real lTact, const vector<double>& a) const;
+  void act(const Real lTact, const std::vector<double>& a) const;
   double getLearnTPeriod() const;
   double getPhase(const double t) const;
 
   void resetAll() override;
   StefanFish(SimulationData&s, ArgumentParser&p, double C[2]);
-  void create(const vector<BlockInfo>& vInfo) override;
+  void create(const std::vector<BlockInfo>& vInfo) override;
 };

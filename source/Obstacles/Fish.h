@@ -10,8 +10,6 @@
 #pragma once
 
 #include "../Shape.h"
-#include <vector>
-#include <map>
 
 class FishData;
 
@@ -37,5 +35,5 @@ class Fish: public Shape
   }
   virtual void resetAll() override;
   void updatePosition(double dt) override;
-  virtual void create(const vector<BlockInfo>& vInfo) override;
+  virtual void create(const std::vector<BlockInfo>& vInfo) override;
 };

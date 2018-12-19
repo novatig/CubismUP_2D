@@ -13,7 +13,7 @@
 
 Real Shape::getMinRhoS() const { return rhoS; }
 bool Shape::bVariableDensity() const {
-  return std::fabs(rhoS-1.0) > numeric_limits<Real>::epsilon();
+  return std::fabs(rhoS-1.0) > std::numeric_limits<Real>::epsilon();
 }
 
 void Shape::updateVelocity(double dt)
@@ -54,25 +54,25 @@ void Shape::updatePosition(double dt)
     centerOfMass[0], centerOfMass[1], center[0], center[1], u, v, omega, M, J);
   if(not sim.muteAll)
   {
-    stringstream ssF;
+    std::stringstream ssF;
     ssF<<sim.path2file<<"/velocity_"<<obstacleID<<".dat";
     std::stringstream &fileSpeed = logger.get_stream(ssF.str());
     if(sim.step==0)
       fileSpeed<<"time dt CMx CMy angle u v omega M J accx accy"<<std::endl;
 
-    fileSpeed<<sim.time<<" "<<sim.dt<<" "<<centerOfMass[0]<<" "<<centerOfMass[1]<<" "<<orientation<<" "<<u <<" "<<v<<" "<<omega <<" "<<M<<" "<<J<<endl;
+    fileSpeed<<sim.time<<" "<<sim.dt<<" "<<centerOfMass[0]<<" "<<centerOfMass[1]<<" "<<orientation<<" "<<u <<" "<<v<<" "<<omega <<" "<<M<<" "<<J<<std::endl;
   }
   #endif
 }
 
-void Shape::outputSettings(ostream &outStream) const
+void Shape::outputSettings(std::ostream &outStream) const
 {
-  outStream << "centerX " << center[0] << endl;
-  outStream << "centerY " << center[1] << endl;
-  outStream << "centerMassX " << centerOfMass[0] << endl;
-  outStream << "centerMassY " << centerOfMass[1] << endl;
-  outStream << "orientation " << orientation << endl;
-  outStream << "rhoS " << rhoS << endl;
+  outStream << "centerX " << center[0] << "\n";
+  outStream << "centerY " << center[1] << "\n";
+  outStream << "centerMassX " << centerOfMass[0] << "\n";
+  outStream << "centerMassY " << centerOfMass[1] << "\n";
+  outStream << "orientation " << orientation << "\n";
+  outStream << "rhoS " << rhoS << "\n";
 }
 
 Shape::Integrals Shape::integrateObstBlock(const std::vector<BlockInfo>& vInfo)
@@ -123,10 +123,12 @@ void Shape::removeMoments(const std::vector<BlockInfo>& vInfo)
   M = I.m; V = I.m; J = I.j;
 
   #ifndef RL_TRAIN
-    if(sim.verbose)
-    if(fabs(I.u)+fabs(I.v)+fabs(I.a)>10*numeric_limits<Real>::epsilon())
-      printf("Correct: lin mom [%f %f] ang mom [%f]. Error in CM=[%f %f]\n",
-        I.u, I.v, I.a, I.x-centerOfMass[0], I.y-centerOfMass[1]);
+    if(sim.verbose) {
+      const Real Err = std::max({std::fabs(I.u),std::fabs(I.v),std::fabs(I.a)});
+      if(Err>10*std::numeric_limits<Real>::epsilon())
+        printf("Correct: lin mom [%f %f] ang mom [%f]. Error in CM=[%f %f]\n",
+          I.u, I.v, I.a, I.x-centerOfMass[0], I.y-centerOfMass[1]);
+    }
   #endif
   //update the center of mass, this operation should not move 'center'
   centerOfMass[0] = I.x; centerOfMass[1] = I.y;

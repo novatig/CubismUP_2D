@@ -30,7 +30,7 @@ class HYPREdirichlet : public PoissonSolver
 
   HYPREdirichlet(SimulationData& s);
 
-  string getName() {
+  std::string getName() {
     return "hypre";
   }
 

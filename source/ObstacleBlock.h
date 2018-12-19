@@ -8,9 +8,6 @@
 
 #pragma once
 
-#include <vector> //surface vector
-#include <cstring> //memset
-#include <stdio.h> //print
 #include "Definitions.h"
 
 struct surface_data
@@ -36,7 +33,7 @@ struct ObstacleBlock
   //surface quantities:
   size_t n_surfPoints=0;
   bool filled = false;
-  vector<surface_data*> surface;
+  std::vector<surface_data*> surface;
   Real *pX=nullptr, *pY=nullptr, *P=nullptr, *fX=nullptr, *fY=nullptr;
   Real *vx=nullptr, *vy=nullptr, *vxDef=nullptr, *vyDef=nullptr;
 
@@ -119,7 +116,7 @@ struct ObstacleBlock
     P = new Real[n_surfPoints];
   }
 
-  void print(ofstream& pFile)
+  void print(std::ofstream& pFile)
   {
     assert(filled);
     for(size_t i=0; i<n_surfPoints; i++) {

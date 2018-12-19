@@ -10,11 +10,6 @@
 #include "CarlingFish.h"
 #include "FishLibrary.h"
 #include "FishUtilities.h"
-#include <array>
-#include <cmath>
-#include <utility>
-#include <time.h>
-#include <random>
 
 class AmplitudeFish : public FishData
 {
@@ -106,7 +101,7 @@ double CarlingFish::getPhase(const double t) const {
   return (phase<0) ? 2*M_PI + phase : phase;
 }
 
-void CarlingFish::create(const vector<BlockInfo>& vInfo) {
+void CarlingFish::create(const std::vector<BlockInfo>& vInfo) {
   Fish::create(vInfo);
 }
 

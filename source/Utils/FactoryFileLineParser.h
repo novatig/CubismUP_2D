@@ -9,18 +9,6 @@
 #pragma once
 
 #include <iostream>
-#include <fstream>
-#include <cstring>
-#include <sstream>
-#include <utility>
-#include <map>
-#include <cstdlib>
-#include <vector>
-
-#include <algorithm>
-#include <functional>
-#include <cctype>
-#include <locale>
 
 class FactoryFileLineParser: public ArgumentParser
 {

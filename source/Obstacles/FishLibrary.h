@@ -11,11 +11,6 @@
 
 #include "ObstacleBlock.h"
 #include "../Operator.h"
-#include <map>
-#include <limits>
-#include <vector>
-#include <array>
-#include <fstream>
 
 /*
 struct FishSkin
@@ -215,11 +210,11 @@ struct PutFishOnBlocks
     const Real ang): cfish(cf), position{(Real)pos[0],(Real)pos[1]}, angle(ang) { }
 
   void operator()(const BlockInfo& i, ScalarBlock& b,
-    ObstacleBlock* const o, const vector<AreaSegment*>& v) const;
+    ObstacleBlock* const o, const std::vector<AreaSegment*>& v) const;
   virtual void constructSurface(  const BlockInfo& i, ScalarBlock& b,
-    ObstacleBlock* const o, const vector<AreaSegment*>& v) const;
+    ObstacleBlock* const o, const std::vector<AreaSegment*>& v) const;
   virtual void constructInternl(  const BlockInfo& i, ScalarBlock& b,
-    ObstacleBlock* const o, const vector<AreaSegment*>& v) const;
+    ObstacleBlock* const o, const std::vector<AreaSegment*>& v) const;
   virtual void signedDistanceSqrt(const BlockInfo& i, ScalarBlock& b,
-    ObstacleBlock* const o, const vector<AreaSegment*>& v) const;
+    ObstacleBlock* const o, const std::vector<AreaSegment*>& v) const;
 };

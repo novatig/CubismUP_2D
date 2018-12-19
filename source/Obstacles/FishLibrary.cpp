@@ -52,7 +52,7 @@ void FishData::resetAll()
   time0 = 0;
 }
 
-void FishData::writeMidline2File(const int step_id, string filename)
+void FishData::writeMidline2File(const int step_id, std::string filename)
 {
   char buf[500];
   sprintf(buf, "%s_midline_%07d.txt", filename.c_str(), step_id);
@@ -346,8 +346,10 @@ bool AreaSegment::isIntersectingWithAABB(const Real start[2],const Real end[2]) 
 
   // Now Identify the ones that do not intersect
   Real intersectionLabFrame[2][2] = {
-  {max(objBoxLabFr[0][0],AABB_box[0][0]),min(objBoxLabFr[0][1],AABB_box[0][1])},
-  {max(objBoxLabFr[1][0],AABB_box[1][0]),min(objBoxLabFr[1][1],AABB_box[1][1])}
+  { std::max(objBoxLabFr[0][0],AABB_box[0][0]),
+    std::min(objBoxLabFr[0][1],AABB_box[0][1]) },
+  { std::max(objBoxLabFr[1][0],AABB_box[1][0]),
+    std::min(objBoxLabFr[1][1],AABB_box[1][1]) }
   };
 
   if ( intersectionLabFrame[0][1] - intersectionLabFrame[0][0] < 0
@@ -367,8 +369,10 @@ bool AreaSegment::isIntersectingWithAABB(const Real start[2],const Real end[2]) 
   };
 
   Real intersectionFishFrame[2][2] = {
-   {max(boxBox[0][0],objBoxObjFr[0][0]), min(boxBox[0][1],objBoxObjFr[0][1])},
-   {max(boxBox[1][0],objBoxObjFr[1][0]), min(boxBox[1][1],objBoxObjFr[1][1])}
+   { std::max(boxBox[0][0],objBoxObjFr[0][0]),
+     std::min(boxBox[0][1],objBoxObjFr[0][1])},
+   { std::max(boxBox[1][0],objBoxObjFr[1][0]),
+     std::min(boxBox[1][1],objBoxObjFr[1][1])}
   };
 
   if ( intersectionFishFrame[0][1] - intersectionFishFrame[0][0] < 0
@@ -379,7 +383,7 @@ bool AreaSegment::isIntersectingWithAABB(const Real start[2],const Real end[2]) 
 }
 
 void PutFishOnBlocks::operator()(const BlockInfo& i, ScalarBlock& b,
-  ObstacleBlock* const o, const vector<AreaSegment*>& v) const
+  ObstacleBlock* const o, const std::vector<AreaSegment*>& v) const
 {
   //std::chrono::time_point<std::chrono::high_resolution_clock> t0, t1, t2, t3;
   //t0 = std::chrono::high_resolution_clock::now();

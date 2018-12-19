@@ -7,12 +7,8 @@
 //
 
 
-#include <chrono>
 #include "Fish.h"
 #include "FishLibrary.h"
-#include <array>
-#include <cassert>
-#include <cmath>
 
 //#define profile( arg ) do { profiler.arg; } while (0)
 #define profile( func ) do { } while (0)
@@ -104,9 +100,9 @@ void Fish::create(const std::vector<BlockInfo>& vInfo)
     }
 
     // 4.
-    const Real buf = 2*vInfo[0].h_gridpoint; //two points on each side
+    const Real DD = 2*vInfo[0].h_gridpoint; //two points on each side
     //const Real safe_distance = info.h_gridpoint; // one point on each side
-    AreaSegment*const tAS = new AreaSegment(make_pair(idx,next_idx), bbox, buf);
+    AreaSegment*const tAS=new AreaSegment(std::make_pair(idx,next_idx),bbox,DD);
     //5.
     tAS->changeToComputationalFrame(center, orientation);
     vSegments[i] = tAS;

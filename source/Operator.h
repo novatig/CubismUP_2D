@@ -15,7 +15,7 @@ class Operator
 {
 protected:
   SimulationData& sim;
-  const vector<BlockInfo>& velInfo = sim.vel->getBlocksInfo();
+  const std::vector<BlockInfo>& velInfo = sim.vel->getBlocksInfo();
   const size_t Nblocks = velInfo.size();
 
 public:
@@ -23,5 +23,5 @@ public:
   virtual ~Operator() {}
   virtual void operator()(const double dt) = 0;
 
-  virtual string getName() = 0;
+  virtual std::string getName() = 0;
 };

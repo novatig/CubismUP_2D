@@ -10,7 +10,7 @@
 #include "ShapeLibrary.h"
 #include "ShapesSimple.h"
 
-void Disk::create(const vector<BlockInfo>& vInfo)
+void Disk::create(const std::vector<BlockInfo>& vInfo)
 {
   const Real h =  vInfo[0].h_gridpoint;
   for(auto & entry : obstacleBlocks) delete entry;
@@ -51,7 +51,7 @@ void HalfDisk::updateVelocity(double dt)
   }
 }
 
-void HalfDisk::create(const vector<BlockInfo>& vInfo)
+void HalfDisk::create(const std::vector<BlockInfo>& vInfo)
 {
   const Real h =  vInfo[0].h_gridpoint;
   for(auto & entry : obstacleBlocks) delete entry;
@@ -74,7 +74,7 @@ void HalfDisk::create(const vector<BlockInfo>& vInfo)
   }
 }
 
-void Ellipse::create(const vector<BlockInfo>& vInfo)
+void Ellipse::create(const std::vector<BlockInfo>& vInfo)
 {
   const Real h =  vInfo[0].h_gridpoint;
   for(auto & entry : obstacleBlocks) delete entry;
@@ -97,7 +97,7 @@ void Ellipse::create(const vector<BlockInfo>& vInfo)
   }
 }
 
-void DiskVarDensity::create(const vector<BlockInfo>& vInfo)
+void DiskVarDensity::create(const std::vector<BlockInfo>& vInfo)
 {
   const Real h =  vInfo[0].h_gridpoint;
   for(auto & entry : obstacleBlocks) delete entry;
@@ -120,7 +120,7 @@ void DiskVarDensity::create(const vector<BlockInfo>& vInfo)
   }
 }
 
-void EllipseVarDensity::create(const vector<BlockInfo>& vInfo)
+void EllipseVarDensity::create(const std::vector<BlockInfo>& vInfo)
 {
   const Real h =  vInfo[0].h_gridpoint;
   for(auto & entry : obstacleBlocks) delete entry;

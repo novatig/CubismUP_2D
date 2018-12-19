@@ -10,11 +10,7 @@
 #include "StefanFish.h"
 #include "FishLibrary.h"
 #include "FishUtilities.h"
-#include <array>
-#include <cmath>
-#include <utility>
-#include <time.h>
-#include <random>
+
 
 class CurvatureFish : public FishData
 {
@@ -47,7 +43,7 @@ class CurvatureFish : public FishData
 
   void _correctAmplitude(Real dAmp, Real vAmp, const Real time, const Real dt);
 
-  void execute(const Real time, const Real l_tnext, const vector<double>& input);
+  void execute(const Real time, const Real l_tnext, const std::vector<double>& input);
 
   ~CurvatureFish() {
     _dealloc(rK); _dealloc(vK); _dealloc(rC); _dealloc(vC);
@@ -100,7 +96,8 @@ void CurvatureFish::_correctAmplitude(Real dAmp, Real vAmp, const Real time, con
   //curvScheduler.transition(time, time-dt, time+dt, curvature_values);
 }
 
-void CurvatureFish::execute(const Real t,const Real lTact,const vector<double>&a)
+void CurvatureFish::execute(const Real t, const Real lTact,
+                            const std::vector<double>&a)
 {
   assert(t >= lTact);
   if (a.size()>1) {
@@ -233,7 +230,7 @@ StefanFish::StefanFish(SimulationData&s, ArgumentParser&p, double C[2]):
 }
 
 //static inline Real sgn(const Real val) { return (0 < val) - (val < 0); }
-void StefanFish::create(const vector<BlockInfo>& vInfo)
+void StefanFish::create(const std::vector<BlockInfo>& vInfo)
 {
   CurvatureFish* const cFish = dynamic_cast<CurvatureFish*>( myFish );
   if(cFish == nullptr) { printf("Someone touched my fish\n"); abort(); }
@@ -245,10 +242,10 @@ void StefanFish::create(const vector<BlockInfo>& vInfo)
     const Real INST = (AngDiff*omega>0) ? AngDiff*std::fabs(omega) : 0;
     const Real PID  = 0.1*adjTh + 0.1*INST;
     if(not sim.muteAll) {
-      ofstream filePID;
-      stringstream ssF; ssF<<sim.path2file<<"/PID_"<<obstacleID<<".dat";
-      filePID.open(ssF.str().c_str(), ios::app);
-      filePID<<adjTh<<" "<<INST<<endl;
+      std::ofstream filePID;
+      std::stringstream ssF; ssF<<sim.path2file<<"/PID_"<<obstacleID<<".dat";
+      filePID.open(ssF.str().c_str(), std::ios::app);
+      filePID<<adjTh<<" "<<INST<<std::endl;
       filePID.close();
     }
     cFish->_correctTrajectory(PID, sim.time, sim.dt);
@@ -257,7 +254,8 @@ void StefanFish::create(const vector<BlockInfo>& vInfo)
   Fish::create(vInfo);
 }
 
-void StefanFish::act(const Real lTact, const vector<double>& a) const {
+void StefanFish::act(const Real lTact, const std::vector<double>& a) const
+{
   CurvatureFish* const cFish = dynamic_cast<CurvatureFish*>( myFish );
   oldrCurv = lastCurv;
   lastCurv = a[0];

@@ -16,5 +16,5 @@ class CarlingFish: public Fish
 
   CarlingFish(SimulationData&s, ArgumentParser&p, double C[2]);
   void resetAll() override;
-  void create(const vector<BlockInfo>& vInfo) override;
+  void create(const std::vector<BlockInfo>& vInfo) override;
 };

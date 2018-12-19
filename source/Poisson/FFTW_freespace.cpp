@@ -91,7 +91,7 @@ FFTW_freespace::FFTW_freespace(SimulationData& s) : PoissonSolver(s, STRIDE)
     bwd = fftwf_plan_dft_c2r_2d(MY,MX, (mycomplex*)buffer,buffer, FFTW_MEASURE);
   #endif // _FLOAT_PRECISION_
   if(retval==0) {
-    cout << "Call fftw_init_threads() returned zero.\n"; fflush(0); abort();
+    std::cout<<"Call fftw_init_threads() returned zero.\n"; fflush(0); abort();
   }
 
   {

@@ -113,7 +113,7 @@ class Shape
   }
 
   virtual Real getCharLength() const = 0;
-  virtual void create(const vector<BlockInfo>& vInfo) = 0;
+  virtual void create(const std::vector<BlockInfo>& vInfo) = 0;
 
   virtual void updateVelocity(double dt);
   virtual void updatePosition(double dt);
@@ -171,7 +171,7 @@ class Shape
 
   virtual Real getMinRhoS() const;
   virtual bool bVariableDensity() const;
-  virtual void outputSettings(ostream &outStream) const;
+  virtual void outputSettings(std::ostream &outStream) const;
 
   struct Integrals {
     const double x, y, m, j, u, v, a;

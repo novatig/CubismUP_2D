@@ -32,7 +32,7 @@ class PressureSingle : public Operator
   PressureSingle(SimulationData& s);
   ~PressureSingle();
 
-  string getName() {
+  std::string getName() {
     return "PressureSingle";
   }
 };

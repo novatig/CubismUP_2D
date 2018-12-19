@@ -10,13 +10,12 @@
 #pragma once
 
 #include <cassert>
-#include <sstream>
 #include <cmath>
 #include <cstdio>
 #include <vector>
 #include <omp.h>
 
-using namespace std;
+//using namespace std;
 
 #ifndef _FLOAT_PRECISION_
 using Real = double;

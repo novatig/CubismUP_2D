@@ -31,17 +31,18 @@
 #include <algorithm>
 #include <iterator>
 
-static inline vector<string> split(const string &s, const char delim) {
-  stringstream ss(s); string item; vector<string> tokens;
-  while (getline(ss, item, delim)) tokens.push_back(item);
+static inline std::vector<std::string> split(const std::string&s,const char dlm)
+{
+  std::stringstream ss(s); std::string item; std::vector<std::string> tokens;
+  while (std::getline(ss, item, dlm)) tokens.push_back(item);
   return tokens;
 }
 
 Simulation::Simulation(int argc, char ** argv) : parser(argc,argv)
 {
-  cout << "=================================================================\n";
-  cout << "\t\tFlow past a falling obstacle\n";
-  cout << "=================================================================\n";
+ std::cout<<"===============================================================\n";
+ std::cout<<"                  Flow past a falling obstacle                  ";
+ std::cout<<"===============================================================\n";
 }
 
 Simulation::~Simulation()
@@ -56,7 +57,7 @@ Simulation::~Simulation()
 void Simulation::parseRuntime()
 {
   sim.bRestart = parser("-restart").asBool(false);
-  cout << "bRestart is " << sim.bRestart << endl;
+  std::cout << "bRestart is " << sim.bRestart << std::endl;
 
   // initialize grid
   parser.set_strict_mode();
@@ -95,7 +96,7 @@ void Simulation::createShapes()
   parser.unset_strict_mode();
   const std::string shapeArg = parser("-shapes").asString("");
   std::stringstream descriptors( shapeArg );
-  string lines;
+  std::string lines;
   unsigned k = 0;
 
   while (std::getline(descriptors, lines))
@@ -108,11 +109,11 @@ void Simulation::createShapes()
     // bar so that they can be parsed separately. Reason being that in many
     // situations \n will not be read as line escape but as backslash n.
     const std::vector<std::string> vlines = split(lines, ',');
-    for (const string line: vlines)
+    for (const std::string line: vlines)
     {
-      istringstream line_stream(line);
-      string objectName;
-      cout << line << endl;
+      std::istringstream line_stream(line);
+      std::string objectName;
+      std::cout << line << std::endl;
       line_stream >> objectName;
       // Comments and empty lines ignored:
       if(objectName.empty() or objectName[0]=='#') continue;
@@ -140,7 +141,7 @@ void Simulation::createShapes()
       //else if (objectName=="carlingfish")
       //  shape = new CarlingFish(      sim, ffparser, center);
       else {
-        cout << "FATAL - shape is not recognized!" << std::endl; abort();
+        std::cout << "FATAL - shape is not recognized!" << std::endl; abort();
       }
       assert(shape not_eq nullptr);
       shape->obstacleID = k++;
@@ -177,9 +178,9 @@ void Simulation::init()
   }
   pipeline.push_back( new    UpdateObjects(sim) );
 
-  cout << "Operator ordering:\n";
+  std::cout << "Operator ordering:\n";
   for (size_t c=0; c<pipeline.size(); c++)
-    cout << "\t" << pipeline[c]->getName() << endl;
+    std::cout << "\t" << pipeline[c]->getName() << "\n";
 
   reset();
   sim.dumpAll("IC");

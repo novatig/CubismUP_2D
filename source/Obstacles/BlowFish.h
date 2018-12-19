@@ -38,7 +38,7 @@ class BlowFish : public Shape
 
   void updatePosition(double dt) override;
 
-  void create(const vector<BlockInfo>& vInfo) override;
+  void create(const std::vector<BlockInfo>& vInfo) override;
 
   Real getCharLength() const  override
   {
@@ -48,13 +48,13 @@ class BlowFish : public Shape
     return std::min( {rhoTop, rhoBot, rhoFin} );
   }
   bool bVariableDensity() const override {
-    assert(std::fabs(rhoTop-rhoBot)>numeric_limits<Real>::epsilon());
-    const bool bTop = std::fabs(rhoTop-1.0) > numeric_limits<Real>::epsilon();
-    const bool bBot = std::fabs(rhoBot-1.0) > numeric_limits<Real>::epsilon();
+    assert(std::fabs(rhoTop-rhoBot)>std::numeric_limits<Real>::epsilon());
+    const bool bTop = std::fabs(rhoTop-1.)>std::numeric_limits<Real>::epsilon();
+    const bool bBot = std::fabs(rhoBot-1.)>std::numeric_limits<Real>::epsilon();
     return bTop || bBot;
   }
 
-  void outputSettings(ostream &outStream) const override
+  void outputSettings(std::ostream &outStream) const override
   {
     outStream << "BlowFish\n";
     Shape::outputSettings(outStream);

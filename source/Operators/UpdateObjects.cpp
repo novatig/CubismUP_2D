@@ -77,7 +77,7 @@ void UpdateObjects::operator()(const double dt)
     const Real maxExtent = std::max(sim.bpdx, sim.bpdy);
     double simExtent[2] = {sim.bpdx/maxExtent, sim.bpdy/maxExtent};
     if (p[0]<0 || p[0]>simExtent[0] || p[1]<0 || p[1]>simExtent[1]) {
-      cout << "Body out of domain: " << p[0] << " " << p[1] << endl;
+      std::cout << "Body out of domain: " << p[0] << " " << p[1] << std::endl;
       exit(0);
     }
   }

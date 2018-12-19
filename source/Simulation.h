@@ -11,11 +11,6 @@
 #include "SimulationData.h"
 #include "Operator.h"
 
-#include <vector>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
 class Profiler;
 
 class Simulation
@@ -42,5 +37,5 @@ public:
   double calcMaxTimestep();
   bool advance(const double DT);
 
-  const vector<Shape*>& getShapes() { return sim.shapes; }
+  const std::vector<Shape*>& getShapes() { return sim.shapes; }
 };

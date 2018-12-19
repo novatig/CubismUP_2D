@@ -22,10 +22,6 @@
 
 #include "../Definitions.h"
 #include "../ObstacleBlock.h"
-#include <limits>
-#include <vector>
-#include <array>
-#include <fstream>
 
 
 inline bool _is_touching(

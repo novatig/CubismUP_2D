@@ -38,7 +38,7 @@ class PressureIterator : public Operator
   PressureIterator(SimulationData& s);
   ~PressureIterator();
 
-  string getName() {
+  std::string getName() {
     return "PressureIterator";
   }
 };

@@ -23,7 +23,7 @@ class presRHS_step1 : public Operator
 
   void operator()(const double dt);
 
-  string getName()
+  std::string getName()
   {
     return "presRHS_step1";
   }
