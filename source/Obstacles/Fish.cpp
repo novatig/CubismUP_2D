@@ -17,7 +17,7 @@
 //#define profile( arg ) do { profiler.arg; } while (0)
 #define profile( func ) do { } while (0)
 
-void Fish::create(const vector<BlockInfo>& vInfo)
+void Fish::create(const std::vector<BlockInfo>& vInfo)
 {
   // clear deformation velocities
   for(auto & entry : obstacleBlocks) delete entry;
@@ -33,8 +33,6 @@ void Fish::create(const vector<BlockInfo>& vInfo)
   // 7. for each of those blocks, allocate a DeformingObstacleBlock
 
   // 8. put the 2D shape on the grid: SDF-P2M for sdf, normal P2M for udef
-  // 9. create the Chi out of the SDF
-  // 10. correct deformation velocity to nullify momenta
 
   assert(myFish!=nullptr);
   // 1.
@@ -80,27 +78,25 @@ void Fish::create(const vector<BlockInfo>& vInfo)
   //- performance of create seems to decrease if VolumeSegment_OBB are bigger
   //- this is the smallest number of VolumeSegment_OBB (Nsegments) and points in
   //  the midline (Nm) to ensure at least one non ext. point inside all segments
-  const int Nsegments = (myFish->Nm-1)/8;
-  const int Nm = myFish->Nm;
+  const int Nsegments = (myFish->Nm-1)/8, Nm = myFish->Nm;
   assert((Nm-1)%Nsegments==0);
   profile(push_start("boxes"));
 
   std::vector<AreaSegment*> vSegments(Nsegments, nullptr);
   #pragma omp parallel for schedule(static)
-  for(int i=0; i<Nsegments; ++i) {
-    const int next_idx = (i+1)*(Nm-1)/Nsegments;
-    const int idx = i * (Nm-1)/Nsegments;
+  for(int i=0; i<Nsegments; ++i)
+  {
+    const int next_idx = (i+1)*(Nm-1)/Nsegments, idx = i * (Nm-1)/Nsegments;
     // find bounding box based on this
     Real bbox[2][2] = {{1e9, -1e9}, {1e9, -1e9}};
-    for(int ss=idx; ss<=next_idx; ++ss) {
+    for(int ss=idx; ss<=next_idx; ++ss)
+    {
       const Real xBnd[2]={myFish->rX[ss] -myFish->norX[ss]*myFish->width[ss],
                           myFish->rX[ss] +myFish->norX[ss]*myFish->width[ss]};
       const Real yBnd[2]={myFish->rY[ss] -myFish->norY[ss]*myFish->width[ss],
                           myFish->rY[ss] +myFish->norY[ss]*myFish->width[ss]};
-      const Real maxX=std::max(xBnd[0],xBnd[1]);
-      const Real minX=std::min(xBnd[0],xBnd[1]);
-      const Real maxY=std::max(yBnd[0],yBnd[1]);
-      const Real minY=std::min(yBnd[0],yBnd[1]);
+      const Real maxX=std::max(xBnd[0],xBnd[1]), minX=std::min(xBnd[0],xBnd[1]);
+      const Real maxY=std::max(yBnd[0],yBnd[1]), minY=std::min(yBnd[0],yBnd[1]);
       bbox[0][0] = std::min(bbox[0][0], minX);
       bbox[0][1] = std::max(bbox[0][1], maxX);
       bbox[1][0] = std::min(bbox[1][0], minY);
@@ -128,11 +124,12 @@ void Fish::create(const vector<BlockInfo>& vInfo)
     const BlockInfo & info = vInfo[i];
     Real pStart[2], pEnd[2];
     info.pos(pStart, 0, 0);
-    info.pos(pEnd, FluidBlock::sizeX-1, FluidBlock::sizeY-1);
+    info.pos(pEnd, ScalarBlock::sizeX-1, ScalarBlock::sizeY-1);
 
     // 6.
     for(size_t s=0; s<vSegments.size(); ++s)
-      if(vSegments[s]->isIntersectingWithAABB(pStart,pEnd)) {
+      if(vSegments[s]->isIntersectingWithAABB(pStart,pEnd))
+      {
         if(segmentsPerBlock[info.blockID] == nullptr)
           segmentsPerBlock[info.blockID] = new std::vector<AreaSegment*>(0);
         segmentsPerBlock[info.blockID]->push_back(vSegments[s]);
@@ -140,7 +137,8 @@ void Fish::create(const vector<BlockInfo>& vInfo)
 
     // 7.
     // allocate new blocks if necessary
-    if(segmentsPerBlock[info.blockID] not_eq nullptr) {
+    if(segmentsPerBlock[info.blockID] not_eq nullptr)
+    {
       assert(obstacleBlocks[info.blockID] == nullptr);
       ObstacleBlock * const block = new ObstacleBlock();
       assert(block not_eq nullptr);
@@ -160,18 +158,12 @@ void Fish::create(const vector<BlockInfo>& vInfo)
     #pragma omp for schedule(dynamic)
     for(size_t i=0; i<vInfo.size(); i++)
     {
-      const BlockInfo& info = vInfo[i];
-      FluidBlock& b = *(FluidBlock*)info.ptrBlock;
-      const auto pos = segmentsPerBlock[info.blockID];
-
-      if(pos not_eq nullptr) {
-        for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-        for(int ix=0; ix<FluidBlock::sizeX; ++ix)
-          b(ix,iy).tmpU = 0; //this will be accessed with plus equal
-
-        ObstacleBlock*const block = obstacleBlocks[info.blockID];
+      const auto pos = segmentsPerBlock[vInfo[i].blockID];
+      if(pos not_eq nullptr)
+      {
+        ObstacleBlock*const block = obstacleBlocks[vInfo[i].blockID];
         assert(block not_eq nullptr);
-        putfish(info, b, block, *pos);
+        putfish(vInfo[i], *(ScalarBlock*)vInfo[i].ptrBlock, block, *pos);
       }
     }
   }
@@ -180,35 +172,23 @@ void Fish::create(const vector<BlockInfo>& vInfo)
   for(auto & E : vSegments) { if(E not_eq nullptr) delete E; }
   for(auto & E : segmentsPerBlock)  { if(E not_eq nullptr) delete E; }
 
-  // 9.
-  //here obstBlock->chi is the squared signed distance
-  profile(push_start("finalize"));
-  {
-    const PutFishOnBlocks_Finalize finalize = PutFishOnBlocks_Finalize();
-    compute(finalize, vInfo);
-  }
   profile(pop_stop());
-
-  // 10.
-  profile(push_start("moments"));
+  if (sim.step % 100 == 0 && sim.verbose)
   {
-    removeMoments(vInfo);
-    //myFish->surfaceToComputationalFrame(orientation, centerOfMass);
-    for(auto & o : obstacleBlocks) if(o not_eq nullptr) o->allocate_surface();
-  };
-  profile(pop_stop());
-  if (sim.step % 100 == 0 && sim.verbose) {
     profile(printSummary());
     profile(reset());
   }
 }
 
-void Fish::updatePosition(double dt) {
+void Fish::updatePosition(double dt)
+{
   // update position and angles
   Shape::updatePosition(dt);
   theta_internal -= dt*angvel_internal; // negative: we subtracted this angvel
 }
-void Fish::resetAll() {
+
+void Fish::resetAll()
+{
   CoM_internal[0] = 0; CoM_internal[1] = 0;
   vCoM_internal[0] = 0; vCoM_internal[1] = 0;
   theta_internal = 0; angvel_internal = 0; angvel_internal_prev = 0;
@@ -216,7 +196,8 @@ void Fish::resetAll() {
   myFish->resetAll();
 }
 
-Fish::~Fish() {
+Fish::~Fish()
+{
   if(myFish not_eq nullptr) {
     delete myFish;
     myFish = nullptr;
@@ -226,7 +207,6 @@ Fish::~Fish() {
 #if 0
 void Fish::apply_pid_corrections()
 {
-
   if (followX > 0 && followY > 0) //then i control the position
   {
     assert(not bCorrectTrajectory);
@@ -241,8 +221,8 @@ void Fish::apply_pid_corrections()
     const double velAbsDY = yDiff>0 ? transVel[1]/length : -transVel[1]/length;
     const double velDAvg = AngDiff-adjTh + dt*angVel[2];
 
-    adjTh = (1.-dt) * adjTh + dt * AngDiff;
-    adjDy = (1.-dt) * adjDy + dt * yDiff;
+    adjTh = (1.0-dt) * adjTh + dt * AngDiff;
+    adjDy = (1.0-dt) * adjDy + dt * yDiff;
 
     //If angle is positive: positive curvature only if Dy<0 (must go up)
     //If angle is negative: negative curvature only if Dy>0 (must go down)
@@ -272,25 +252,4 @@ void Fish::apply_pid_corrections()
     myFish->_correctAmplitude(ampFac, ampVel, time, dt);
   }
 }
-#endif
-
-#if 0
-#define _USE_HDF_
-#include <HDF5Dumper.h>
-        #pragma omp parallel for schedule(dynamic)
-        for(size_t i=0; i<vInfo.size(); i++) {
-          FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-          const auto pos = obstacleBlocks.find(vInfo[i].blockID);
-          if(pos == obstacleBlocks.end()) continue;
-
-          for(int iy=0; iy<FluidBlock::sizeY; ++iy)
-          for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
-            b(ix,iy).u = pos->second->udef[iy][ix][0];
-            b(ix,iy).v = pos->second->udef[iy][ix][1];
-            b(ix,iy).tmp = pos->second->chi [iy][ix];
-          }
-        }
-        DumpHDF5<FluidGrid,StreamerVelocityVector>(*(sim.grid), sim.step,
-          sim.time, "constructSurface", sim.path4serialization);
-        // abort();
 #endif

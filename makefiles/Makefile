@@ -68,12 +68,13 @@ SRC_DIR = $(BUILDDIR)/../source/
 DIRS = $(sort $(dir $(wildcard ../source/*/)))
 
 CUBISM_DIR = $(BUILDDIR)/../Cubism/source/
-#OBJECTS = Simulation.o Definitions.o Shape.o ShapeLibrary.o ShapesSimple.o BlowFish.o Fish.o FishLibrary.o StefanFish.o BufferedLogger.o CarlingFish.o
+#OBJECTS = Simulation.o Definitions.o Shape.o ShapeLibrary.o ShapesSimple.o
 OBJECTS = \
 		Simulation.o SimulationData.o Shape.o ShapeLibrary.o ShapesSimple.o \
 		PressureSingle.o PressureIterator.o presRHS_step1.o PoissonSolver.o \
 		HYPREdirichlet.o FFTW_freespace.o PutObjectsOnGrid.o UpdateObjects.o \
-		advDiff.o advDiff_RK.o BufferedLogger.o Helpers.o
+		advDiff.o advDiff_RK.o BufferedLogger.o Helpers.o BlowFish.o Fish.o \
+		FishLibrary.o StefanFish.o CarlingFish.o
 
 CPP_FILES = $(notdir $(OBJECTS:.o=.cpp))
 

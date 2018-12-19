@@ -10,7 +10,7 @@
 #pragma once
 
 #include "ObstacleBlock.h"
-#include "GenericOperator.h"
+#include "../Operator.h"
 #include <map>
 #include <limits>
 #include <vector>
@@ -210,25 +210,16 @@ struct PutFishOnBlocks
     x[0]=Rmatrix2D[0][0]*p[0] + Rmatrix2D[1][0]*p[1];
     x[1]=Rmatrix2D[0][1]*p[0] + Rmatrix2D[1][1]*p[1];
   }
-  static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
 
   PutFishOnBlocks(const FishData& cf, const double pos[2],
     const Real ang): cfish(cf), position{(Real)pos[0],(Real)pos[1]}, angle(ang) { }
 
-  void operator()(const BlockInfo& i, FluidBlock& b,
+  void operator()(const BlockInfo& i, ScalarBlock& b,
     ObstacleBlock* const o, const vector<AreaSegment*>& v) const;
-  virtual void constructSurface(  const BlockInfo& i, FluidBlock& b,
+  virtual void constructSurface(  const BlockInfo& i, ScalarBlock& b,
     ObstacleBlock* const o, const vector<AreaSegment*>& v) const;
-  virtual void constructInternl(  const BlockInfo& i, FluidBlock& b,
+  virtual void constructInternl(  const BlockInfo& i, ScalarBlock& b,
     ObstacleBlock* const o, const vector<AreaSegment*>& v) const;
-  virtual void signedDistanceSqrt(const BlockInfo& i, FluidBlock& b,
+  virtual void signedDistanceSqrt(const BlockInfo& i, ScalarBlock& b,
     ObstacleBlock* const o, const vector<AreaSegment*>& v) const;
-};
-
-struct PutFishOnBlocks_Finalize : public GenericLabOperator
-{
-  const int stencil_start[3] = { -1, -1, 0};
-  const int stencil_end[3]   = {  2,  2, 1};
-
-  void operator()(Lab&l ,const BlockInfo&i, FluidBlock&b, ObstacleBlock*const o) const;
 };

@@ -9,8 +9,7 @@
 
 #pragma once
 
-#include "common.h"
-#include "Definitions.h"
+#include "../Definitions.h"
 #include <map>
 #include <limits>
 #include <vector>

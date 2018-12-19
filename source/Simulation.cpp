@@ -23,9 +23,9 @@
 #include "Utils/FactoryFileLineParser.h"
 
 #include "Obstacles/ShapesSimple.h"
-//#include "BlowFish.h"
-//#include "StefanFish.h"
-//#include "CarlingFish.h"
+#include "Obstacles/CarlingFish.h"
+#include "Obstacles/StefanFish.h"
+#include "Obstacles/BlowFish.h"
 
 #include <regex>
 #include <algorithm>

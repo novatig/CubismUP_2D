@@ -81,7 +81,7 @@ void BlowFish::updatePosition(double dt)
   #endif
 }
 
-void BlowFish::create(const vector<BlockInfo>& vInfo)
+void BlowFish::create(const std::vector<BlockInfo>& vInfo)
 {
   const double angleAttFin1 = orientation  -finAngle0;
   const double angleAttFin2 = orientation  +finAngle0 +M_PI;
@@ -104,42 +104,40 @@ void BlowFish::create(const vector<BlockInfo>& vInfo)
 
   #pragma omp parallel
   {
-    const FillBlocks_VarRhoCylinder kernelC(radius, h, center, rhoTop, rhoBot, orientation);
-    const FillBlocks_Plate kernelF1(finLength, finWidth, h, attach1, angleTotFin1, flapVel_R, rhoFin);
-    const FillBlocks_Plate kernelF2(finLength, finWidth, h, attach2, angleTotFin2, flapVel_L, rhoFin);
+    const FillBlocks_VarRhoCylinder kernelC(
+      radius, h, center, rhoTop, rhoBot, orientation);
+    const FillBlocks_Plate kernelF1(
+      finLength, finWidth, h, attach1, angleTotFin1, flapVel_R, rhoFin);
+    const FillBlocks_Plate kernelF2(
+      finLength, finWidth, h, attach2, angleTotFin2, flapVel_L, rhoFin);
 
     #pragma omp for schedule(dynamic)
     for(size_t i=0; i<vInfo.size(); i++)
     {
-      if(kernelC._is_touching(vInfo[i]))
+      if(kernelC.is_touching(vInfo[i]))
       {
         assert(obstacleBlocks[vInfo[i].blockID] == nullptr);
         obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
         obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
       }
-      else if(kernelF1._is_touching(vInfo[i]))
+      else if(kernelF1.is_touching(vInfo[i]))
       {
         assert(obstacleBlocks[vInfo[i].blockID] == nullptr);
         obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
         obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
       }
-      else if(kernelF2._is_touching(vInfo[i]))
+      else if(kernelF2.is_touching(vInfo[i]))
       {
         assert(obstacleBlocks[vInfo[i].blockID] == nullptr);
         obstacleBlocks[vInfo[i].blockID] = new ObstacleBlock;
         obstacleBlocks[vInfo[i].blockID]->clear(); //memset 0
       }
 
-      const auto pos = obstacleBlocks[vInfo[i].blockID];
-      if(pos == nullptr) continue;
-
-      FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-      kernelC(vInfo[i], b, pos);
-      kernelF1(vInfo[i], b, pos);
-      kernelF2(vInfo[i], b, pos);
+      ScalarBlock& B = *(ScalarBlock*)vInfo[i].ptrBlock;
+      if(obstacleBlocks[vInfo[i].blockID] == nullptr) continue;
+      kernelC (vInfo[i], B, * obstacleBlocks[vInfo[i].blockID]);
+      kernelF1(vInfo[i], B, * obstacleBlocks[vInfo[i].blockID]);
+      kernelF2(vInfo[i], B, * obstacleBlocks[vInfo[i].blockID]);
     }
   }
-
-  removeMoments(vInfo);
-  for (auto & O : obstacleBlocks) if(O not_eq nullptr) O->allocate_surface();
 }

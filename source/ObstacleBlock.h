@@ -29,6 +29,7 @@ struct ObstacleBlock
 
   // bulk quantities:
   Real chi[sizeY][sizeX];
+  Real dist[sizeY][sizeX];
   //Real rho[sizeY][sizeX]; //maybe unused
   Real udef[sizeY][sizeX][2];
 
@@ -86,6 +87,7 @@ struct ObstacleBlock
   {
     clear_surface();
     memset(chi, 0, sizeof(Real)*sizeX*sizeY);
+    memset(dist, 0, sizeof(Real)*sizeX*sizeY);
     //memset(rho, 0, sizeof(Real)*sizeX*sizeY);
     memset(udef, 0, sizeof(Real)*sizeX*sizeY*2);
   }

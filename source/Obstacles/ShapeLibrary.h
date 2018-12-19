@@ -56,9 +56,10 @@ struct FillBlocks_Cylinder
       return radius - std::sqrt(x*x+y*y); // pos inside, neg outside
   }
 
-  inline bool is_touching(const BlockInfo& INFO) {
+  inline bool is_touching(const BlockInfo& INFO) const {
     return _is_touching(INFO, bbox, safety);
   }
+
   void operator()(const BlockInfo& I, ScalarBlock& B, ObstacleBlock& O) const;
 };
 
@@ -82,9 +83,10 @@ struct FillBlocks_HalfCylinder
     else return radius - std::sqrt(x*x+y*y); // (pos inside, neg outside)
   }
 
-  inline bool is_touching(const BlockInfo& INFO) {
+  inline bool is_touching(const BlockInfo& INFO) const {
     return _is_touching(INFO, bbox, safety);
   }
+
   void operator()(const BlockInfo& I, ScalarBlock& B, ObstacleBlock& O) const;
 };
 
@@ -102,9 +104,10 @@ struct FillBlocks_Ellipse
     const double C[2], Real ang, Real rho): e0(_e0), e1(_e1), safety(2*h),
     pos{(Real)C[0], (Real)C[1]}, angle(ang), rhoS(rho) {}
 
-  inline bool is_touching(const BlockInfo& INFO) {
+  inline bool is_touching(const BlockInfo& INFO) const {
     return _is_touching(INFO, bbox, safety);
   }
+
   void operator()(const BlockInfo& I, ScalarBlock& B, ObstacleBlock& O) const;
 };
 
@@ -127,9 +130,10 @@ struct FillBlocks_Plate
     return std::min(std::min(X, LX - X), std::min(LY/2 + Y, LY/2 - Y));
   }
 
-  inline bool is_touching(const BlockInfo& INFO) {
+  inline bool is_touching(const BlockInfo& INFO) const {
     return _is_touching(INFO, bbox, safety);
   }
+
   void operator()(const BlockInfo& I, ScalarBlock& B, ObstacleBlock& O) const;
 };
 
@@ -150,7 +154,7 @@ struct FillBlocks_VarRhoCylinder
       return radius - std::sqrt(x*x+y*y); // pos inside, neg outside
   }
 
-  inline bool is_touching(const BlockInfo& INFO) {
+  inline bool is_touching(const BlockInfo& INFO) const {
     return _is_touching(INFO, bbox, safety);
   }
   void operator()(const BlockInfo& I, ScalarBlock& B, ObstacleBlock& O) const;
@@ -170,8 +174,9 @@ struct FillBlocks_VarRhoEllipse
     Real ang, Real rhoT, Real rhoB): e0(_e0), e1(_e1), safety(2*h),
     pos{(Real)C[0], (Real)C[1]}, angle(ang), rhoTop(rhoT), rhoBot(rhoB) {}
 
-  inline bool is_touching(const BlockInfo& INFO) {
+  inline bool is_touching(const BlockInfo& INFO) const {
     return _is_touching(INFO, bbox, safety);
   }
+
   void operator()(const BlockInfo& I, ScalarBlock& B, ObstacleBlock& O) const;
 };

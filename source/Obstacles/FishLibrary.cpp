@@ -35,20 +35,25 @@ FishData::FishData(Real L, Real Tp, Real phi, Real _h, const Real A):
   std::fill(vX, vX+Nm, 0);
   std::fill(vY, vY+Nm, 0);
 }
-FishData::~FishData() {
+
+FishData::~FishData()
+{
   _dealloc(rS); _dealloc(rX); _dealloc(rY); _dealloc(vX); _dealloc(vY);
   _dealloc(norX); _dealloc(norY); _dealloc(vNorX); _dealloc(vNorY);
   _dealloc(width);
   // if(upperSkin not_eq nullptr) { delete upperSkin; upperSkin=nullptr; }
   // if(lowerSkin not_eq nullptr) { delete lowerSkin; lowerSkin=nullptr; }
 }
-void FishData::resetAll() {
+
+void FishData::resetAll()
+{
   l_Tp = Tperiod;
   timeshift = 0;
   time0 = 0;
 }
 
-void FishData::writeMidline2File(const int step_id, string filename) {
+void FishData::writeMidline2File(const int step_id, string filename)
+{
   char buf[500];
   sprintf(buf, "%s_midline_%07d.txt", filename.c_str(), step_id);
   FILE * f = fopen(buf, "w");
@@ -60,7 +65,8 @@ void FishData::writeMidline2File(const int step_id, string filename) {
   }
 }
 
-void FishData::_computeMidlineNormals() {
+void FishData::_computeMidlineNormals()
+{
   #pragma omp parallel for schedule(static)
   for(int i=0; i<Nm-1; i++) {
     const auto ds = rS[i+1]-rS[i];
@@ -79,13 +85,15 @@ void FishData::_computeMidlineNormals() {
   vNorY[Nm-1] = vNorY[Nm-2];
 }
 
-Real FishData::integrateLinearMomentum(double CoM[2], double vCoM[2]) {
+Real FishData::integrateLinearMomentum(double CoM[2], double vCoM[2])
+{
   // already worked out the integrals for r, theta on paper
   // remaining integral done with composite trapezoidal rule
   // minimize rhs evaluations --> do first and last point separately
   double _area=0, _cmx=0, _cmy=0, _lmx=0, _lmy=0;
   #pragma omp parallel for schedule(static) reduction(+:_area,_cmx,_cmy,_lmx,_lmy)
-  for(int i=0; i<Nm; ++i) {
+  for(int i=0; i<Nm; ++i)
+  {
     const double ds = (i==0) ? rS[1]-rS[0] :
         ((i==Nm-1) ? rS[Nm-1]-rS[Nm-2] :rS[i+1]-rS[i-1]);
     const double fac1 = _integrationFac1(i);
@@ -109,14 +117,17 @@ Real FishData::integrateLinearMomentum(double CoM[2], double vCoM[2]) {
   //printf("%f %f %f %f %f\n",CoM[0],CoM[1],vCoM[0],vCoM[1], vol);
   return area;
 }
-Real FishData::integrateAngularMomentum(double& angVel) {
+
+Real FishData::integrateAngularMomentum(double& angVel)
+{
   // assume we have already translated CoM and vCoM to nullify linear momentum
   // already worked out the integrals for r, theta on paper
   // remaining integral done with composite trapezoidal rule
   // minimize rhs evaluations --> do first and last point separately
   double _J = 0, _am = 0;
   #pragma omp parallel for reduction(+:_J,_am) schedule(static)
-  for(int i=0; i<Nm; ++i) {
+  for(int i=0; i<Nm; ++i)
+  {
     const double ds =   (i==   0) ? rS[1]   -rS[0] :
                     ( (i==Nm-1) ? rS[Nm-1]-rS[Nm-2]
                                 : rS[i+1] -rS[i-1] );
@@ -140,20 +151,23 @@ Real FishData::integrateAngularMomentum(double& angVel) {
   return J;
 }
 
-void FishData::changeToCoMFrameLinear(const double CoMin[2],const double vCoMin[2]){
+void FishData::changeToCoMFrameLinear(const double Cin[2], const double vCin[2])
+{
   #pragma omp parallel for schedule(static)
-  for(int i=0;i<Nm;++i) {
-   rX[i] -= CoMin[0]; rY[i] -= CoMin[1]; vX[i] -= vCoMin[0]; vY[i] -= vCoMin[1];
+  for(int i=0;i<Nm;++i) { // subtract internal CM and vCM
+   rX[i] -= Cin[0]; rY[i] -= Cin[1]; vX[i] -= vCin[0]; vY[i] -= vCin[1];
   }
 }
-void FishData::changeToCoMFrameAngular(const Real theta_internal, const Real angvel_internal) {
-  _prepareRotation2D(theta_internal);
+
+void FishData::changeToCoMFrameAngular(const Real Ain, const Real vAin)
+{
+  _prepareRotation2D(Ain);
   #pragma omp parallel for schedule(static)
-  for(int i=0;i<Nm;++i) {
-    vX[i] += angvel_internal*rY[i];
-    vY[i] -= angvel_internal*rX[i];
-    _rotate2D(rX[i],rY[i]);
-    _rotate2D(vX[i],vY[i]);
+  for(int i=0;i<Nm;++i) { // subtract internal angvel and rotate position by ang
+    vX[i] += vAin*rY[i];
+    vY[i] -= vAin*rX[i];
+    _rotate2D(rX[i], rY[i]);
+    _rotate2D(vX[i], vY[i]);
   }
   _computeMidlineNormals();
 }
@@ -364,7 +378,7 @@ bool AreaSegment::isIntersectingWithAABB(const Real start[2],const Real end[2]) 
   return true;
 }
 
-void PutFishOnBlocks::operator()(const BlockInfo& i, FluidBlock& b,
+void PutFishOnBlocks::operator()(const BlockInfo& i, ScalarBlock& b,
   ObstacleBlock* const o, const vector<AreaSegment*>& v) const
 {
   //std::chrono::time_point<std::chrono::high_resolution_clock> t0, t1, t2, t3;
@@ -380,46 +394,45 @@ void PutFishOnBlocks::operator()(const BlockInfo& i, FluidBlock& b,
   //                    std::chrono::duration<Real>(t3-t2).count());
 }
 
-void PutFishOnBlocks::signedDistanceSqrt(const BlockInfo& info, FluidBlock& b, ObstacleBlock* const defblock, const vector<AreaSegment*>& vSegments) const
+void PutFishOnBlocks::signedDistanceSqrt(const BlockInfo& info, ScalarBlock& b,
+  ObstacleBlock* const o, const std::vector<AreaSegment*>& vSegments) const
 {
   // finalize signed distance function in tmpU
-  const Real eps = std::numeric_limits<Real>::epsilon();
-  for(int iy=0; iy<FluidBlock::sizeY; iy++)
-  for(int ix=0; ix<FluidBlock::sizeX; ix++) {
-    const Real normfac = b(ix,iy).tmpU > eps ? b(ix,iy).tmpU : 1;
-    defblock->udef[iy][ix][0] /= normfac;
-    defblock->udef[iy][ix][1] /= normfac;
+  static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
+  for(int iy=0; iy<ScalarBlock::sizeY; iy++)
+  for(int ix=0; ix<ScalarBlock::sizeX; ix++) {
+    const Real normfac = o->chi[iy][ix] > EPS ? o->chi[iy][ix] : 1;
+    o->udef[iy][ix][0] /= normfac; o->udef[iy][ix][1] /= normfac;
     // change from signed squared distance function to normal sdf
-    b(ix,iy).tmpU = defblock->chi[iy][ix] > 0 ?
-      std::sqrt( defblock->chi[iy][ix]) : -std::sqrt(-defblock->chi[iy][ix]);
-    //b(ix,iy,iz).tmpV = defblock->udef[iz][iy][ix][0]; //for debug
-    //b(ix,iy,iz).tmpW = defblock->udef[iz][iy][ix][1]; //for debug
+    o->dist[iy][ix] = o->dist[iy][ix]>=0 ?  std::sqrt( o->dist[iy][ix])
+                                         : -std::sqrt(-o->dist[iy][ix]);
+    b(ix,iy).s = o->dist[iy][ix];
   }
 }
 
-void PutFishOnBlocks::constructSurface(const BlockInfo& info, FluidBlock& b, ObstacleBlock* const defblock, const vector<AreaSegment*>& vSegments) const
+void PutFishOnBlocks::constructSurface(const BlockInfo& info, ScalarBlock& b,
+  ObstacleBlock* const o, const std::vector<AreaSegment*>& vSegments) const
 {
   Real org[2];
   info.pos(org, 0, 0);
   const Real h = info.h_gridpoint, invh = 1.0/info.h_gridpoint;
-  const Real* const rX = cfish.rX;
-  const Real* const rY = cfish.rY;
-  const Real* const norX = cfish.norX;
-  const Real* const norY = cfish.norY;
-  const Real* const vX = cfish.vX;
-  const Real* const vY = cfish.vY;
-  const Real* const vNorX = cfish.vNorX;
-  const Real* const vNorY = cfish.vNorY;
+  const Real * const rX = cfish.rX, * const norX = cfish.norX;
+  const Real * const rY = cfish.rY, * const norY = cfish.norY;
+  const Real * const vX = cfish.vX, * const vNorX = cfish.vNorX;
+  const Real * const vY = cfish.vY, * const vNorY = cfish.vNorY;
   const Real* const width = cfish.width;
-  static constexpr int BS[2] = {FluidBlock::sizeX, FluidBlock::sizeY};
-  std::fill(defblock->chi[0], defblock->chi[0] + BS[1]*BS[0], -1);
+  static constexpr int BS[2] = {ScalarBlock::sizeX, ScalarBlock::sizeY};
+  std::fill(o->dist[0], o->dist[0] + BS[1]*BS[0], -1);
+  std::fill(o->chi [0], o->chi [0] + BS[1]*BS[0],  0);
 
-  // construct the shape (P2M with min(distance) as kernel) onto defblocks
-  for(int i=0; i<(int)vSegments.size(); ++i) {
+  // construct the shape (P2M with min(distance) as kernel) onto ObstacleBlock
+  for(int i=0; i<(int)vSegments.size(); ++i)
+  {
     //iterate over segments contained in the vSegm intersecting this block:
-    const int firstSegm = max(vSegments[i]->s_range.first,           1);
-    const int lastSegm =  min(vSegments[i]->s_range.second, cfish.Nm-2);
-    for(int ss=firstSegm; ss<=lastSegm; ++ss) {
+    const int firstSegm = std::max(vSegments[i]->s_range.first,           1);
+    const int lastSegm =  std::min(vSegments[i]->s_range.second, cfish.Nm-2);
+    for(int ss = firstSegm; ss <= lastSegm; ++ss)
+    {
       assert(width[ss]>0);
       //for each segment, we have one point to left and right of midl
       for(int signp = -1; signp <= 1; signp+=2)
@@ -440,7 +453,8 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, FluidBlock& b, Obs
         Real udef[2] = { vX[ss+0] +width[ss+0]*signp*vNorX[ss+0],
                          vY[ss+0] +width[ss+0]*signp*vNorY[ss+0]    };
         changeVelocityToComputationalFrame(udef);
-        // support is two points left, two points right --> Towers Chi will be one point left, one point right, but needs SDF wider
+        // support is two points left, two points right --> Towers Chi will
+        // be one point left, one point right, but needs SDF wider
         for(int sy =std::max(0, iap[1]-1); sy <std::min(iap[1]+3, BS[1]); ++sy)
         for(int sx =std::max(0, iap[0]-1); sx <std::min(iap[0]+3, BS[0]); ++sx)
         {
@@ -450,7 +464,7 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, FluidBlock& b, Obs
           const Real distP = eulerDistSq2D(p,  pP);
           const Real distM = eulerDistSq2D(p,  pM);
 
-          if(std::fabs(defblock->chi[sy][sx])<std::min({dist0,distP,distM}))
+          if(std::fabs(o->dist[sy][sx])<std::min({dist0,distP,distM}))
             continue;
 
           changeFromComputationalFrame(p);
@@ -497,16 +511,16 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, FluidBlock& b, Obs
             const Real d = std::sqrt((Rsq - maxAx)/dSsq); // (divided by ds)
             // position of the centre of the sphere:
             const Real xCentr[2] = {rX[idAx1] +(rX[idAx1]-rX[idAx2])*d,
-                                   rY[idAx1] +(rY[idAx1]-rY[idAx2])*d};
+                                    rY[idAx1] +(rY[idAx1]-rY[idAx2])*d};
             const Real grd2Core = eulerDistSq2D(p, xCentr);
             sign2d = grd2Core > Rsq ? -1 : 1; // as always, neg outside
           }
 
-          if(std::fabs(defblock->chi[sy][sx]) > dist1) {
-            defblock->udef[sy][sx][0] = udef[0];
-            defblock->udef[sy][sx][1] = udef[1];
-            defblock->chi [sy][sx] = sign2d*dist1;
-            b(sx,sy).tmpU = 1;
+          if(std::fabs(o->dist[sy][sx]) > dist1) {
+            o->udef[sy][sx][0] = udef[0];
+            o->udef[sy][sx][1] = udef[1];
+            o->dist[sy][sx] = sign2d*dist1;
+            o->chi [sy][sx] = 1;
           }
           // Not chi yet, I stored squared distance from analytical boundary
           // distSq is updated only if curr value is smaller than the old one
@@ -516,100 +530,62 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, FluidBlock& b, Obs
   }
 }
 
-void PutFishOnBlocks::constructInternl(const BlockInfo& info, FluidBlock& b, ObstacleBlock* const defblock, const vector<AreaSegment*>& vSegments) const
+void PutFishOnBlocks::constructInternl(const BlockInfo& info, ScalarBlock& b,
+  ObstacleBlock* const o, const std::vector<AreaSegment*>& vSegments) const
 {
   Real org[2];
   info.pos(org, 0, 0);
   const Real h = info.h_gridpoint, invh = 1.0/info.h_gridpoint;
+  static constexpr int BS[2] = {ScalarBlock::sizeX, ScalarBlock::sizeY};
   // construct the deformation velocities (P2M with hat function as kernel)
   for(int i=0; i<(int)vSegments.size(); ++i)
   {
-  const int firstSegm = max(vSegments[i]->s_range.first,           1);
-  const int lastSegm =  min(vSegments[i]->s_range.second, cfish.Nm-2);
-  for(int ss=firstSegm; ss<=lastSegm; ++ss)
-  {
-    // P2M udef of a slice at this s
-    const Real myWidth = cfish.width[ss];
-    assert(myWidth > 0);
-    //here we process also all inner points. Nw to the left and right of midl
-    // add xtension here to make sure we have it in each direction:
-    const int Nw = std::floor(myWidth/h); //floor bcz we already did interior
-    for(int iw = -Nw+1; iw < Nw; ++iw)
+    const int firstSegm = std::max(vSegments[i]->s_range.first,           1);
+    const int lastSegm =  std::min(vSegments[i]->s_range.second, cfish.Nm-2);
+    for(int ss=firstSegm; ss<=lastSegm; ++ss)
     {
-      const Real offsetW = iw * h;
-      Real xp[2] = { cfish.rX[ss] + offsetW*cfish.norX[ss],
-                     cfish.rY[ss] + offsetW*cfish.norY[ss] };
-      changeToComputationalFrame(xp);
-      xp[0] = (xp[0]-org[0])*invh; // how many grid points from this block
-      xp[1] = (xp[1]-org[1])*invh; // origin is this fishpoint located at?
-      Real udef[2] = { cfish.vX[ss] + offsetW*cfish.vNorX[ss],
-                       cfish.vY[ss] + offsetW*cfish.vNorY[ss] };
-      changeVelocityToComputationalFrame(udef);
-      const Real ap[2] = { std::floor(xp[0]), std::floor(xp[1]) };
-      const int iap[2] = { (int)ap[0], (int)ap[1] };
-      Real wghts[2][2]; // P2M weights
-      for(int c=0; c<2; ++c) {
-        const Real t[2] = { // we floored, hat between xp and grid point +-1
-            std::fabs(xp[c] -ap[c]), std::fabs(xp[c] -(ap[c] +1))
-        };
-        wghts[c][0] = 1 - t[0];
-        wghts[c][1] = 1 - t[1];
-      }
-      for(int sy=max(0,0-iap[1]); sy<min(2,FluidBlock::sizeY-iap[1]); ++sy)
-      for(int sx=max(0,0-iap[0]); sx<min(2,FluidBlock::sizeX-iap[0]); ++sx) {
-        const Real wxwy = wghts[1][sy] * wghts[0][sx];
-        const int idx = iap[0]+sx, idy = iap[1]+sy;
-        assert(idx>=0 && idx<FluidBlock::sizeX);
-        assert(idy>=0 && idy<FluidBlock::sizeY);
-        assert(wxwy>=0 && wxwy<=1);
-        defblock->udef[idy][idx][0] += wxwy*udef[0];
-        defblock->udef[idy][idx][1] += wxwy*udef[1];
-        b(idx,idy).tmpU += wxwy;
-
-        // set sign for all interior points
-        if( std::fabs(defblock->chi[idy][idx]+1)<EPS )
-          defblock->chi[idy][idx] = 1;
+      // P2M udef of a slice at this s
+      const Real myWidth = cfish.width[ss];
+      assert(myWidth > 0);
+      //here we process also all inner points. Nw to the left and right of midl
+      // add xtension here to make sure we have it in each direction:
+      const int Nw = std::floor(myWidth/h); //floor bcz we already did interior
+      for(int iw = -Nw+1; iw < Nw; ++iw)
+      {
+        const Real offsetW = iw * h;
+        Real xp[2] = { cfish.rX[ss] + offsetW*cfish.norX[ss],
+                       cfish.rY[ss] + offsetW*cfish.norY[ss] };
+        changeToComputationalFrame(xp);
+        xp[0] = (xp[0]-org[0])*invh; // how many grid points from this block
+        xp[1] = (xp[1]-org[1])*invh; // origin is this fishpoint located at?
+        Real udef[2] = { cfish.vX[ss] + offsetW*cfish.vNorX[ss],
+                         cfish.vY[ss] + offsetW*cfish.vNorY[ss] };
+        changeVelocityToComputationalFrame(udef);
+        const Real ap[2] = { std::floor(xp[0]), std::floor(xp[1]) };
+        const int iap[2] = { (int)ap[0], (int)ap[1] };
+        Real wghts[2][2]; // P2M weights
+        for(int c=0; c<2; ++c) {
+          const Real t[2] = { // we floored, hat between xp and grid point +-1
+              std::fabs(xp[c] -ap[c]), std::fabs(xp[c] -(ap[c] +1))
+          };
+          wghts[c][0] = 1 - t[0];
+          wghts[c][1] = 1 - t[1];
+        }
+        for(int sy = std::max(0,0-iap[1]); sy < std::min(2,BS[1]-iap[1]); ++sy)
+        for(int sx = std::max(0,0-iap[0]); sx < std::min(2,BS[0]-iap[0]); ++sx)
+        {
+          const Real wxwy = wghts[1][sy] * wghts[0][sx];
+          const int idx = iap[0]+sx, idy = iap[1]+sy;
+          assert(idx>=0 && idx<FluidBlock::sizeX && wxwy>=0);
+          assert(idy>=0 && idy<FluidBlock::sizeY && wxwy<=1);
+          o->udef[idy][idx][0] += wxwy*udef[0];
+          o->udef[idy][idx][1] += wxwy*udef[1];
+          o->chi [idy][idx] += wxwy;
+          // set sign for all interior points
+          static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
+          if( std::fabs(o->dist[idy][idx]+1) < EPS ) o->dist[idy][idx] = 1;
+        }
       }
     }
-  }
-  }
-}
-
-void PutFishOnBlocks_Finalize::operator()(Lab & lab, const BlockInfo& info,
-  FluidBlock&b, ObstacleBlock* const defblock) const
-{
-  const Real h = info.h_gridpoint, i2h = 0.5/h;//, fac = 0.5*h;
-  static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
-  for(int iy=0; iy<FluidBlock::sizeY; iy++)
-  for(int ix=0; ix<FluidBlock::sizeX; ix++) {
-    Real p[2];
-    info.pos(p, ix,iy);
-    const auto U = defblock->udef[iy][ix][0], V = defblock->udef[iy][ix][1];
-    if (lab(ix,iy).tmpU > +2*h || lab(ix,iy).tmpU < -2*h) {
-      const Real H = lab(ix,iy).tmpU > 0 ? 1 : 0;
-      b(ix,iy).tmp = std::max(H, b(ix,iy).tmp);
-      defblock->write(ix, iy, U, V, 1, H, 0, 0, 0, h);
-      continue;
-    }
-
-    const Real distPx = lab(ix+1,iy).tmpU, distMx = lab(ix-1,iy).tmpU;
-    const Real distPy = lab(ix,iy+1).tmpU, distMy = lab(ix,iy-1).tmpU;
-    const Real IplusX = distPx<0? 0 : distPx, IminuX = distMx<0? 0 : distMx;
-    const Real IplusY = distPy<0? 0 : distPy, IminuY = distMy<0? 0 : distMy;
-    const Real HplusX = std::fabs(distPx)<EPS? (Real).5 : ( distPx<0? 0 : 1 );
-    const Real HminuX = std::fabs(distMx)<EPS? (Real).5 : ( distMx<0? 0 : 1 );
-    const Real HplusY = std::fabs(distPy)<EPS? (Real).5 : ( distPy<0? 0 : 1 );
-    const Real HminuY = std::fabs(distMy)<EPS? (Real).5 : ( distMy<0? 0 : 1 );
-
-    const Real gradIX = i2h*(IplusX-IminuX), gradIY = i2h*(IplusY-IminuY);
-    const Real gradUX = i2h*(distPx-distMx), gradUY = i2h*(distPy-distMy);
-    const Real gradHX =     (HplusX-HminuX), gradHY =     (HplusY-HminuY);
-
-    const Real gradUSq = gradUX*gradUX + gradUY*gradUY;
-    const Real denum = gradUSq<EPS? EPS : gradUSq;
-    const Real H     =     ((gradIX*gradUX + gradIY*gradUY)/denum);
-    const Real Delta =     ((gradHX*gradUX + gradHY*gradUY)/denum);
-    defblock->write(ix, iy, U, V, 1, H, Delta, gradUX, gradUY, h);
-    b(ix,iy).tmp = std::max(H, b(ix,iy).tmp);
   }
 }
