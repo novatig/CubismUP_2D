@@ -15,8 +15,8 @@ endif
 
 NVCC ?= nvcc
 
-#poisson ?= fftcpu
-poisson ?= hyprecpu
+gpu ?= off
+hdf5 ?= on
 config ?= production
 precision ?= double
 smarties ?= false
@@ -41,9 +41,7 @@ ifneq "$(findstring daint,$(shell hostname))" ""
 include make.daint
 endif
 
-ifneq "$(findstring hypre, $(poisson))" ""
 CXX=$(MPICXX)
-endif
 
 bs ?= 32
 nthreads ?= 24
@@ -52,16 +50,6 @@ NVFLAGS+= -code=sm_60 -arch=compute_60
 
 CPPFLAGS += -I../source/ -I../Cubism/source/
 NVFLAGS += -I../Cubism/source/
-
-#ifneq "$(findstring fft, $(poisson))" ""
-ifeq "$(precision)" "single"
-    CPPFLAGS += -D_FLOAT_PRECISION_
-    NVFLAGS += -D_FLOAT_PRECISION_
-    LIBS += -lfftw3f -lfftw3f_omp
-else
-    LIBS += -lfftw3  -lfftw3_omp
-endif
-#endif
 
 BUILDDIR = .
 SRC_DIR = $(BUILDDIR)/../source/
@@ -76,6 +64,20 @@ OBJECTS = \
 		advDiff.o advDiff_RK.o BufferedLogger.o Helpers.o BlowFish.o Fish.o \
 		FishLibrary.o StefanFish.o CarlingFish.o
 
+ifneq "$(gpu)" "off"
+LIBS += -lcufft
+OBJECTS += CUDA_all.o
+CPPFLAGS += -DCUDAFFT
+endif
+
+ifeq "$(precision)" "single"
+    CPPFLAGS += -D_FLOAT_PRECISION_
+    NVFLAGS += -D_FLOAT_PRECISION_
+    LIBS += -lfftw3f -lfftw3f_omp
+else
+    LIBS += -lfftw3  -lfftw3_omp
+endif
+
 CPP_FILES = $(notdir $(OBJECTS:.o=.cpp))
 
 VPATH := $(DIRS) $(CUBISM_DIR)
@@ -87,16 +89,9 @@ SMARTIESDIR ?= ../../smarties/source/
 CPPFLAGS += -I$(SMARTIESDIR)/Communicators/ -DSMARTIES_APP
 endif
 
-hdf5 ?= on
 ifeq "$(hdf5)" "on"
 LIBS+= -lhdf5
 CPPFLAGS+= -D_USE_HDF_
-endif
-
-ifeq "$(poisson)" "fftgpu"
-LIBS += -lcufft
-OBJECTS += PoissonSolverScalarCUDA.o
-CPPFLAGS += -DCUDAFFT
 endif
 
 all: simulation
@@ -117,7 +112,7 @@ simulation: main.o $(OBJECTS)
 %.d: %.cpp
 	$(CC) $(CPPFLAGS) -c -MD $<
 
-PoissonSolverScalarCUDA.o: PoissonSolverScalarCUDA.cu
+CUDA_all.o: CUDA_all.cu
 	nvcc $(NVFLAGS) -c $< -o $@
 
 clean:

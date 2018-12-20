@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include <PoissonSolver.h>
+#include "PoissonSolver.h"
 
 #include <cufft.h>
 #ifndef _FLOAT_PRECISION_
@@ -58,7 +58,7 @@ class CUDA_periodic : public PoissonSolver
   #undef TOT_DOF_X
   #undef STRIDE
 
-  void solve() const override {
+  void solve() override {
     cub2rhs();
     dPeriodic(fwd, bwd, MY, MX, sim.getH(), buffer, rhs_gpu);
     sol2cub();
@@ -98,7 +98,7 @@ class CUDA_freespace : public PoissonSolver
   }
   #undef TOT_DOF_X
 
-  void solve() const override {
+  void solve()  override {
     cub2rhs();
     dFreespace(fwd, bwd, totNy, totNx, buffer, m_kernel, rhs_gpu);
     sol2cub();

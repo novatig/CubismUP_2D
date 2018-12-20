@@ -71,8 +71,8 @@ void dPeriodic(const cufftHandle&fwd, const cufftHandle&bwd, const int MY,
   cudaMemcpy(rhs_gpu, rhs, 2*MY*MX_hat*sizeof(Real), cudaMemcpyHostToDevice);
   cufftExecFWD(fwd, rhs_gpu, (Cmpl*) rhs_gpu);
 
-  assert((MX % dimB.x == 0) && (MY % dimB.y == 0));
   dim3 dimB(16, 16), dimG(MX_hat / dimB.x + 1, MY / dimB.y);
+  assert((MX % dimB.x == 0) && (MY % dimB.y == 0));
   kPeriodic <<<dimG,dimB>>> (MY, MX, MX_hat, facX,facY,norm, (Cmpl*)rhs_gpu);
 
   cufftExecBWD(bwd, (Cmpl*) rhs_gpu, rhs_gpu);
@@ -112,8 +112,8 @@ void dFreespace(const cufftHandle&fwd, const cufftHandle&bwd, const int NX,
   cufftExecFWD(fwd, rhs_gpu, (Cmpl*) rhs_gpu);
   //t1.stop();
   //t2.start();
-  assert( ((MY+1) % dimB.y) == 0 && (MX_hat % dimB.x) == 0 );
   dim3 dimB(16, 16), dimG( MX_hat / dimB.x, (MY+1) / dimB.y);
+  assert( ((MY+1) % dimB.y) == 0 && (MX_hat % dimB.x) == 0 );
   kFreespace <<<dimG,dimB>>> (MY, MX_hat, G_hat, (Cmpl*)rhs_gpu);
   //t2.stop();
   //t3.start();
@@ -159,20 +159,20 @@ void initGreen(const int NY, const int NX, const Real h, Real*const m_kernel)
   cudaMalloc((void **)& tmp, MY * MX_hat * sizeof(Cmpl) );
   {
     const Real fac = 1 / ( 2*M_PI );
-    assert(((MX+1) % dimB.x == 0) && ((MY+1) % dimB.y == 0));
     dim3 dimB(16, 16), dimG( (MX+1) / dimB.x, (MY+1) / dimB.y);
+    assert(((MX+1) % dimB.x == 0) && ((MY+1) % dimB.y == 0));
     kGreen<<<dimG, dimB>>> (NX,NY, MX,MY, MX_hat, fac, h, tmp);
   }
   {
     cufftHandle fwd;
-    cufftPlan2d(&fwd, mx, my, cufftPlanFWD);
+    cufftPlan2d(&fwd, MY, MX, cufftPlanFWD);
     cufftExecFWD(fwd, tmp, (Cmpl*) tmp);
     cufftDestroy(fwd);
   }
   {
     const Real norm = 1.0 / (MX * MY);
-    assert((MX_hat % dimB.x == 0) && ((MY+1) % dimB.y == 0));
     dim3 dimB(16, 16), dimG( MX_hat / dimB.x, (MY+1) / dimB.y);
+    assert((MX_hat % dimB.x == 0) && ((MY+1) % dimB.y == 0));
     kCopyC2R<<<dimG, dimB>>> (MY, MX_hat, norm, (Cmpl*)tmp, m_kernel);
   }
   cudaFree(tmp);

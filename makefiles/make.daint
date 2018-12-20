@@ -1,6 +1,9 @@
 CXX=CC
 LD=CC
-poisson=gpu
+MPICXX=CC
+#poisson=gpu
 CPPFLAGS+= -I$(HDF5_DIR)/include -I$(FFTW_INC)
 LIBS+= $(CRAY_CUDATOOLKIT_POST_LINK_OPTS)
 LIBS+= -dynamic -L$(HDF5_DIR)/lib -L$(FFTW_DIR)
+CPPFLAGS+= -I/users/novatig/hypre/build/include/
+LIBS+= -L/users/novatig/hypre/build/lib/ -lHYPRE
