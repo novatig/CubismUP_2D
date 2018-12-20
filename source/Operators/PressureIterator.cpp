@@ -10,6 +10,23 @@
 #include "PressureIterator.h"
 #include "../Poisson/FFTW_freespace.h"
 #include "../Poisson/HYPREdirichlet.h"
+#include "../Poisson/FFTW_dirichlet.h"
+#include "../Poisson/FFTW_periodic.h"
+
+static inline PoissonSolver * makeSolver(SimulationData& sim)
+{
+  if (sim.poissonType == "hypre")
+    return static_cast<PoissonSolver*>(new HYPREdirichlet(sim));
+  else
+  if (sim.poissonType == "periodic")
+    return static_cast<PoissonSolver*>(new FFTW_periodic(sim));
+  else
+  if (sim.poissonType == "cosine")
+    return static_cast<PoissonSolver*>(new FFTW_dirichlet(sim));
+  else
+    return static_cast<PoissonSolver*>(new FFTW_freespace(sim));
+}
+
 #define SOFT_PENL
 
 void PressureIterator::initPenalizationForce(const double dt) const
@@ -172,16 +189,11 @@ void PressureIterator::operator()(const double dt)
 }
 
 PressureIterator::PressureIterator(SimulationData& s) : Operator(s),
-pressureSolver(
-  s.poissonType=="hypre"? static_cast<PoissonSolver*>(new HYPREdirichlet(sim))
-                        : static_cast<PoissonSolver*>(new FFTW_freespace(sim)) )
-{
-}
+pressureSolver( makeSolver(s) ) { }
 
 PressureIterator::~PressureIterator() {
   delete pressureSolver;
 }
-
 
 void PressureIterator::fadeoutBorder(const double dt) const
 {

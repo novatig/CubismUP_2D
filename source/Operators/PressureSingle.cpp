@@ -10,7 +10,23 @@
 #include "PressureSingle.h"
 #include "../Poisson/FFTW_freespace.h"
 #include "../Poisson/HYPREdirichlet.h"
+#include "../Poisson/FFTW_dirichlet.h"
+#include "../Poisson/FFTW_periodic.h"
 #define SOFT_PENL
+
+static inline PoissonSolver * makeSolver(SimulationData& sim)
+{
+  if (sim.poissonType == "hypre")
+    return static_cast<PoissonSolver*>(new HYPREdirichlet(sim));
+  else
+  if (sim.poissonType == "periodic")
+    return static_cast<PoissonSolver*>(new FFTW_periodic(sim));
+  else
+  if (sim.poissonType == "cosine")
+    return static_cast<PoissonSolver*>(new FFTW_dirichlet(sim));
+  else
+    return static_cast<PoissonSolver*>(new FFTW_freespace(sim));
+}
 
 void PressureSingle::fadeoutBorder(const double dt) const
 {
@@ -49,7 +65,6 @@ void PressureSingle::fadeoutBorder(const double dt) const
     }
   }
 };
-
 
 void PressureSingle::updatePressureRHS(const double dt) const
 {
@@ -125,11 +140,7 @@ void PressureSingle::operator()(const double dt)
 }
 
 PressureSingle::PressureSingle(SimulationData& s) : Operator(s),
-pressureSolver(
-  s.poissonType=="hypre"? static_cast<PoissonSolver*>(new HYPREdirichlet(sim))
-                        : static_cast<PoissonSolver*>(new FFTW_freespace(sim)) )
-{
-}
+pressureSolver( makeSolver(s) ) { }
 
 PressureSingle::~PressureSingle() {
   delete pressureSolver;

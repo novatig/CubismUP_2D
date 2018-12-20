@@ -23,7 +23,6 @@
 #include "../Definitions.h"
 #include "../ObstacleBlock.h"
 
-
 inline bool _is_touching(
   const BlockInfo& INFO, const Real BBOX[2][2], const Real safety )
 {

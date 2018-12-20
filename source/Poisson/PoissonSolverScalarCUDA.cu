@@ -40,7 +40,8 @@ void allocCuMem(Real* & ptr, const size_t size) {
 
 __global__ void kPeriodic(const int mx, const int my, const int my_hat,
   const Real facX, const Real facY, const Real norm,
-  Cmpl*const in_out) {
+  Cmpl*const in_out)
+{
   const int i = threadIdx.x + blockIdx.x * blockDim.x;
   const int j = threadIdx.y + blockIdx.y * blockDim.y;
   if ( (i >= mx) || (j >= my_hat) ) return;
@@ -54,7 +55,8 @@ __global__ void kPeriodic(const int mx, const int my, const int my_hat,
 }
 
 __global__ void kFreespace(const int mx, const int my_hat,
-  const Real*const G_hat, Cmpl*const in_out) {
+  const Real*const G_hat, Cmpl*const in_out)
+{
   const int i = threadIdx.x + blockIdx.x * blockDim.x;
   const int j = threadIdx.y + blockIdx.y * blockDim.y;
   if ( (i >= mx) || (j >= my_hat) ) return;
@@ -64,7 +66,8 @@ __global__ void kFreespace(const int mx, const int my_hat,
 }
 
 void dPeriodic(const cufftHandle&fwd, const cufftHandle&bwd, const int mx,
- const int my, const Real h, Real*const rhs,Real*const rhs_gpu) {
+ const int my, const Real h, Real*const rhs,Real*const rhs_gpu)
+{
   const int my_hat = my/2 +1;
   const Real facX = 2.0*M_PI/(mx*h);
   const Real facY = 2.0*M_PI/(my*h);
@@ -86,7 +89,8 @@ void dPeriodic(const cufftHandle&fwd, const cufftHandle&bwd, const int mx,
 #include "cstdio"
 #include <cuda_runtime.h>
 
-class GpuTimer {
+class GpuTimer
+{
     cudaEvent_t B, E; //cudaEventBlockingSync
   public:
     GpuTimer() { cudaEventCreate(&B); cudaEventCreate(&E); }
@@ -134,7 +138,8 @@ void dFreespace(const cufftHandle&fwd, const cufftHandle&bwd, const int nx,
 }
 
 __global__ void kGreen(const int nx, const int ny, const int mx, const int my,
-  const int my_hat, const Real fac, const Real h, Real*const in_out) {
+  const int my_hat, const Real fac, const Real h, Real*const in_out)
+{
   const int i = threadIdx.x + blockIdx.x * blockDim.x;
   const int j = threadIdx.y + blockIdx.y * blockDim.y;
   if ( (i >= mx) || (j >= my) ) return;
@@ -149,7 +154,8 @@ __global__ void kGreen(const int nx, const int ny, const int mx, const int my,
 }
 
 __global__ void kCopyC2R(const int mx, const int my_hat, const Real norm,
-  const Cmpl*const G_hat, Real*const m_kernel) {
+  const Cmpl*const G_hat, Real*const m_kernel)
+{
   const int i = threadIdx.x + blockIdx.x * blockDim.x;
   const int j = threadIdx.y + blockIdx.y * blockDim.y;
   if ( (i >= mx) || (j >= my_hat) ) return;
