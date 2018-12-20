@@ -206,10 +206,6 @@ void Simulation::init() {
 
   pipeline.clear();
 
-  pipeline.push_back( new CoordinatorComputeShape(sim) );
-  pipeline.push_back( new CoordinatorVelocities(sim) );
-  pipeline.push_back( new CoordinatorPenalization(sim) );
-
   #if 1 // in one sweep advect, diffuse, add hydrostatic
     pipeline.push_back( new CoordinatorMultistep<Lab>(sim) );
   #else
@@ -217,6 +213,10 @@ void Simulation::init() {
     pipeline.push_back( new CoordinatorDiffusion<Lab>(sim) );
     pipeline.push_back( new CoordinatorGravity(sim) );
   #endif
+
+  pipeline.push_back( new CoordinatorComputeShape(sim) );
+  pipeline.push_back( new CoordinatorVelocities(sim) );
+  pipeline.push_back( new CoordinatorPenalization(sim) );
 
   pipeline.push_back( new CoordinatorPressure<Lab>(sim) );
   pipeline.push_back( new CoordinatorComputeForces(sim) );
