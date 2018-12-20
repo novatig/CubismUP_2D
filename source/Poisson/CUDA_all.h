@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include <PoissonSolverScalar.h>
+#include <PoissonSolver.h>
 
 #include <cufft.h>
 #ifndef _FLOAT_PRECISION_
@@ -33,77 +33,82 @@ void dFreespace(const cufftHandle&fwd, const cufftHandle&bwd, const int nx,
   const int ny, Real*const rhs, const Real*const G_hat, Real*const rhs_gpu);
 void initGreen(const int nx, const int ny, const Real h, Real*const m_kernel);
 
-class PoissonSolverPeriodic : public PoissonSolverBase
+class CUDA_periodic : public PoissonSolver
 {
  protected:
-  const int mx = nx;
-  const int my = ny;
-  const int my_hat = my/2 +1;
-  const Real facX = 2.0*M_PI/(mx*h), facY = 2.0*M_PI/(my*h), norm = 1./(mx*my);
+  const size_t MX = totNx, MY = totNy, MX_hat = MX/2 +1;
+  const Real facX = 2.0*M_PI/MX, facY = 2.0*M_PI/MY, norm = 1.0/(MY*MX);
 
   cufftHandle fwd, bwd;
   Real * rhs_gpu = nullptr;
 
  public:
 
-  PoissonSolverPeriodic(FluidGrid*const _grid) : PoissonSolverBase(*_grid, 0)
+  #define TOT_DOF_X s.vel->getBlocksPerDimension(0) * VectorBlock::sizeX
+  #define STRIDE 2 * ( (TOT_DOF_X)/2 +1 )
+
+  CUDA_periodic(SimulationData& s) : PoissonSolver(s, STRIDE)
   {
-    makePlan(fwd, mx, my, cufftPlanFWD);
-    makePlan(bwd, mx, my, cufftPlanBWD);
+    makePlan(fwd, MY, MX, cufftPlanFWD);
+    makePlan(bwd, MY, MX, cufftPlanBWD);
     assert(2*sizeof(Real) == sizeof(cufftCmpT));
-    rhs = (Real*) malloc(mx * my_hat * 2 * sizeof(Real) );
-    allocCuMem(rhs_gpu, mx * my_hat * sizeof(cufftCmpT) );
+    buffer = (Real*) malloc( MY * MX_hat * 2 * sizeof(Real) );
+    allocCuMem(rhs_gpu, MY * MX_hat * sizeof(cufftCmpT) );
   }
+  #undef TOT_DOF_X
+  #undef STRIDE
 
   void solve() const override {
-    dPeriodic(fwd, bwd, mx, my, h, rhs, rhs_gpu);
-    _fftw2cub();
+    cub2rhs();
+    dPeriodic(fwd, bwd, MY, MX, sim.getH(), buffer, rhs_gpu);
+    sol2cub();
   }
 
-  ~PoissonSolverPeriodic() {
+  ~CUDA_periodic() {
     freePlan(fwd);
     freePlan(bwd);
     freeCuMem(rhs_gpu);
-    free(rhs);
+    free(buffer);
   }
 };
 
-class PoissonSolverFreespace : public PoissonSolverBase
+class CUDA_freespace : public PoissonSolver
 {
- protected:
+  const size_t MX = 2*totNx - 1;
+  const size_t MY = 2*totNy - 1;
+  const size_t MX_hat = MX/2 +1;
+  const Real norm_factor = 1.0/(MY*MX);
+
   cufftHandle fwd, bwd;
   Real * rhs_gpu = nullptr;
   Real * m_kernel = nullptr;
 
  public:
-
-  PoissonSolverFreespace(FluidGrid*const _grid) : PoissonSolverBase(*_grid, 0)
+  #define TOT_DOF_X s.vel->getBlocksPerDimension(0) * VectorBlock::sizeX
+  CUDA_freespace(SimulationData& s) : PoissonSolver(s, TOT_DOF_X)
   {
-    const int ny_hat = ny/2 +1;
-    assert((size_t)ny_hat == my_hat);
-    const int Mx = 2 * nx - 1;
-    const int My = 2 * ny - 1;
-    const int My_hat = My/2 +1;
-    makePlan(fwd, Mx, My, cufftPlanFWD);
-    makePlan(bwd, Mx, My, cufftPlanBWD);
+    makePlan(fwd, MY, MX, cufftPlanFWD);
+    makePlan(bwd, MY, MX, cufftPlanBWD);
     assert(2*sizeof(Real) == sizeof(cufftCmpT));
-    rhs = (Real*) malloc(nx * ny_hat * 2 * sizeof(Real) );
-    allocCuMem(rhs_gpu,  Mx * My_hat * sizeof(cufftCmpT) );
-    clearCuMem(rhs_gpu, Mx * My_hat * sizeof(cufftCmpT) );
-    allocCuMem(m_kernel, Mx * My_hat * sizeof(Real) );
-    initGreen(nx, ny, h, m_kernel);
+    buffer = (Real*) malloc(MY * MX_hat * 2 * sizeof(Real) );
+    allocCuMem(rhs_gpu,  MY * MX_hat * sizeof(cufftCmpT) );
+    clearCuMem(rhs_gpu, MY * MX_hat * sizeof(cufftCmpT) );
+    allocCuMem(m_kernel, MY * MX_hat * sizeof(Real) );
+    initGreen(totNy, totNx, sim.getH(), m_kernel);
   }
+  #undef TOT_DOF_X
 
   void solve() const override {
-    dFreespace(fwd, bwd, nx, ny, rhs, m_kernel, rhs_gpu);
-    _fftw2cub();
+    cub2rhs();
+    dFreespace(fwd, bwd, totNy, totNx, buffer, m_kernel, rhs_gpu);
+    sol2cub();
   }
 
-  ~PoissonSolverFreespace() {
+  ~CUDA_freespace() {
     freePlan(fwd);
     freePlan(bwd);
     freeCuMem(rhs_gpu);
     freeCuMem(m_kernel);
-    free(rhs);
+    free(buffer);
   }
 };

@@ -12,6 +12,9 @@
 #include "../Poisson/HYPREdirichlet.h"
 #include "../Poisson/FFTW_dirichlet.h"
 #include "../Poisson/FFTW_periodic.h"
+#ifdef CUDAFFT
+#include "../Poisson/CUDA_all.h"
+#endif
 
 static inline PoissonSolver * makeSolver(SimulationData& sim)
 {
@@ -23,6 +26,14 @@ static inline PoissonSolver * makeSolver(SimulationData& sim)
   else
   if (sim.poissonType == "cosine")
     return static_cast<PoissonSolver*>(new FFTW_dirichlet(sim));
+  #ifdef CUDAFFT
+  else
+  if (sim.poissonType == "cuda-periodic")
+    return static_cast<PoissonSolver*>(new FFTW_dirichlet(sim));
+  else
+  if (sim.poissonType == "cuda-freespace")
+    return static_cast<PoissonSolver*>(new FFTW_dirichlet(sim));
+  #endif
   else
     return static_cast<PoissonSolver*>(new FFTW_freespace(sim));
 }
