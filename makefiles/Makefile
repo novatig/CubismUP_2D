@@ -59,7 +59,7 @@ endif
 BUILDDIR = .
 SRC_DIR = $(BUILDDIR)/../source/
 CUBISM_DIR = $(BUILDDIR)/../Cubism/source/
-OBJECTS = Simulation.o Definitions.o Shape.o ShapeLibrary.o ShapesSimple.o BlowFish.o Fish.o FishLibrary.o StefanFish.o BufferedLogger.o CarlingFish.o
+OBJECTS = Simulation.o Definitions.o Shape.o ShapeLibrary.o ShapesSimple.o BlowFish.o Fish.o FishLibrary.o StefanFish.o BufferedLogger.o CarlingFish.o SmartCylinder.o
 
 VPATH := $(SRC_DIR):$(CUBISM_DIR)
 
@@ -88,6 +88,10 @@ leadFollow: main_RL_2fish.o $(OBJECTS)
 
 blowfish: main_RL_blowfish.o $(OBJECTS)
 	ar rs libsimulation.a $^
+
+smartCyl: main_RL_smartCyl.o $(OBJECTS)
+	ar rs libsimulation.a $^
+
 
 simulation: main.o $(OBJECTS)
 	$(LD) main.o $(OBJECTS) $(LIBS) -o $@

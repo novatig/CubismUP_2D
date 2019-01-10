@@ -24,8 +24,8 @@ class PoissonSolverDCT : public PoissonSolverBase
 
   inline void _solve() const
   {
-    const Real waveFactX = 1.0*M_PI/(nx*h);
-    const Real waveFactY = 1.0*M_PI/(ny*h);
+    const Real waveFactX = 1.0*M_PI/nx;
+    const Real waveFactY = 1.0*M_PI/ny;
     #pragma omp parallel for schedule(static)
     for(size_t i=0; i<nx; ++i)
       for(size_t j = 0; j<my; ++j) {

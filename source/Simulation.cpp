@@ -27,6 +27,7 @@
 
 #include "ShapesSimple.h"
 #include "BlowFish.h"
+#include "SmartCylinder.h"
 #include "StefanFish.h"
 #include "CarlingFish.h"
 #include "Profiler.h"
@@ -89,9 +90,9 @@ void Simulation::parseRuntime() {
 
   // initialize grid
   parser.set_strict_mode();
-  const int bpdx = parser("-bpdx").asInt();
-  const int bpdy = parser("-bpdy").asInt();
-  sim.grid = new FluidGrid(bpdx, bpdy, 1);
+  sim.bpdx = parser("-bpdx").asInt();
+  sim.bpdy = parser("-bpdy").asInt();
+  sim.grid = new FluidGrid(sim.bpdx, sim.bpdy, 1);
   assert( sim.grid not_eq nullptr );
 
   // simulation ending parameters
@@ -159,6 +160,8 @@ void Simulation::createShapes() {
       Shape* shape = nullptr;
       if (objectName=="disk")
         shape = new Disk(             sim, ffparser, center);
+      else if (objectName=="smartDisk")
+        shape = new SmartCylinder(    sim, ffparser, center);
       else if (objectName=="halfDisk")
         shape = new HalfDisk(         sim, ffparser, center);
       else if (objectName=="ellipse")
@@ -220,8 +223,8 @@ void Simulation::init() {
 
   pipeline.push_back( new CoordinatorPressure<Lab>(sim) );
   pipeline.push_back( new CoordinatorComputeForces(sim) );
-  if( sim.poissonType not_eq 1 )
-    pipeline.push_back( new CoordinatorFadeOut(sim) );
+  //if( sim.poissonType not_eq 1 )
+  //  pipeline.push_back( new CoordinatorFadeOut(sim) );
 
   cout << "Coordinator/Operator ordering:\n";
   for (size_t c=0; c<pipeline.size(); c++)
@@ -231,7 +234,8 @@ void Simulation::init() {
   dump("init");
 }
 
-void Simulation::simulate() {
+void Simulation::simulate()
+{
   while (1) {
     #ifndef SMARTIES_APP
      profiler->push_start("DT");
@@ -244,7 +248,8 @@ void Simulation::simulate() {
   }
 }
 
-double Simulation::calcMaxTimestep() {
+double Simulation::calcMaxTimestep()
+{
   const Real maxU = findMaxUOMP( sim ); assert(maxU>=0);
   const double h = sim.getH();
   const double dtFourier = h*h/sim.nu, dtCFL = maxU<2.2e-16? 1 : h/maxU;
@@ -271,7 +276,8 @@ double Simulation::calcMaxTimestep() {
   return sim.dt;
 }
 
-bool Simulation::advance(const double dt) {
+bool Simulation::advance(const double dt)
+{
   assert(dt>2.2e-16);
   const bool bDump = sim.bDump();
 

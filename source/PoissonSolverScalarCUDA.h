@@ -30,7 +30,7 @@ class PoissonSolverPeriodic : public PoissonSolverBase
   const int mx = nx;
   const int my = ny;
   const int my_hat = my/2 +1;
-  const Real facX = 2.0*M_PI/(mx*h), facY = 2.0*M_PI/(my*h), norm = 1./(mx*my);
+  //const Real facX = 2.0*M_PI/(mx*h), facY = 2.0*M_PI/(my*h), norm = 1./(mx*my);
 
   cufftHandle fwd, bwd;
   Real * rhs_gpu = nullptr;

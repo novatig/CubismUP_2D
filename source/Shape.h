@@ -116,6 +116,10 @@ class Shape
   }
 
   virtual Real getCharLength() const = 0;
+  virtual Real getCharSpeed() const {
+    return std::sqrt(forcedu*forcedu + forcedv*forcedv);
+  }
+
   virtual void create(const vector<BlockInfo>& vInfo) = 0;
 
   virtual void updatePosition(double dt);

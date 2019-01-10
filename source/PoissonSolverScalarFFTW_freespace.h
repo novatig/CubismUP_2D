@@ -40,7 +40,7 @@ class PoissonSolverFreespace: public PoissonSolverBase
     //h * h     *   1/ (2*pi)  * ( log(h) + log(r)
     //h * h     *   1/ (2*pi)  * ( log(h) +(r>0 ? log(r) : 1)
     //h * h     *   1/ (2*pi)  * ( log(h * max(r, 1) )
-    const Real fac = h * h / ( 2*M_PI );
+    const Real fac = 1 / ( 2*M_PI );
     #pragma omp parallel for
     for (size_t i = 0; i < mx; ++i)
     for (size_t j = 0; j < my; ++j) {

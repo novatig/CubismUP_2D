@@ -306,7 +306,8 @@ struct SimulationData
 
   double time = 0;
   int step = 0;
-
+  int bpdx = 0;
+  int bpdy = 0;
   Real uinfx = 0;
   Real uinfy = 0;
 

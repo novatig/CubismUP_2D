@@ -56,10 +56,11 @@ __global__ void kFreespace(const int mx, const int my_hat,
 }
 
 void dPeriodic(const cufftHandle&fwd, const cufftHandle&bwd, const int mx,
- const int my, const Real h, Real*const rhs,Real*const rhs_gpu) {
+ const int my, const Real h, Real*const rhs,Real*const rhs_gpu)
+{
   const int my_hat = my/2 +1;
-  const Real facX = 2.0*M_PI/(mx*h);
-  const Real facY = 2.0*M_PI/(my*h);
+  const Real facX = 2.0*M_PI/mx;
+  const Real facY = 2.0*M_PI/my;
   const Real norm = 1./(mx*my);
 
   cudaMemcpy(rhs_gpu,rhs, 2*mx*my_hat*sizeof(Real), cudaMemcpyHostToDevice);
@@ -158,7 +159,7 @@ void initGreen(const int nx, const int ny, const Real h, Real*const m_kernel)
   Real * tmp;
   cudaMalloc((void **)& tmp, mx * my_hat * sizeof(Cmpl) );
   {
-    const Real fac = h * h / ( 2*M_PI );
+    const Real fac = 1 / ( 2*M_PI );
     dim3 dimB(16, 16);
     assert((mx+1) % dimB.x == 0);
     assert((my+1) % dimB.y == 0);

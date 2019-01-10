@@ -59,8 +59,8 @@ class PoissonSolverPeriodic : public PoissonSolverBase
   {
     mycomplex * const in_out = (mycomplex *)rhs;
 
-    const Real waveFactX = 2.0*M_PI/(nx*h);
-    const Real waveFactY = 2.0*M_PI/(ny*h);
+    const Real waveFactX = 2.0*M_PI/nx;
+    const Real waveFactY = 2.0*M_PI/ny;
     #pragma omp parallel for schedule(static)
     for(size_t i=0; i<nx; ++i)
       for(size_t j = 0; j<my_hat; ++j) {
