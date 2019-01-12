@@ -26,9 +26,9 @@ class SmartCylinder : public Shape
   void act(std::vector<double> action, const Real velScale)
   {
     const Real forceScale = velScale*velScale * radius;
-    appliedForceX = action[0]/(0.1+action[0]) * forceScale;
-    appliedForceY = action[1]/(0.1+action[1]) * forceScale;
-    appliedTorque = action[2]/(0.1+action[2]) * forceScale * radius;
+    appliedForceX = action[0]/(0.1+std::fabs(action[0])) * forceScale;
+    appliedForceY = action[1]/(0.1+std::fabs(action[1])) * forceScale;
+    appliedTorque = action[2]/(0.1+std::fabs(action[2])) * forceScale * radius;
   }
 
   std::vector<double> state(const Real OX, const Real OY, const Real velScale) const;

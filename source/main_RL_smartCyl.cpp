@@ -35,7 +35,7 @@ inline void resetIC(
   const double SX = c->isTraining()? dis(c->getPRNG()) : 0;
   const double SY = c->isTraining()? dis(c->getPRNG()) : 0;
   const Real L = a->getCharLength()/2, OX = p->center[0], OY = p->center[1];
-  double C[2] = { OX + (8+SX)*L, OY + SY*L };
+  double C[2] = { OX + (6+SX)*L, OY + SY*L };
   if(a->bFixedy) {
     p->centerOfMass[1] = OY - ( C[1] - OY ); p->center[1] = OY - ( C[1] - OY );
   }
@@ -52,7 +52,10 @@ inline void setAction(
 inline std::vector<double> getState(
   const SmartCylinder*const a, const Shape*const p, const double t)
 {
-  return a->state(p->center[0], p->center[1], p->getCharSpeed());
+const auto act = a->state(p->center[0], p->center[1], p->getCharSpeed());
+  printf("t:%f s:%f %f, %f %f %f, %f %f %f %f %f %f %f %f\n ",
+   t,act[0],act[1],act[2],act[3],act[4],act[5],act[6],act[7],act[8],act[9],act[10],act[11],act[12]);
+  return act; //a->state(p->center[0], p->center[1], p->getCharSpeed());
 }
 
 inline bool isTerminal(
@@ -60,7 +63,7 @@ inline bool isTerminal(
 {
   const Real L = a->getCharLength()/2, OX = p->center[0], OY = p->center[1];
   const double X = (a->center[0]-OX)/ L, Y = (a->center[1]-OY)/ L;
-  return X<1 || X>15 || std::fabs(Y)>5;
+  return X<2 || X>10 || std::fabs(Y)>4;
 }
 
 inline double getReward(
