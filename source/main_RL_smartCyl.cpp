@@ -26,7 +26,7 @@
 // number of actions per characteristic time scale
 // max number of actions per simulation
 // range of angles in initial conditions
-#define FREQ_ACTIONS 0.5
+#define FREQ_ACTIONS 1
 
 inline void resetIC(
   SmartCylinder*const a, Shape*const p, Communicator*const c)
@@ -35,9 +35,15 @@ inline void resetIC(
   const double SX = c->isTraining()? dis(c->getPRNG()) : 0;
   const double SY = c->isTraining()? dis(c->getPRNG()) : 0;
   const Real L = a->getCharLength()/2, OX = p->center[0], OY = p->center[1];
-  double C[2] = { OX + (6+SX)*L, OY + SY*L };
+  double C[2] = { OX + (4+SX)*L, OY + SY*L };
   if(a->bFixedy) {
-    p->centerOfMass[1] = OY - ( C[1] - OY ); p->center[1] = OY - ( C[1] - OY );
+    const Real RA = a->getCharLength()/2, RP = p->getCharLength()/2;
+    const Real deltaY = C[1] - OY, MA = M_PI*RA*RA, MP = M_PI*RP*RP/2;
+    const Real shiftA =  deltaY * MP / (MA + MP);
+    const Real shiftP = -deltaY * MA / (MA + MP);
+    p->centerOfMass[1] = OY + shiftP;
+    p->center[1] = OY + shiftP;
+    C[1] = OY + shiftA;
   }
   a->setCenterOfMass(C);
 }
@@ -63,14 +69,14 @@ inline bool isTerminal(
 {
   const Real L = a->getCharLength()/2, OX = p->center[0], OY = p->center[1];
   const double X = (a->center[0]-OX)/ L, Y = (a->center[1]-OY)/ L;
-  return X<2 || X>10 || std::fabs(Y)>4;
+  return X<1 || X>11 || std::fabs(Y)>4;
 }
 
 inline double getReward(
   SmartCylinder*const a, const Shape*const p)
 {
   const Real energy = a->reward(p->getCharSpeed()); // force call to reset
-  return isTerminal(a, p)? -10 : 1 - energy;
+  return isTerminal(a, p)? -100 : energy;
 }
 
 inline double getTimeToNextAct(
@@ -88,7 +94,7 @@ int app_main(
 {
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
   const int nActions = 3, nStates = 5 + 8;
-  const unsigned maxLearnStepPerSim = 200; // random number... TODO
+  const unsigned maxLearnStepPerSim = 250; // random number... TODO
 
   comm->update_state_action_dims(nStates, nActions);
   // Tell smarties that action space should be bounded.
@@ -107,8 +113,9 @@ int app_main(
   if(agent==nullptr) { printf("Agent was not a SmartCylinder!\n"); abort(); }
 
   if(comm->isTraining() == false) {
-    sim.sim.verbose = true; sim.sim.muteAll = false;
-    sim.sim.dumpTime = 1 / 10;
+    //sim.sim.verbose = true;
+    sim.sim.muteAll = false;
+    sim.sim.dumpTime = 0.25;
   }
   char dirname[1024]; dirname[1023] = '\0';
   unsigned sim_id = 0, tot_steps = 0;
@@ -122,6 +129,7 @@ int app_main(
     chdir(dirname);
     sim.reset();
     resetIC(agent, object, comm); // randomize initial conditions
+    sim.reinit();
 
     double t = 0, tNextAct = 0;
     unsigned step = 0;

@@ -43,7 +43,28 @@ static inline vector<string> split(const string &s, const char delim) {
   return tokens;
 }
 
-void Simulation::dump(string fname) {
+void Simulation::reset()
+{
+  sim.resetAll();
+  for(const auto& shape : sim.shapes) shape->resetAll();
+}
+
+void Simulation::reinit()
+{
+  (*pipeline[0])(0);
+  // setup initial conditions
+  CoordinatorIC coordIC(sim);
+  #ifndef SMARTIES_APP
+    profiler->push_start(coordIC.getName());
+  #endif
+  coordIC(0);
+  #ifndef SMARTIES_APP
+    profiler->pop_stop();
+  #endif
+}
+
+void Simulation::dump(string fname)
+{
   stringstream ss;
   ss<<"avemaria_"<<fname<<std::setfill('0')<<std::setw(7)<<sim.step;
   #ifdef USE_VTK
@@ -73,7 +94,8 @@ Simulation::Simulation(int argc, char ** argv) : parser(argc,argv)
   cout << "=================================================================\n";
 }
 
-Simulation::~Simulation() {
+Simulation::~Simulation()
+{
   #ifndef SMARTIES_APP
     delete profiler;
   #endif
@@ -84,7 +106,8 @@ Simulation::~Simulation() {
   }
 }
 
-void Simulation::parseRuntime() {
+void Simulation::parseRuntime()
+{
   sim.bRestart = parser("-restart").asBool(false);
   cout << "bRestart is " << sim.bRestart << endl;
 
@@ -122,7 +145,8 @@ void Simulation::parseRuntime() {
   if(sim.muteAll) sim.verbose = 0;
 }
 
-void Simulation::createShapes() {
+void Simulation::createShapes()
+{
   parser.set_strict_mode();
   const Real axX = parser("-bpdx").asInt();
   const Real axY = parser("-bpdy").asInt();
@@ -193,19 +217,10 @@ void Simulation::createShapes() {
   sim.checkVariableDensity();
 }
 
-void Simulation::init() {
+void Simulation::init()
+{
   parseRuntime();
   createShapes();
-
-  // setup initial conditions
-  CoordinatorIC coordIC(sim);
-  #ifndef SMARTIES_APP
-    profiler->push_start(coordIC.getName());
-  #endif
-  coordIC(0);
-  #ifndef SMARTIES_APP
-    profiler->pop_stop();
-  #endif
 
   pipeline.clear();
 
@@ -230,7 +245,7 @@ void Simulation::init() {
   for (size_t c=0; c<pipeline.size(); c++)
     cout << "\t" << pipeline[c]->getName() << endl;
 
-  (*pipeline[0])(0);
+  reinit();
   dump("init");
 }
 
@@ -259,7 +274,6 @@ double Simulation::calcMaxTimestep()
   const double dtBody = maxUb<2.2e-16? 1 : h/maxUb;
   sim.dt = std::min( sim.dt, sim.CFL*dtBody );
 
-  if(sim.dlm > 0) sim.lambda = sim.dlm / sim.dt;
   if (sim.step < 100) {
     const double x = (sim.step+1.0)/100;
     const double rampCFL = std::exp(std::log(1e-3)*(1-x) + std::log(sim.CFL)*x);
@@ -273,6 +287,7 @@ double Simulation::calcMaxTimestep()
     <<endl;
   #endif
 
+  if(sim.dlm > 0) sim.lambda = sim.dlm / sim.dt;
   return sim.dt;
 }
 

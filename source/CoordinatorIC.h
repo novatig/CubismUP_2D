@@ -13,24 +13,42 @@
 
 class OperatorIC : public GenericOperator
 {
+  const SimulationData& sim;
  public:
-  OperatorIC(const double dt) {}
+  OperatorIC(const double dt, const SimulationData& s) : sim(s) {}
   ~OperatorIC() {}
 
-  void operator()(const BlockInfo& info, FluidBlock& block) const {
+  void operator()(const BlockInfo& info, FluidBlock& block) const
+  {
+    for( const auto& shape : sim.shapes ) shape->penalize();
     for(int iy=0; iy<FluidBlock::sizeY; ++iy)
+    for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
+      block(ix,iy).u = 0;
+      block(ix,iy).v = 0;
+      block(ix,iy).invRho = 1;
+      block(ix,iy).p = 0;
+      block(ix,iy).pOld = 0;
+      block(ix,iy).tmpU = 0;
+      block(ix,iy).tmpV = 0;
+      block(ix,iy).tmp  = 0;
+    }
+    for( const auto& shape : sim.shapes )
+    {
+      const std::vector<ObstacleBlock*>& obstacleBlocks = shape->obstacleBlocks;
+      const Real u = shape->u, v = shape->v, omega = shape->omega;
+      const double* const centerOfMass = shape->centerOfMass;
+      const auto pos = obstacleBlocks[info.blockID];
+      if(pos == nullptr) continue;
+      for(int iy=0; iy<FluidBlock::sizeY; ++iy)
       for(int ix=0; ix<FluidBlock::sizeX; ++ix) {
-        Real p[2];
-        info.pos(p, ix, iy);
-        block(ix,iy).u = 0;
-        block(ix,iy).v = 0;
-        block(ix,iy).invRho = 1;
-        block(ix,iy).p = 0;
-        block(ix,iy).pOld = 0;
-        block(ix,iy).tmpU = 0;
-        block(ix,iy).tmpV = 0;
-        block(ix,iy).tmp  = 0;
+        const Real chi = pos->chi[iy][ix];
+        if (chi <= 0) continue;
+        double p[2]; info.pos(p, ix, iy);
+        p[0] -= centerOfMass[0]; p[1] -= centerOfMass[1];
+        block(ix,iy).u = chi * (u -omega*p[1]);
+        block(ix,iy).v = chi * (v +omega*p[0]);
       }
+    }
   }
 };
 
@@ -42,7 +60,7 @@ class CoordinatorIC : public GenericCoordinator
   void operator()(const double dt) {
     #pragma omp parallel
     {
-      OperatorIC kernel(dt);
+      OperatorIC kernel(dt, sim);
       #pragma omp for schedule(static)
       for (size_t i=0; i<vInfo.size(); i++)
         kernel(vInfo[i], *(FluidBlock*)vInfo[i].ptrBlock);

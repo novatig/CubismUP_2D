@@ -101,11 +101,31 @@ class OperatorAdvectionUpwind3rdOrder : public GenericLabOperator
 template <typename Lab>
 class CoordinatorAdvection : public GenericCoordinator
 {
+  void removeIncomingMom()
+  {
+    int count = 0;
+    Real u = 0, v = 0;
+    for(size_t i=0; i<vInfo.size(); i++) {
+      if(vInfo[i].origin[0] > 1e-10) continue;
+      FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+      count += FluidBlock::sizeY;
+      for(int iy=0;iy<FluidBlock::sizeY;++iy){ u+=b(0,iy).u; v += b(0,iy).v; }
+    }
+    //cout << "BC:" << u << " "  << v << " " << count << endl;
+    const Real UBC = u/count, VBC = v/count;
+    for(size_t i=0; i<vInfo.size(); i++) {
+      if(vInfo[i].origin[0] > 1e-10) continue;
+      FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+      for(int iy=0;iy<FluidBlock::sizeY;++iy){ b(0,iy).u-=UBC; b(0,iy).v-=VBC; }
+    }
+  }
  public:
     CoordinatorAdvection(SimulationData& s) : GenericCoordinator(s) { }
 
   void operator()(const double dt)
   {
+
+
     check("advection - start");
     #ifndef NDEBUG
       #pragma omp parallel for schedule(static)

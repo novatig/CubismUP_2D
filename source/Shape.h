@@ -72,8 +72,8 @@ class Shape
     M = 0;
     V = 0;
     J = 0;
-    u = 0;
-    v = 0;
+    u = forcedu;
+    v = forcedv;
     omega = 0;
     computedu = 0;
     computedv = 0;
@@ -193,7 +193,7 @@ class Shape
 
   virtual void computeVelocities();
 
-  void updateLabVelocity( int nSum[2], double uSum[2] );
+  void updateLabVelocity( double mSum[2], double uSum[2] );
 
   void penalize();
 

@@ -25,10 +25,16 @@ class SmartCylinder : public Shape
   Real energy = 0;
   void act(std::vector<double> action, const Real velScale)
   {
-    const Real forceScale = velScale*velScale * radius;
-    appliedForceX = action[0]/(0.1+std::fabs(action[0])) * forceScale;
-    appliedForceY = action[1]/(0.1+std::fabs(action[1])) * forceScale;
-    appliedTorque = action[2]/(0.1+std::fabs(action[2])) * forceScale * radius;
+    const Real forceScale = velScale*velScale * 2*radius;
+    #if 1
+      appliedForceX = 10*action[0]/(0.1+std::fabs(action[0]))*forceScale;
+      appliedForceY = 10*action[1]/(0.1+std::fabs(action[1]))*forceScale;
+      appliedTorque = 10*action[2]/(0.1+std::fabs(action[2]))*forceScale*radius;
+    #else
+      appliedForceX = action[0] * forceScale;
+      appliedForceY = action[1] * forceScale;
+      appliedTorque = action[2] * forceScale * radius;
+    #endif
   }
 
   std::vector<double> state(const Real OX, const Real OY, const Real velScale) const;
@@ -36,7 +42,7 @@ class SmartCylinder : public Shape
   double reward(const Real velScale)
   {
     const Real timeScale = 2*radius / velScale;
-    const Real forceScale = std::pow(velScale, 2) * radius;
+    const Real forceScale = std::pow(velScale, 2) * 2*radius;
     const Real enSpent = energy;
     energy = 0;
     return enSpent / (forceScale * velScale * timeScale);

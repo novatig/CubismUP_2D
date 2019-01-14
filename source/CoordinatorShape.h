@@ -65,14 +65,15 @@ class CoordinatorVelocities : public GenericCoordinator
 
   void operator()(const double dt)
   {
-    int nSum[2] = {0, 0};
+    double mSum[2] = {0, 0};
     double uSum[2] = {0, 0};
     for( const auto& shape : sim.shapes ) {
       shape->computeVelocities();
-      shape->updateLabVelocity(nSum, uSum);
+      shape->updateLabVelocity(mSum, uSum);
     }
-    if(nSum[0]) sim.uinfx = uSum[0]/nSum[0];
-    if(nSum[1]) sim.uinfy = uSum[1]/nSum[1];
+    //printf("penal: %f %f %f %f\n", uSum[0],mSum[0],uSum[1],mSum[1]);
+    if(mSum[0]>0) sim.uinfx = uSum[0]/mSum[0];
+    if(mSum[1]>0) sim.uinfy = uSum[1]/mSum[1];
   }
 
   string getName()

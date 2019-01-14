@@ -87,7 +87,8 @@ class OperatorMultistep : public GenericLabOperator
 template <typename Lab>
 class CoordinatorMultistep : public GenericCoordinator
 {
-  inline void update() {
+  inline void update()
+  {
     #pragma omp parallel for schedule(static)
     for(size_t i=0; i<vInfo.size(); i++) {
       const BlockInfo& info = vInfo[i];
@@ -99,6 +100,24 @@ class CoordinatorMultistep : public GenericCoordinator
       }
     }
   }
+  void removeIncomingMom()
+  {
+    int count = 0;
+    Real u = 0, v = 0;
+    for(size_t i=0; i<vInfo.size(); i++) {
+      if(vInfo[i].origin[0] > 1e-10) continue;
+      FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+      count += FluidBlock::sizeY;
+      for(int iy=0;iy<FluidBlock::sizeY;++iy){ u+=b(0,iy).u; v+=b(0,iy).v; }
+    }
+    //cout << "BC:" << u << " "  << v << " " << count << endl;
+    const Real UBC = u/count, VBC = v/count;
+    for(size_t i=0; i<vInfo.size(); i++) {
+      if(vInfo[i].origin[0] > 1e-10) continue;
+      FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
+      for(int iy=0;iy<FluidBlock::sizeY;++iy){ b(0,iy).u-=UBC; b(0,iy).v-=VBC; }
+    }
+  }
 
  public:
   CoordinatorMultistep(SimulationData& s) : GenericCoordinator(s) { }
@@ -106,7 +125,7 @@ class CoordinatorMultistep : public GenericCoordinator
   void operator()(const double dt)
   {
     check("multistep - start");
-
+    removeIncomingMom();
     #pragma omp parallel
     {
       OperatorMultistep kernel(dt, sim.nu, sim.gravity, sim.uinfx, sim.uinfy);

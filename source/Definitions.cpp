@@ -3,8 +3,8 @@
 #include "CoordinatorIC.h"
 #include "HelperOperators.h"
 
-void SimulationData::resetAll() {
-  for(const auto& shape : shapes) shape->resetAll();
+void SimulationData::resetAll()
+{
   this->time = 0;
   step = 0;
   uinfx = 0;
@@ -12,8 +12,6 @@ void SimulationData::resetAll() {
   nextDumpTime = 0;
   _bDump = false;
   bPing = false;
-  CoordinatorIC coordIC(*this);
-  coordIC(0);
 }
 void SimulationData::registerDump()
 {

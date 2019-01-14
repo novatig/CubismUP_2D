@@ -14,6 +14,7 @@
 
 #include "SmartCylinder.h"
 #include "ShapeLibrary.h"
+#include "BufferedLogger.h"
 
 std::vector<double> SmartCylinder::state(const Real OX, const Real OY, const Real velScale) const
 {
@@ -41,7 +42,7 @@ std::vector<double> SmartCylinder::state(const Real OX, const Real OY, const Rea
     return X >= MIN[0] && Y >= MIN[1] && X <= MAX[0] && Y <= MAX[1];
   };
 
-  #pragma omp parallel for
+  //#pragma omp parallel for
   for(int a = 0; a<8; a++)
   {
     const Real theta = a * 2 * M_PI / 8, dist = 1.1 * radius;
@@ -108,12 +109,14 @@ void SmartCylinder::computeVelocities()
   const double lamdahsq = std::pow(vInfo[0].h_gridpoint,2) * sim.lambda;
 
   #pragma omp parallel for schedule(dynamic) reduction(+:_M,_J,FFX,FFY,FTZ)
+  //,CX,CY)
   for(size_t i=0; i<vInfo.size(); i++)
   {
       const auto pos = obstacleBlocks[vInfo[i].blockID];
       if(pos == nullptr) continue;
 
       const Real (&CHI)[32][32] = pos->chi;
+      //const Real (&RHO)[32][32] = pos->rho;
       FluidBlock & b = *(FluidBlock*)vInfo[i].ptrBlock;
 
       for(int iy=0; iy<FluidBlock::sizeY; ++iy)
@@ -125,16 +128,23 @@ void SmartCylinder::computeVelocities()
         vInfo[i].pos(p, ix, iy);
         p[0] -= centerOfMass[0];
         p[1] -= centerOfMass[1];
-
-        const double rhochi = pos->rho[iy][ix] * chi * lamdahsq;
+        const double uDiff = b(ix,iy).u - (u -omega*p[1]);
+        const double vDiff = b(ix,iy).v - (v +omega*p[0]);
+        const double rhochi = 1 * chi * lamdahsq; //RHO[iy][ix]
         _M  += rhochi;
-        FFX += rhochi * (b(ix,iy).u - u);
-        FFY += rhochi * (b(ix,iy).v - v);
-        _J  += rhochi * (p[0]*p[0]       + p[1]*p[1]);
-        FTZ += rhochi * (p[0]*(b(ix,iy).v - v) - p[1]*(b(ix,iy).u - u) );
+        FFX += rhochi * uDiff;//(b(ix,iy).u - u);
+        FFY += rhochi * vDiff;//(b(ix,iy).v - v);
+        //CX += rhochi * p[0]; CY += rhochi * p[1];
+        _J  += rhochi * (p[0]*p[0]  + p[1]*p[1]);
+        FTZ += rhochi * (p[0]*vDiff - p[1]*uDiff );
       }
   }
-
+  //cout << CX << " " << CY << endl;
+  //const Real forceScale = 0.1*0.1 * 2*radius;
+  //appliedForceX = -2 * forceScale;
+  //appliedForceY = 0 * forceScale;
+  //appliedTorque = 0 * forceScale * radius;
+  //cout << appliedForceX << " " << FFX << endl;
   const Real accx = ( appliedForceX + FFX ) / _M;
   const Real accy = ( appliedForceY + FFY ) / _M;
   const Real acca = ( appliedTorque + FTZ ) / _J;
@@ -143,7 +153,24 @@ void SmartCylinder::computeVelocities()
   v = v + sim.dt * accy;
   omega = omega + sim.dt * acca;
   energy += (u*appliedForceX + v*appliedForceY + appliedTorque*omega) * sim.dt;
-  if(bForcedx) u = forcedu;
+
+  #ifndef RL_TRAIN
+    if(sim.verbose)
+      printf("CM:[%f %f] C:[%f %f] u:%f v:%f omega:%f M:%f J:%f V:%f\n",
+      centerOfMass[0],centerOfMass[1], center[0],center[1], u,v,omega, M, J, V);
+    if(not sim.muteAll)
+    {
+      stringstream ssF;
+      ssF<<sim.path2file<<"/velocity_"<<obstacleID<<".dat";
+      std::stringstream &fileSpeed = logger.get_stream(ssF.str());
+      if(sim.step==0)
+        fileSpeed<<"time dt CMx CMy angle u v omega M J FFX FFY FTZ"<<std::endl;
+
+      fileSpeed<<sim.time<<" "<<sim.dt<<" "<<centerOfMass[0]<<" "<<centerOfMass[1]<<" "<<orientation<<" "<<u <<" "<<v<<" "<<omega<<" "<<M<<" "<<J<<" "<<FFX<<" "<<FFY<<" "<<FTZ<<endl;
+    }
+  #endif
+
+  if(bForcedx) { u = forcedu; cout << "bForcedx" << endl; }
   if(bForcedy) v = forcedv;
   if(bBlockang) omega = 0;
 }

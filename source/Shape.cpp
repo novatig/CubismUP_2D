@@ -91,7 +91,9 @@ Shape::Integrals Shape::integrateObstBlock(const vector<BlockInfo>& vInfo)
 void Shape::removeMoments(const vector<BlockInfo>& vInfo)
 {
   Shape::Integrals I = integrateObstBlock(vInfo);
-
+  //cout << I.m << " " << I.j << endl;
+  M = I.m;
+  J = I.j;
   #ifndef RL_TRAIN
     if(sim.verbose)
     if(fabs(I.u)+fabs(I.v)+fabs(I.a)>10*numeric_limits<Real>::epsilon())
@@ -205,10 +207,10 @@ void Shape::computeVelocities()
   #endif
 }
 
-void Shape::updateLabVelocity( int nSum[2], double uSum[2] )
+void Shape::updateLabVelocity( double mSum[2], double uSum[2] )
 {
-  if(bFixedx) { (nSum[0])++; uSum[0] -= u; }
-  if(bFixedy) { (nSum[1])++; uSum[1] -= v; }
+  if(bFixedx) { mSum[0] += M; uSum[0] -= u * M; }
+  if(bFixedy) { mSum[1] += M; uSum[1] -= v * M; }
 }
 
 void Shape::penalize()
