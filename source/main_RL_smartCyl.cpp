@@ -58,10 +58,10 @@ inline void setAction(
 inline std::vector<double> getState(
   const SmartCylinder*const a, const Shape*const p, const double t)
 {
-const auto act = a->state(p->center[0], p->center[1], p->getCharSpeed());
-  printf("t:%f s:%f %f, %f %f %f, %f %f %f %f %f %f %f %f\n ",
-   t,act[0],act[1],act[2],act[3],act[4],act[5],act[6],act[7],act[8],act[9],act[10],act[11],act[12]);
-  return act; //a->state(p->center[0], p->center[1], p->getCharSpeed());
+  //const auto act = a->state(p->center[0], p->center[1], p->getCharSpeed());
+  //printf("t:%f s:%f %f, %f %f %f, %f %f %f %f %f %f %f %f\n ",
+  //t,act[0],act[1],act[2],act[3],act[4],act[5],act[6],act[7],act[8],act[9],act[10],act[11],act[12]);
+  return a->state(p->center[0], p->center[1], p->getCharSpeed());
 }
 
 inline bool isTerminal(
@@ -76,7 +76,7 @@ inline double getReward(
   SmartCylinder*const a, const Shape*const p)
 {
   const Real energy = a->reward(p->getCharSpeed()); // force call to reset
-  return isTerminal(a, p)? -100 : energy;
+  return isTerminal(a, p)? -100 : 1 + energy;
 }
 
 inline double getTimeToNextAct(
