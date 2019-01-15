@@ -94,7 +94,7 @@ int app_main(
 {
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
   const int nActions = 3, nStates = 5 + 8;
-  const unsigned maxLearnStepPerSim = 250; // random number... TODO
+  const unsigned maxLearnStepPerSim = 400; // random number... TODO
 
   comm->update_state_action_dims(nStates, nActions);
   // Tell smarties that action space should be bounded.
