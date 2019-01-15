@@ -152,7 +152,8 @@ void SmartCylinder::computeVelocities()
   u = u + sim.dt * accx;
   v = v + sim.dt * accy;
   omega = omega + sim.dt * acca;
-  energy += (u*appliedForceX + v*appliedForceY + appliedTorque*omega) * sim.dt;
+  energy -= ( std::pow(appliedForceX, 2) + std::pow(appliedForceY, 2)
+            + std::pow(appliedTorque /(2*radius), 2) ) * sim.dt;
 
   #ifndef RL_TRAIN
     if(sim.verbose)

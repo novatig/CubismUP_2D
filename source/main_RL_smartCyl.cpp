@@ -69,7 +69,7 @@ inline bool isTerminal(
 {
   const Real L = a->getCharLength()/2, OX = p->center[0], OY = p->center[1];
   const double X = (a->center[0]-OX)/ L, Y = (a->center[1]-OY)/ L;
-  return X<1 || X>11 || std::fabs(Y)>4;
+  return X<1 || X>9 || std::fabs(Y)>4;
 }
 
 inline double getReward(
