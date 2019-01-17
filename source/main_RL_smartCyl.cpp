@@ -46,7 +46,7 @@ inline void resetIC(
   }
   #ifdef SMART_ELLIPSE
     const double SA = c->isTraining()? dis(c->getPRNG()) : 0;
-    a->setOrientation(SA*M_PI/5);
+    a->setOrientation(SA*M_PI/10);
   #endif
   a->setCenterOfMass(C);
 }
@@ -79,7 +79,7 @@ inline double getReward(
   SmartCylinder*const a, const Shape*const p)
 {
   const Real energy = a->reward(p->getCharSpeed()); // force call to reset
-  return isTerminal(a, p)? -100 : 1 + energy;
+  return isTerminal(a, p)? -100 : energy;
 }
 
 inline double getTimeToNextAct(
