@@ -10,8 +10,10 @@ CPPFLAGS+= -Wno-float-equal
 ifeq "$(findstring prod,$(config))" ""
 CPPFLAGS+= -g -O0
 else
-NVFLAGS+= -DNDEBUG -O3 --use_fast_math
-CPPFLAGS+= -DNDEBUG -O3 -fstrict-aliasing -march=native -mtune=native -ffast-math -falign-functions -ftree-vectorize -fmerge-all-constants
+NVFLAGS+= -DNDEBUG -O3
+#--use_fast_math
+CPPFLAGS+= -DNDEBUG -O3 -fstrict-aliasing -march=native -mtune=native -falign-functions -ftree-vectorize -fmerge-all-constants
+#-ffast-math
 endif
 
 #CPPFLAGS+= -fsanitize=address

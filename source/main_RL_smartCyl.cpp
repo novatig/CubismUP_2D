@@ -31,20 +31,23 @@
 inline void resetIC(
   SmartCylinder*const a, Shape*const p, Communicator*const c)
 {
-  uniform_real_distribution<double> dis(-2, 2);
+  uniform_real_distribution<double> dis(-2.5, 2.5);
+  //const double SX = c->isTraining()? dis(c->getPRNG()) : 0;
+  //const double SY = c->isTraining()? dis(c->getPRNG()) : 0;
   const double SX = c->isTraining()? dis(c->getPRNG()) : 0;
   const double SY = c->isTraining()? dis(c->getPRNG()) : 0;
   const Real L = a->getCharLength()/2, OX = p->center[0], OY = p->center[1];
   double C[2] = { OX + (4+SX)*L, OY + SY*L };
   if(a->bFixedy) {
-    const Real RA = a->getCharLength()/2, RP = p->getCharLength()/2;
-    const Real deltaY = C[1] - OY, MA = M_PI*RA*RA, MP = M_PI*RP*RP/2;
-    const Real shiftA =  deltaY * MP / (MA + MP);
-    const Real shiftP = -deltaY * MA / (MA + MP);
-    p->centerOfMass[1] = OY + shiftP;
-    p->center[1] = OY + shiftP;
-    C[1] = OY + shiftA;
+    const Real deltaY = C[1]-OY, MA = a->getCharMass(), MP = p->getCharMass();
+    p->centerOfMass[1] = OY - deltaY * MA / (MA + MP);
+    p->center[1] = OY - deltaY * MA / (MA + MP);
+    C[1] = OY + deltaY * MP / (MA + MP);
   }
+  #ifdef SMART_ELLIPSE
+    const double SA = c->isTraining()? dis(c->getPRNG()) : 0;
+    a->setOrientation(SA*M_PI/5);
+  #endif
   a->setCenterOfMass(C);
 }
 
@@ -58,10 +61,10 @@ inline void setAction(
 inline std::vector<double> getState(
   const SmartCylinder*const a, const Shape*const p, const double t)
 {
-  //const auto act = a->state(p->center[0], p->center[1], p->getCharSpeed());
-  //printf("t:%f s:%f %f, %f %f %f, %f %f %f %f %f %f %f %f\n ",
-  //t,act[0],act[1],act[2],act[3],act[4],act[5],act[6],act[7],act[8],act[9],act[10],act[11],act[12]);
-  return a->state(p->center[0], p->center[1], p->getCharSpeed());
+  const auto S = a->state(p->center[0], p->center[1], p->getCharSpeed());
+  printf("t:%f s:%f %f, %f %f %f, %f %f %f %f %f %f %f %f\n ",
+    t, S[0],S[1],S[2],S[3],S[4],S[5],S[6],S[7],S[8],S[9],S[10],S[11],S[12]);
+  return S;
 }
 
 inline bool isTerminal(
@@ -69,7 +72,7 @@ inline bool isTerminal(
 {
   const Real L = a->getCharLength()/2, OX = p->center[0], OY = p->center[1];
   const double X = (a->center[0]-OX)/ L, Y = (a->center[1]-OY)/ L;
-  return X<1 || X>9 || std::fabs(Y)>4;
+  return X<1 || X>7 || std::fabs(Y)>3;
 }
 
 inline double getReward(
@@ -85,6 +88,20 @@ inline double getTimeToNextAct(
   return t + FREQ_ACTIONS * agent->getCharLength() / p->getCharSpeed();
 }
 
+inline bool checkNaN(std::vector<double>& state, double& reward)
+{
+  bool bTrouble = false;
+  if(std::isnan(reward)) bTrouble = true;
+  for(size_t i=0; i<state.size(); i++) if(std::isnan(state[i])) bTrouble = true;
+  if ( bTrouble )
+  {
+    reward = -100;
+    printf("Caught a nan!\n");
+    state = std::vector<double>(state.size(), 0);
+  }
+  return bTrouble;
+}
+
 int app_main(
   Communicator*const comm, // communicator with smarties
   MPI_Comm mpicom,         // mpi_comm that mpi-based apps can use
@@ -93,7 +110,11 @@ int app_main(
 )
 {
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
+  #ifdef SMART_ELLIPSE
+  const int nActions = 3, nStates = 7 + 8;
+  #else
   const int nActions = 3, nStates = 5 + 8;
+  #endif
   const unsigned maxLearnStepPerSim = 400; // random number... TODO
 
   comm->update_state_action_dims(nStates, nActions);
@@ -157,10 +178,10 @@ int app_main(
       }
       step++;
       tot_steps++;
-      const vector<double> state = getState(agent,object,t);
-      const double reward = getReward(agent,object);
+      vector<double> state = getState(agent,object,t);
+      double reward = getReward(agent,object);
 
-      if (agentOver) {
+      if ( agentOver || checkNaN(state, reward) ) {
         printf("Agent failed\n"); fflush(0);
         comm->sendTermState(state, reward);
         break;

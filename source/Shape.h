@@ -119,6 +119,7 @@ class Shape
   virtual Real getCharSpeed() const {
     return std::sqrt(forcedu*forcedu + forcedv*forcedv);
   }
+  virtual Real getCharMass() const;
 
   virtual void create(const vector<BlockInfo>& vInfo) = 0;
 

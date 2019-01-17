@@ -16,6 +16,7 @@
 #include "BufferedLogger.h"
 
 Real Shape::getMinRhoS() const { return rhoS; }
+Real Shape::getCharMass() const { return 0; }
 bool Shape::bVariableDensity() const {
   return std::fabs(rhoS-1.0) > numeric_limits<Real>::epsilon();
 }

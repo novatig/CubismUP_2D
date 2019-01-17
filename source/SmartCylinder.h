@@ -14,6 +14,8 @@
 #pragma once
 
 #include "Shape.h"
+#define SMART_ELLIPSE
+#define SMART_AR 0.2
 
 class SmartCylinder : public Shape
 {
@@ -58,6 +60,11 @@ class SmartCylinder : public Shape
   {
     return 2 * radius;
   }
+  #ifdef SMART_ELLIPSE
+  Real getCharMass() const override { return M_PI * radius*radius * SMART_AR; }
+  #else
+  Real getCharMass() const override { return M_PI * radius*radius; }
+  #endif
 
   void outputSettings(ostream &outStream) const override
   {
@@ -68,5 +75,6 @@ class SmartCylinder : public Shape
   }
 
   void create(const vector<BlockInfo>& vInfo) override;
+  void updatePosition(double dt) override;
   void computeVelocities() override;
 };

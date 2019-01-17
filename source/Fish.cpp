@@ -57,7 +57,7 @@ void Fish::create(const vector<BlockInfo>& vInfo)
   myFish->changeToCoMFrameAngular(theta_internal, angvel_internal);
   #ifndef NDEBUG
   {
-    Real dummy_CoM_internal[2], dummy_vCoM_internal[2], dummy_angvel_internal;
+    double dummy_CoM_internal[2], dummy_vCoM_internal[2], dummy_angvel_internal;
     // check that things are zero
     const Real area_internal_check =
     myFish->integrateLinearMomentum(dummy_CoM_internal, dummy_vCoM_internal);

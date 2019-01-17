@@ -32,6 +32,7 @@ class Disk : public Shape
   {
     return 2 * radius;
   }
+  Real getCharMass() const override { return M_PI * radius * radius; }
 
   void outputSettings(ostream &outStream) const override
   {
@@ -62,6 +63,7 @@ class HalfDisk : public Shape
   {
     return 2 * radius;
   }
+  Real getCharMass() const override { return M_PI * radius * radius / 2; }
 
   void outputSettings(ostream &outStream) const override
   {
@@ -101,6 +103,7 @@ class Ellipse : public Shape
   {
     return 2 * max(semiAxis[1],semiAxis[0]);
   }
+  Real getCharMass() const override { return M_PI * semiAxis[1] * semiAxis[0]; }
 
   void outputSettings(ostream &outStream) const override
   {
@@ -140,6 +143,7 @@ class DiskVarDensity : public Shape
   Real getMinRhoS() const override {
     return std::min(rhoTop, rhoBot);
   }
+  Real getCharMass() const override { return M_PI * radius * radius; }
   bool bVariableDensity() const override {
     assert(std::fabs(rhoTop-rhoBot)>numeric_limits<Real>::epsilon());
     const bool bTop = std::fabs(rhoTop-1.0) > numeric_limits<Real>::epsilon();
@@ -185,6 +189,7 @@ class EllipseVarDensity : public Shape
    Real getCharLength() const override {
      return 2 * std::max(semiAxisX, semiAxisY);
    }
+   Real getCharMass() const override { return M_PI * semiAxisX * semiAxisY; }
    Real getMinRhoS() const override {
      return std::min(rhoTop, rhoBot);
    }

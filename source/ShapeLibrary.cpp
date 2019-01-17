@@ -116,10 +116,12 @@ Real FillBlocks_Ellipse::DistancePointEllipseSpecial (const Real e[2], const Rea
       const Real esqr[2] = { e[0]*e[0], e[1]*e[1] };
       const Real ey[2] = { e[0]*y[0], e[1]*y[1] };
       Real t0 = -esqr[1] + ey[1];
-      Real t1 = -esqr[1] + sqrt(ey[0]*ey[0] + ey[1]*ey[1]);
+      Real t1 = -esqr[1] + std::sqrt(ey[0]*ey[0] + ey[1]*ey[1]);
       Real t = t0;
-      for (int i = 0; i < imax; ++i) {
+      for (int i = 0; i < imax; ++i)
+      {
         t = ((Real)0.5)*(t0 + t1);
+        //if (t == t0 || t == t1) break;
         if ( std::fabs(t-t0)<eps || std::fabs(t-t1)<eps ) break;
 
         const Real r[2] = { ey[0]/(t + esqr[0]), ey[1]/(t + esqr[1]) };
@@ -167,8 +169,7 @@ Real FillBlocks_Ellipse::DistancePointEllipseSpecial (const Real e[2], const Rea
 Real FillBlocks_Ellipse::DistancePointEllipse (const Real e[2], const Real y[2], Real x[2])
 {
   // Determine reflections for y to the first quadrant.
-  bool reflect[2];
-  for (int i = 0; i < 2; ++i) reflect[i] = (y[i] < (Real)0);
+  const bool reflect[2] = {y[0] < (Real)0 , y[1] < (Real)0};
 
   // Determine the axis order for decreasing extents.
   int permute[2];
@@ -201,8 +202,8 @@ Real FillBlocks_Ellipse::DistancePointEllipse (const Real e[2], const Real y[2],
 
 void FillBlocks_Ellipse::operator()(const BlockInfo& info, FluidBlock& block, ObstacleBlock * const obstblock) const
 {
-  const Real e[2] = {e0,e1};
-  const Real sqMinSemiAx = e[0]>e[1] ? e[1]*e[1] : e[0]*e[0];
+  const Real e[2] = {e0, e1};
+  //const Real minSemiAx = std::min({e0, e1}), maxSemiAx = std::max({e0, e1});
 
   if(_is_touching(info))
   {
@@ -213,17 +214,17 @@ void FillBlocks_Ellipse::operator()(const BlockInfo& info, FluidBlock& block, Ob
       info.pos(p, ix, iy);
       p[0] -= position[0]; p[1] -= position[1];
       const Real t[2] = {cosang*p[0]-sinang*p[1], sinang*p[0]+cosang*p[1]};
-      const Real sqDist = p[0]*p[0] + p[1]*p[1];
+      const Real sqDist = p[0]*p[0] + p[1]*p[1];// centDist = std::sqrt(sqDist);
 
-      if (fabs(t[0]) > e[0]+safety || fabs(t[1]) > e[1]+safety )
-        block(ix, iy).tmp = -1; //is outside
-      else if (sqDist + safety*safety < sqMinSemiAx)
-        block(ix, iy).tmp =  1; //is inside
-      else {
+      //if (std::fabs(t[0]) > e[0]+safety || std::fabs(t[1]) > e[1]+safety )
+      //  block(ix, iy).tmp = -1; //is outside
+      //else if (centDist + safety < sqMinSemiAx)
+      //  block(ix, iy).tmp =  1; //is inside
+      //else {
         const Real dist = DistancePointEllipse (e, t, xs);
         const int sign = sqDist > (xs[0]*xs[0]+xs[1]*xs[1]) ? -1 : 1;
         block(ix, iy).tmp = sign*dist;
-      }
+      //}
     }
   }
 }
@@ -246,7 +247,8 @@ void FillBlocks_EllipseFinalize::operator()(Lab& l, const BlockInfo&i, FluidBloc
     }
 
     #ifndef NDEBUG
-    if (H > 0 && H < o->chi[iy][ix]) {
+    if (H > 0 && H < o->chi[iy][ix])
+    {
       printf("FillBlocks_Ellipse: Error is obstblock->chi \n");
       fflush(0); abort();
     }

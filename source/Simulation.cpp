@@ -238,8 +238,8 @@ void Simulation::init()
 
   pipeline.push_back( new CoordinatorPressure<Lab>(sim) );
   pipeline.push_back( new CoordinatorComputeForces(sim) );
-  //if( sim.poissonType not_eq 1 )
-  //  pipeline.push_back( new CoordinatorFadeOut(sim) );
+  if( sim.poissonType not_eq 1 )
+    pipeline.push_back( new CoordinatorFadeOut(sim) );
 
   cout << "Coordinator/Operator ordering:\n";
   for (size_t c=0; c<pipeline.size(); c++)
