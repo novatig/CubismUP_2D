@@ -316,7 +316,7 @@ void Shape::computeForces()
   const Real vel_norm = std::sqrt(u*u + v*v);
   if(vel_norm>0){ vel_unit[0]=u/vel_norm; vel_unit[1]=v/vel_norm; }
 
-  OperatorComputeForces finalize(sim.nu, vel_unit, centerOfMass);
+  OperatorComputeForces finalize(sim, vel_unit, centerOfMass);
   compute_surface(finalize, vInfo);
 
   //additive quantities:

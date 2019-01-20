@@ -6,11 +6,11 @@ struct OperatorComputeForces
 {
   const int stencil_start[3] = {-1, -1, 0}, stencil_end[3] = {2, 2, 1};
   StencilInfo stencil;
-  const Real NU, *vel_unit;
-  const double *CM;
+  const Real NU, UINF[2], vel_unit[2];
+  const double CM[2];
 
-  OperatorComputeForces(const Real nu, const Real* vunit, const double* cm) :
-   NU(nu), vel_unit(vunit), CM(cm)
+  OperatorComputeForces(SimulationData&s,const Real* vunit, const double*cm) :
+   NU(s.nu), UINF{s.uinfx,s.uinfy}, vel_unit{vunit[0],vunit[1]}, CM{cm[0],cm[1]}
   {
     stencil = StencilInfo(-1,-1,0, 2,2,1, false, 2, 0,1);
   }
@@ -38,23 +38,18 @@ struct OperatorComputeForces
       const Real P = b(ix,iy).p;
       const Real normX = o->surface[i]->dchidx;
       const Real normY = o->surface[i]->dchidy; //*h^2 (premultiplied in dchidy)
-      const Real fXV = D11 * normX + D12 * normY;
-      const Real fYV = D12 * normX + D22 * normY;
-      const Real fXP = -P * normX, fYP = -P * normY;
-      const Real fXT = fXV+fXP, fYT = fYV+fYP;
-
+      const Real fXV = D11*normX+D12*normY, fXP = -P*normX, fXT = fXV+fXP;
+      const Real fYV = D12*normX+D22*normY, fYP = -P*normY, fYT = fYV+fYP;
       //store:
       o->P[i]=P; o->pX[i]=p[0]; o->pY[i]=p[1]; o->fX[i]=fXT; o->fY[i]=fYT;
-      o->vxDef[i] = o->udef[iy][ix][0]; o->vx[i] = l(ix,iy).u;
-      o->vyDef[i] = o->udef[iy][ix][1]; o->vy[i] = l(ix,iy).v;
-
+      o->vxDef[i] = o->udef[iy][ix][0]; o->vx[i] = l(ix,iy).u + UINF[0];
+      o->vyDef[i] = o->udef[iy][ix][1]; o->vy[i] = l(ix,iy).v + UINF[1];
       //perimeter:
-      o->perimeter += sqrt(normX*normX + normY*normY);
+      o->perimeter += std::sqrt(normX*normX + normY*normY);
       o->circulation += normX*o->vy[i] - normY*o->vx[i];
       //forces (total, visc, pressure):
-      o->forcex   += fXT; o->forcey   += fYT;
-      o->forcex_V += fXV; o->forcey_V += fYV;
-      o->forcex_P += fXP; o->forcey_P += fYP;
+      o->forcex += fXT; o->forcex_V += fXV; o->forcey_P += fYP;
+      o->forcey += fYT; o->forcey_V += fYV; o->forcex_P += fXP;
       //torque:
       o->torque   += (p[0]-CM[0])*fYT - (p[1]-CM[1])*fXT;
       o->torque_P += (p[0]-CM[0])*fYP - (p[1]-CM[1])*fXP;
@@ -69,8 +64,8 @@ struct OperatorComputeForces
       const Real powOut = fXT*o->vx[i]    + fYT*o->vy[i];
       //deformation power output (and negative definite variant which ensures no elastic energy absorption)
       const Real powDef = fXT*o->vxDef[i] + fYT*o->vyDef[i];
-      o->Pout        += powOut; o->PoutBnd     += std::min((Real)0., powOut);
-      o->defPower    += powDef; o->defPowerBnd += std::min((Real)0., powDef);
+      o->Pout        += powOut; o->PoutBnd     += std::min((Real)0, powOut);
+      o->defPower    += powDef; o->defPowerBnd += std::min((Real)0, powDef);
     }
   }
 };

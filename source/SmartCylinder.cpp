@@ -100,6 +100,35 @@ std::vector<double> SmartCylinder::state(const Real OX, const Real OY, const Rea
   return ret;
 }
 
+double SmartCylinder::reward(const Real velScale)
+{
+  const Real forceScale = std::pow(velScale, 2) * 2*radius;
+  #if 0
+    const Real enSpent = energy  / (forceScale * forceScale);
+  #else
+    const Real timeScale = 2*radius / velScale;
+    const Real enSpent = energySurf  / (forceScale * velScale * timeScale);
+  #endif
+  energy = 0;
+  energySurf = 0;
+  return enSpent;
+}
+
+void SmartCylinder::act(std::vector<double> action, const Real velScale)
+{
+  const Real forceScale = velScale*velScale * 2*radius;
+  const Real torqueScale = forceScale * 2*radius;
+  #if 0
+    appliedForceX = 10*action[0]/(.1+std::fabs(action[0]))*forceScale;
+    appliedForceY = 10*action[1]/(.1+std::fabs(action[1]))*forceScale;
+    appliedTorque = 10*action[2]/(.1+std::fabs(action[2]))*torqueScale;
+  #else
+    appliedForceX = action[0] * forceScale;
+    appliedForceY = action[1] * forceScale;
+    appliedTorque = action[2] * torqueScale;
+  #endif
+}
+
 void SmartCylinder::create(const std::vector<BlockInfo>& vInfo)
 {
   const Real h =  vInfo[0].h_gridpoint;
@@ -218,4 +247,10 @@ void SmartCylinder::updatePosition(double dt)
     orientation = orientation<-M_PI/2 ? orientation+M_PI : orientation;
   #endif
   Shape::updatePosition(dt);
+}
+
+void SmartCylinder::computeForces()
+{
+  Shape::computeForces();
+  energySurf += PoutBnd * sim.dt;
 }

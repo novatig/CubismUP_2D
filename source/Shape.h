@@ -246,5 +246,5 @@ class Shape
     }
   }
 
-  void computeForces();
+  virtual void computeForces();
 };
