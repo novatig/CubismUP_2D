@@ -42,8 +42,8 @@ struct OperatorComputeForces
       const Real fYV = D12*normX+D22*normY, fYP = -P*normY, fYT = fYV+fYP;
       //store:
       o->P[i]=P; o->pX[i]=p[0]; o->pY[i]=p[1]; o->fX[i]=fXT; o->fY[i]=fYT;
-      o->vxDef[i] = o->udef[iy][ix][0]; o->vx[i] = l(ix,iy).u + UINF[0];
-      o->vyDef[i] = o->udef[iy][ix][1]; o->vy[i] = l(ix,iy).v + UINF[1];
+      o->vxDef[i] = o->udef[iy][ix][0]; o->vx[i] = l(ix,iy).u;
+      o->vyDef[i] = o->udef[iy][ix][1]; o->vy[i] = l(ix,iy).v;
       //perimeter:
       o->perimeter += std::sqrt(normX*normX + normY*normY);
       o->circulation += normX*o->vy[i] - normY*o->vx[i];

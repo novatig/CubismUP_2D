@@ -172,7 +172,7 @@ void SmartCylinder::computeVelocities()
 {
   const std::vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
   double _M = 0, _J = 0, FFX = 0, FFY = 0, FTZ = 0; //linear momenta
-  const double lamdahsq = std::pow(vInfo[0].h_gridpoint,2) * sim.lambda;
+  const double hsq = std::pow(vInfo[0].h_gridpoint,2);
 
   #pragma omp parallel for schedule(dynamic) reduction(+:_M,_J,FFX,FFY,FTZ)
   for(size_t i=0; i<vInfo.size(); i++)
@@ -195,7 +195,7 @@ void SmartCylinder::computeVelocities()
         p[1] -= centerOfMass[1];
         const double uDiff = b(ix,iy).u - (u -omega*p[1]);
         const double vDiff = b(ix,iy).v - (v +omega*p[0]);
-        const double rhochi = 1 * chi * lamdahsq; //RHO[iy][ix]
+        const double rhochi = 1 * chi * hsq; //RHO[iy][ix]
         _M  += rhochi;
         FFX += rhochi * uDiff;//(b(ix,iy).u - u);
         FFY += rhochi * vDiff;//(b(ix,iy).v - v);
@@ -203,6 +203,10 @@ void SmartCylinder::computeVelocities()
         FTZ += rhochi * (p[0]*vDiff - p[1]*uDiff );
       }
   }
+
+  FFX *= sim.lambda;
+  FFY *= sim.lambda;
+  FTZ *= sim.lambda;
   //cout << CX << " " << CY << endl;
   //const Real forceScale = 0.1*0.1 * 2*radius;
   //appliedForceX = -2 * forceScale;
