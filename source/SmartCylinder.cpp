@@ -106,8 +106,9 @@ double SmartCylinder::reward(const Real velScale)
   #if 0
     const Real enSpent = energy  / (forceScale * forceScale);
   #else
-    const Real timeScale = 2*radius / velScale;
-    const Real enSpent = energySurf  / (forceScale * velScale * timeScale);
+    //const Real timeScale = 2*radius / velScale;
+    //const Real enSpent = energySurf  / (forceScale * velScale * timeScale);
+    const Real enSpent = energySurf;
   #endif
   energy = 0;
   energySurf = 0;
@@ -256,5 +257,7 @@ void SmartCylinder::updatePosition(double dt)
 void SmartCylinder::computeForces()
 {
   Shape::computeForces();
-  energySurf += PoutBnd * sim.dt;
+  //energySurf += PoutBnd * sim.dt;
+  energySurf += Pthrust/(Pthrust-std::min(Pout,(double)0)) * sim.dt;
+  //energySurf += Pthrust/(Pthrust-std::min(PoutBnd,(double)0)) * sim.dt;
 }
