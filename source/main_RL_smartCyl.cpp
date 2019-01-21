@@ -31,13 +31,13 @@
 inline void resetIC(
   SmartCylinder*const a, Shape*const p, Communicator*const c)
 {
-  uniform_real_distribution<double> dis(-2.5, 2.5);
+  uniform_real_distribution<double> dis(-1, 1);
   //const double SX = c->isTraining()? dis(c->getPRNG()) : 0;
   //const double SY = c->isTraining()? dis(c->getPRNG()) : 0;
   const double SX = c->isTraining()? dis(c->getPRNG()) : 0;
   const double SY = c->isTraining()? dis(c->getPRNG()) : 0;
   const Real L = a->getCharLength()/2, OX = p->center[0], OY = p->center[1];
-  double C[2] = { OX + (4+SX)*L, OY + SY*L };
+  double C[2] = { OX + (4+SX/2)*L, OY + SY*L/2 };
   if(a->bFixedy) {
     const Real deltaY = C[1]-OY, MA = a->getCharMass(), MP = p->getCharMass();
     p->centerOfMass[1] = OY - deltaY * MA / (MA + MP);
@@ -46,7 +46,7 @@ inline void resetIC(
   }
   #ifdef SMART_ELLIPSE
     const double SA = c->isTraining()? dis(c->getPRNG()) : 0;
-    a->setOrientation(SA*M_PI/10);
+    a->setOrientation(SA*M_PI/4);
   #endif
   a->setCenterOfMass(C);
 }
@@ -72,7 +72,7 @@ inline bool isTerminal(
 {
   const Real L = a->getCharLength()/2, OX = p->center[0], OY = p->center[1];
   const double X = (a->center[0]-OX)/ L, Y = (a->center[1]-OY)/ L;
-  return X<1 || X>7 || std::fabs(Y)>3;
+  return X<3 || X>5 || std::fabs(Y)>1;
 }
 
 inline double getReward(
@@ -144,10 +144,10 @@ int app_main(
   // Terminate loop if reached max number of time steps. Never terminate if 0
   while( numSteps == 0 || tot_steps<numSteps ) // train loop
   {
-    sprintf(dirname, "run_%08u/", sim_id);
-    printf("Starting a new sim in directory %s\n", dirname);
-    mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    chdir(dirname);
+    //sprintf(dirname, "run_%08u/", sim_id);
+    //printf("Starting a new sim in directory %s\n", dirname);
+    //mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    //chdir(dirname);
     sim.reset();
     resetIC(agent, object, comm); // randomize initial conditions
     sim.reinit();
@@ -194,7 +194,7 @@ int app_main(
       }
       else comm->sendState(state, reward);
     } // simulation is done
-    chdir("../");
+    //chdir("../");
     sim_id++;
   }
 
