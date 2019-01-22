@@ -26,7 +26,7 @@
 // number of actions per characteristic time scale
 // max number of actions per simulation
 // range of angles in initial conditions
-#define FREQ_ACTIONS 1
+#define FREQ_ACTIONS 0.5
 
 inline void resetIC(
   SmartCylinder*const a, Shape*const p, Communicator*const c)
@@ -115,7 +115,7 @@ int app_main(
   #else
   const int nActions = 3, nStates = 5 + 8;
   #endif
-  const unsigned maxLearnStepPerSim = 400; // random number... TODO
+  const unsigned maxLearnStepPerSim = 500; // random number... TODO
 
   comm->update_state_action_dims(nStates, nActions);
   // Tell smarties that action space should be bounded.

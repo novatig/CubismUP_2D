@@ -14,8 +14,8 @@
 #pragma once
 
 #include "Shape.h"
-#define SMART_ELLIPSE
-#define SMART_AR 0.2
+//#define SMART_ELLIPSE
+//#define SMART_AR 0.2
 
 class SmartCylinder : public Shape
 {

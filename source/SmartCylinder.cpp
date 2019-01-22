@@ -258,6 +258,6 @@ void SmartCylinder::computeForces()
 {
   Shape::computeForces();
   //energySurf += PoutBnd * sim.dt;
-  energySurf += Pthrust/(Pthrust-std::min(Pout,(double)0)) * sim.dt;
-  //energySurf += Pthrust/(Pthrust-std::min(PoutBnd,(double)0)) * sim.dt;
+  //energySurf += Pthrust/(Pthrust-std::min(Pout,(double)0)) * sim.dt;
+  energySurf += Pthrust/(Pthrust-std::min(PoutBnd,(double)0)) * sim.dt;
 }
