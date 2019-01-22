@@ -37,7 +37,7 @@ inline void resetIC(
   const double SX = c->isTraining()? dis(c->getPRNG()) : 0;
   const double SY = c->isTraining()? dis(c->getPRNG()) : 0;
   const Real L = a->getCharLength()/2, OX = p->center[0], OY = p->center[1];
-  double C[2] = { OX + (4+SX/2)*L, OY + SY*L/2 };
+  double C[2] = { OX + (4+SX)*L, OY + SY*L };
   if(a->bFixedy) {
     const Real deltaY = C[1]-OY, MA = a->getCharMass(), MP = p->getCharMass();
     p->centerOfMass[1] = OY - deltaY * MA / (MA + MP);
@@ -72,7 +72,7 @@ inline bool isTerminal(
 {
   const Real L = a->getCharLength()/2, OX = p->center[0], OY = p->center[1];
   const double X = (a->center[0]-OX)/ L, Y = (a->center[1]-OY)/ L;
-  return X<3 || X>5 || std::fabs(Y)>1;
+  return X<2 || X>6 || std::fabs(Y)>2;
 }
 
 inline double getReward(
