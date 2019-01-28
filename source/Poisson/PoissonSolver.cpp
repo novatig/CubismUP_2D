@@ -37,7 +37,7 @@ void PoissonSolver::cub2rhs()
 
   sumABS = std::max(std::numeric_limits<Real>::epsilon(), sumABS);
   const Real correction = sumRHS / sumABS;
-  printf("Relative RHS correction:%e\n", correction);
+  //printf("Relative RHS correction:%e\n", correction);
   #if 1
     #pragma omp parallel for schedule(static)
     for (size_t iy = 0; iy < totNy; iy++)
@@ -59,7 +59,9 @@ void PoissonSolver::sol2cub()
 {
   const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
   const size_t nBlocks = presInfo.size();
-  const Real F = 0.2, A = F * iter / (1 + F * iter);
+  //const Real F = 0.2, A = F * iter / (1 + F * iter);
+  const Real A = iter == 0 ? 0 : 0.5;
+  //if(iter == 0) std::fill(presMom, presMom + totNy * totNx, 0);
   const Real * __restrict__ const sorc = buffer;
   #pragma omp parallel for schedule(static)
   for(size_t i=0; i<nBlocks; ++i)
@@ -73,9 +75,10 @@ void PoissonSolver::sol2cub()
 
     for(int iy=0; iy<VectorBlock::sizeY; iy++)
     for(int ix=0; ix<VectorBlock::sizeX; ix++) {
-      const Real DP = sorc[blockStart + ix + stride*iy] - b(ix,iy).s;
-      presMom[momSt + ix + totNx*iy] = A*presMom[momSt + ix + totNx*iy] + DP;
-      b(ix,iy).s = b(ix,iy).s + presMom[momSt + ix + totNx*iy];
+      //const Real DP = sorc[blockStart + ix + stride*iy] - b(ix,iy).s;
+      //presMom[momSt + ix + totNx*iy] = A*presMom[momSt + ix + totNx*iy] + DP;
+      //b(ix,iy).s = b(ix,iy).s + presMom[momSt + ix + totNx*iy];
+      b(ix,iy).s = sorc[blockStart + ix + stride*iy];
     }
   }
 }

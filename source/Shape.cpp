@@ -58,9 +58,11 @@ void Shape::updatePosition(double dt)
     ssF<<sim.path2file<<"/velocity_"<<obstacleID<<".dat";
     std::stringstream &fileSpeed = logger.get_stream(ssF.str());
     if(sim.step==0)
-      fileSpeed<<"time dt CMx CMy angle u v omega M J accx accy"<<std::endl;
+     fileSpeed<<"time dt CMx CMy angle u v omega M J accx accy torq"<<std::endl;
 
-    fileSpeed<<sim.time<<" "<<sim.dt<<" "<<centerOfMass[0]<<" "<<centerOfMass[1]<<" "<<orientation<<" "<<u <<" "<<v<<" "<<omega <<" "<<M<<" "<<J<<std::endl;
+    fileSpeed<<sim.time<<" "<<sim.dt<<" "<<centerOfMass[0]<<" "
+             <<centerOfMass[1]<<" "<<orientation<<" "<<u <<" "<<v<<" "
+             <<omega <<" "<<M<<" "<<J<<" "<<Fx<<" "<<Fy<<" "<<Tz<<std::endl;
   }
   #endif
 }

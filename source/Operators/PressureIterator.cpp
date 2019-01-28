@@ -15,6 +15,7 @@
 #ifdef CUDAFFT
 #include "../Poisson/CUDA_all.h"
 #endif
+#include "Utils/BufferedLogger.h"
 
 static inline PoissonSolver * makeSolver(SimulationData& sim)
 {
@@ -29,16 +30,16 @@ static inline PoissonSolver * makeSolver(SimulationData& sim)
   #ifdef CUDAFFT
   else
   if (sim.poissonType == "cuda-periodic")
-    return static_cast<PoissonSolver*>(new FFTW_dirichlet(sim));
+    return static_cast<PoissonSolver*>(new CUDA_periodic(sim));
   else
   if (sim.poissonType == "cuda-freespace")
-    return static_cast<PoissonSolver*>(new FFTW_dirichlet(sim));
+    return static_cast<PoissonSolver*>(new CUDA_freespace(sim));
   #endif
   else
     return static_cast<PoissonSolver*>(new FFTW_freespace(sim));
 }
 
-#define SOFT_PENL
+//#define SOFT_PENL
 
 void PressureIterator::initPenalizationForce(const double dt) const
 {
@@ -70,16 +71,22 @@ void PressureIterator::initPenalizationForce(const double dt) const
         // update vel field after most recent force and pressure response:
         V(ix,iy).u[0] = Ufluid + dt * F(ix,iy).u[0];
         V(ix,iy).u[1] = Vfluid + dt * F(ix,iy).u[1];
-        #ifdef SOFT_PENL
-          const Real uTgt = (Ufluid + X(ix,iy).s*US(ix,iy).u[0])/(1+X(ix,iy).s);
-          const Real vTgt = (Vfluid + X(ix,iy).s*US(ix,iy).u[1])/(1+X(ix,iy).s);
+        const Real CHI = X(ix,iy).s, USX = US(ix,iy).u[0], USY = US(ix,iy).u[1];
+        #if 0
+          #ifdef SOFT_PENL
+            const Real uTgt = (Ufluid + CHI*USX)/(1+CHI);
+            const Real vTgt = (Vfluid + CHI*USY)/(1+CHI);
+          #else
+            const Real uTgt = CHI*USX + (1-CHI)*Ufluid;
+            const Real vTgt = CHI*USY + (1-CHI)*Vfluid;
+          #endif
+          const Real dFx = CHI * invDt * (uTgt - V(ix,iy).u[0]);
+          const Real dFy = CHI * invDt * (vTgt - V(ix,iy).u[1]);
+          F(ix,iy).u[0] += dFx; F(ix,iy).u[1] += dFy;
         #else
-          const Real uTgt = X(ix,iy).s*US(ix,iy).u[0] + (1-X(ix,iy).s)*Ufluid;
-          const Real vTgt = X(ix,iy).s*US(ix,iy).u[1] + (1-X(ix,iy).s)*Vfluid;
+          F(ix,iy).u[0] = CHI * invDt * (USX - V(ix,iy).u[0]);
+          F(ix,iy).u[1] = CHI * invDt * (USY - V(ix,iy).u[1]);
         #endif
-        const Real dFx = X(ix,iy).s * invDt * (uTgt - V(ix,iy).u[0]);
-        const Real dFy = X(ix,iy).s * invDt * (vTgt - V(ix,iy).u[1]);
-        F(ix,iy).u[0] += dFx; F(ix,iy).u[1] += dFy;
       }
     }
   }
@@ -123,18 +130,18 @@ Real PressureIterator::updatePenalizationForce(const double dt) const
           const Real uTgt = X(ix,iy).s*US(ix,iy).u[0] + (1-X(ix,iy).s)*Ufluid;
           const Real vTgt = X(ix,iy).s*US(ix,iy).u[1] + (1-X(ix,iy).s)*Vfluid;
         #endif
-        const Real dFx = X(ix,iy).s * invDt * (uTgt - V(ix,iy).u[0]);
-        const Real dFy = X(ix,iy).s * invDt * (vTgt - V(ix,iy).u[1]);
+        const Real dFx = invDt * (uTgt - V(ix,iy).u[0]); //X(ix,iy).s * 
+        const Real dFy = invDt * (vTgt - V(ix,iy).u[1]); //X(ix,iy).s * 
         F(ix,iy).u[0] += dFx; F(ix,iy).u[1] += dFy;
-        sumFx += std::fabs(F(ix,iy).u[0]); sumdFx += std::fabs(dFx);
-        sumFy += std::fabs(F(ix,iy).u[1]); sumdFy += std::fabs(dFy);
+        sumFx += std::pow(F(ix,iy).u[0], 2); sumdFx += std::pow(dFx,2);
+        sumFy += std::pow(F(ix,iy).u[1], 2); sumdFy += std::pow(dFy,2);
       }
     }
   }
 
   //assert(std::max(dVx,dVy) / (EPS + std::max(Vx,Vy)) < std::sqrt(EPS));
   //return std::max(dFx,dFy) / (EPS + std::max(Fx,Fy));
-  return std::max(sumdFx,sumdFy) / (EPS + std::max(sumFx,sumFy));
+  return std::sqrt((sumdFx + sumdFy) / (EPS + sumFx + sumFy));
 }
 
 void PressureIterator::updatePressureRHS(const double dt) const
@@ -179,7 +186,8 @@ void PressureIterator::operator()(const double dt)
   initPenalizationForce(dt);
   sim.stopProfiler();
 
-  for(int iter = 0; iter < 100; iter++)
+  int iter=0; Real relDF = 1e3;
+  for(iter = 0; iter < 100; iter++)
   {
     sim.startProfiler("PIter_RHS");
     updatePressureRHS(dt);
@@ -191,11 +199,19 @@ void PressureIterator::operator()(const double dt)
 
     //sim.dumpPres("iter_"+std::to_string(iter)+"_");
     sim.startProfiler("PIter_update");
-    const Real max_RelDforce = updatePenalizationForce(dt);
+    relDF = updatePenalizationForce(dt);
     //sim.dumpTmp("iter_"+std::to_string(iter)+"_");
     sim.stopProfiler();
-    printf("iter:%02d - max relative error: %f\n", iter, max_RelDforce);
-    if(max_RelDforce < 0.002) break;
+    printf("iter:%02d - max relative error: %f\n", iter, relDF);
+    if(relDF < 0.002) break;
+  }
+
+  if(not sim.muteAll)
+  {
+  std::stringstream ssF; ssF<<sim.path2file<<"/pressureIterStats.dat";
+  std::ofstream pfile(ssF.str().c_str(), std::ofstream::app);
+  if(sim.step==0) pfile<<"step time dt iter relDF"<<std::endl;
+  pfile<<sim.step<<" "<<sim.time<<" "<<sim.dt<<" "<<iter<<" "<<relDF<<std::endl;
   }
 }
 

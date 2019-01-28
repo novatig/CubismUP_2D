@@ -37,7 +37,8 @@ using Real = float;
 #define _DIM_ 2
 #endif//_BS_
 
-struct ScalarElement {
+struct ScalarElement
+{
   Real s = 0;
   inline void clear() { s = 0; }
   inline void set(const Real v) { s = v; }
@@ -46,7 +47,8 @@ struct ScalarElement {
   ScalarElement& operator=(const ScalarElement& c) { s = c.s; return *this; }
 };
 
-struct VectorElement {
+struct VectorElement
+{
   static constexpr int DIM = _DIM_;
   Real u[DIM];
 
@@ -163,18 +165,17 @@ struct StreamerScalar {
   static const char * getAttributeName() { return "Scalar"; }
 };
 
-struct StreamerVector {
+struct StreamerVector
+{
   static constexpr int NCHANNELS = 3;
 
   template <typename TBlock, typename T>
-  static inline void operate(const TBlock& b,
-    const int ix, const int iy, const int iz, T output[NCHANNELS]) {
+  static inline void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS]) {
       for (int i = 0; i < _DIM_; i++) output[i] = b(ix,iy,iz).u[i];
   }
 
   template <typename TBlock, typename T>
-  static inline void operate(TBlock& b, const T input[NCHANNELS],
-    const int ix, const int iy, const int iz) {
+  static inline void operate(TBlock& b, const T input[NCHANNELS], const int ix, const int iy, const int iz) {
       for (int i = 0; i < _DIM_; i++) b(ix,iy,iz).u[i] = input[i];
   }
   static std::string prefix() { return std::string(""); }
