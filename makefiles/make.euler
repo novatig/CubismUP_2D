@@ -8,18 +8,13 @@ endif
 
 MPICXX=mpic++
 
-ifeq "$(poisson)" "hyprecpu"
-LIBS+=-L/cluster/home/novatig/hypre/build/lib/ -lHYPRE
+LIBS+=-L/cluster/home/novatig/hypre/build/lib/
 CPPFLAGS+=-I/cluster/home/novatig/hypre/build/include/
-endif
 
-ifeq "$(poisson)" "fftcpu"
 ifeq "$(compiler)" "intel"
 CPPFLAGS+= -I/cluster/home/novatig/fftw-3.3.5/build_intel/include/
 LIBS+= -L/cluster/home/novatig/fftw-3.3.5/build_intel/lib/
 else
 CPPFLAGS+= -I/cluster/home/novatig/fftw-3.3.5/build_gnu/include/
 LIBS+= -L/cluster/home/novatig/fftw-3.3.5/build_gnu/lib/
-endif
-#CPPFLAGS+= -fsanitize=address
 endif

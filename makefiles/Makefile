@@ -15,6 +15,7 @@ endif
 
 NVCC ?= nvcc
 
+hypre ?= on
 gpu ?= off
 hdf5 ?= on
 config ?= production
@@ -26,6 +27,9 @@ ifeq ($(UNAME_S),Darwin)
 include make.macos
 endif
 
+ifneq "$(findstring panda,$(shell hostname))" ""
+include make.falcon
+endif
 ifneq "$(findstring falcon,$(shell hostname))" ""
 include make.falcon
 endif
@@ -78,6 +82,10 @@ else
     LIBS += -lfftw3  -lfftw3_omp
 endif
 
+ifeq "$(hypre)" "on"
+LIBS+= -lHYPRE
+CPPFLAGS += -DHYPREFFT
+endif
 CPP_FILES = $(notdir $(OBJECTS:.o=.cpp))
 
 VPATH := $(DIRS) $(CUBISM_DIR)

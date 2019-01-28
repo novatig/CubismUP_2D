@@ -9,6 +9,7 @@
 
 #include "HYPREdirichlet.h"
 //#define CONSISTENT
+#ifdef HYPREFFT
 
 void HYPREdirichlet::solve()
 {
@@ -269,3 +270,5 @@ HYPREdirichlet::~HYPREdirichlet()
   HYPRE_StructVectorDestroy(hypre_sol);
   delete [] buffer;
 }
+
+#endif

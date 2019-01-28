@@ -9,7 +9,9 @@
 
 #include "PressureIterator.h"
 #include "../Poisson/FFTW_freespace.h"
+#ifdef HYPREFFT
 #include "../Poisson/HYPREdirichlet.h"
+#endif
 #include "../Poisson/FFTW_dirichlet.h"
 #include "../Poisson/FFTW_periodic.h"
 #ifdef CUDAFFT
@@ -19,9 +21,11 @@
 
 static inline PoissonSolver * makeSolver(SimulationData& sim)
 {
+  #ifdef HYPREFFT
   if (sim.poissonType == "hypre")
     return static_cast<PoissonSolver*>(new HYPREdirichlet(sim));
   else
+  #endif
   if (sim.poissonType == "periodic")
     return static_cast<PoissonSolver*>(new FFTW_periodic(sim));
   else

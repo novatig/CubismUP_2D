@@ -6,7 +6,6 @@ endif
 SMARTIESDIR = /Users/novatig/code/smarties/source/
 MPICXX=mpic++
 
-LIBS+= -lHYPRE
 
 
 ifeq "0" "1"
