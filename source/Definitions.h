@@ -74,7 +74,7 @@ struct GridBlock
   static constexpr int sizeZ = _DIM_ > 2 ? _BS_ : 1;
 
   using ElementType = Element;
-  alignas(32) ElementType data[sizeZ][sizeY][sizeX];
+  ElementType data[sizeZ][sizeY][sizeX];
 
   inline void clear() {
       ElementType * const entry = &data[0][0][0];

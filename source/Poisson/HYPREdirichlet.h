@@ -8,6 +8,7 @@
 
 
 #pragma once
+#ifdef HYPREFFT
 
 #include "HYPRE_struct_ls.h"
 #include "PoissonSolver.h"
@@ -36,3 +37,5 @@ class HYPREdirichlet : public PoissonSolver
 
   ~HYPREdirichlet();
 };
+
+#endif

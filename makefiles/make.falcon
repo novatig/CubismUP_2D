@@ -10,3 +10,5 @@ CPPFLAGS += -I${HDF5_INCLUDE}
 LIBS += -L${HDF5_LIB} -lhdf5
 
 endif
+
+hypre=off
