@@ -45,7 +45,6 @@ class FFTW_dirichlet : public PoissonSolver
  public:
 
   #define TOT_DOF_X s.vel->getBlocksPerDimension(0) * VectorBlock::sizeX
-  #define STRIDE 2 * ( (TOT_DOF_X)/2 +1 )
 
   FFTW_dirichlet(SimulationData& s) : PoissonSolver(s, TOT_DOF_X)
   {
@@ -71,7 +70,6 @@ class FFTW_dirichlet : public PoissonSolver
   }
 
   #undef TOT_DOF_X
-  #undef STRIDE
 
   void solve() override
   {

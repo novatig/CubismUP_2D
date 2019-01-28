@@ -130,8 +130,8 @@ Real PressureIterator::updatePenalizationForce(const double dt) const
           const Real uTgt = X(ix,iy).s*US(ix,iy).u[0] + (1-X(ix,iy).s)*Ufluid;
           const Real vTgt = X(ix,iy).s*US(ix,iy).u[1] + (1-X(ix,iy).s)*Vfluid;
         #endif
-        const Real dFx = invDt * (uTgt - V(ix,iy).u[0]); //X(ix,iy).s * 
-        const Real dFy = invDt * (vTgt - V(ix,iy).u[1]); //X(ix,iy).s * 
+        const Real dFx = invDt * (uTgt - V(ix,iy).u[0]); //X(ix,iy).s *
+        const Real dFy = invDt * (vTgt - V(ix,iy).u[1]); //X(ix,iy).s *
         F(ix,iy).u[0] += dFx; F(ix,iy).u[1] += dFy;
         sumFx += std::pow(F(ix,iy).u[0], 2); sumdFx += std::pow(dFx,2);
         sumFy += std::pow(F(ix,iy).u[1], 2); sumdFy += std::pow(dFy,2);
