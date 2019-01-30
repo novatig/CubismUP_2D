@@ -10,3 +10,6 @@ CPPFLAGS += -I${HDF5_INCLUDE}
 LIBS += -L${HDF5_LIB} -lhdf5
 
 endif
+
+LIBS+=-L/home/novatig/hypre/build/lib/ -lHYPRE
+CPPFLAGS+=-I/home/novatig/hypre/build/include/
