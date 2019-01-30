@@ -22,6 +22,7 @@ void SimulationData::allocateGrid()
   pRHS  = new ScalarGrid(bpdx, bpdy, 1);
   tmpV  = new VectorGrid(bpdx, bpdy, 1);
   tmp   = new ScalarGrid(bpdx, bpdy, 1);
+  DdF   = new VectorGrid(bpdx, bpdy, 1);
 }
 
 void SimulationData::dumpChi(std::string name) {

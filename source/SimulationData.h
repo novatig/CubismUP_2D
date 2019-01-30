@@ -28,6 +28,7 @@ struct SimulationData
 
   ScalarGrid * pRHS = nullptr;
   VectorGrid * tmpV = nullptr;
+  VectorGrid * DdF  = nullptr;
   ScalarGrid * tmp  = nullptr;
 
   void allocateGrid();

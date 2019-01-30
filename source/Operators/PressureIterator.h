@@ -27,7 +27,7 @@ class PressureIterator : public Operator
 
   PoissonSolver * const pressureSolver;
 
-  Real updatePenalizationForce(const double dt) const;
+  Real updatePenalizationForce(const double dt, const int iter) const;
   void initPenalizationForce(const double dt) const;
   void updatePressureRHS(const double dt) const;
   void fadeoutBorder(const double dt) const;

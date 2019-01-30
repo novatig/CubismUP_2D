@@ -60,7 +60,7 @@ void PoissonSolver::sol2cub()
   const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
   const size_t nBlocks = presInfo.size();
   //const Real F = 0.2, A = F * iter / (1 + F * iter);
-  const Real A = iter == 0 ? 0 : 0.5;
+  //const Real A = iter == 0 ? 0 : 0;//MOMENTUM_FACTOR;
   //if(iter == 0) std::fill(presMom, presMom + totNy * totNx, 0);
   const Real * __restrict__ const sorc = buffer;
   #pragma omp parallel for schedule(static)
@@ -71,7 +71,7 @@ void PoissonSolver::sol2cub()
     const size_t blockj = VectorBlock::sizeY * info.index[1];
     ScalarBlock& b = *(ScalarBlock*)info.ptrBlock;
     const size_t blockStart = blocki + stride*blockj;
-    const size_t momSt = blocki + totNx*blockj;
+    //const size_t momSt = blocki + totNx*blockj;
 
     for(int iy=0; iy<VectorBlock::sizeY; iy++)
     for(int ix=0; ix<VectorBlock::sizeX; ix++) {

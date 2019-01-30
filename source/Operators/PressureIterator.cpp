@@ -96,11 +96,12 @@ void PressureIterator::initPenalizationForce(const double dt) const
   }
 }
 
-Real PressureIterator::updatePenalizationForce(const double dt) const
+Real PressureIterator::updatePenalizationForce(const double dt, const int iter) const
 {
   const Real h = sim.getH(), pFac = -0.5*dt/h, invDt = 1/dt;//sim.lambda;
   static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
-
+  const std::vector<BlockInfo>& DdFInfo = sim.DdF->getBlocksInfo();
+  const Real A = iter == 0 ? 0 : 0.5;
   // Measure how much F has changed between iterations to check convergence:
   Real sumFx = 0, sumFy = 0, sumdFx = 0, sumdFy = 0;
   #pragma omp parallel reduction( + : sumFx, sumFy, sumdFx, sumdFy )
@@ -118,6 +119,7 @@ Real PressureIterator::updatePenalizationForce(const double dt) const
       const VectorBlock&__restrict__  US = *(VectorBlock*) uDefInfo[i].ptrBlock;
       const ScalarBlock&__restrict__   X = *(ScalarBlock*)  chiInfo[i].ptrBlock;
             VectorBlock&__restrict__   F = *(VectorBlock*)forceInfo[i].ptrBlock;
+            VectorBlock&__restrict__ DDF = *(VectorBlock*)  DdFInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
@@ -134,8 +136,15 @@ Real PressureIterator::updatePenalizationForce(const double dt) const
           const Real uTgt = X(ix,iy).s*US(ix,iy).u[0] + (1-X(ix,iy).s)*Ufluid;
           const Real vTgt = X(ix,iy).s*US(ix,iy).u[1] + (1-X(ix,iy).s)*Vfluid;
         #endif
-        const Real dFx = invDt * (uTgt - V(ix,iy).u[0]); //X(ix,iy).s *
-        const Real dFy = invDt * (vTgt - V(ix,iy).u[1]); //X(ix,iy).s *
+        const Real dFx0 = invDt * (uTgt - V(ix,iy).u[0]); //X(ix,iy).s *
+        const Real dFy0 = invDt * (vTgt - V(ix,iy).u[1]); //X(ix,iy).s *
+        #if 0
+          const Real dFx = dFx0, dFy = dFy0;
+        #else
+          DDF(ix,iy).u[0] = A*DDF(ix,iy).u[0] + dFx0;
+          DDF(ix,iy).u[1] = A*DDF(ix,iy).u[1] + dFy0;
+          const Real dFx = DDF(ix,iy).u[0], dFy = DDF(ix,iy).u[1];
+        #endif
         F(ix,iy).u[0] += dFx; F(ix,iy).u[1] += dFy;
         sumFx += std::pow(F(ix,iy).u[0], 2); sumdFx += std::pow(dFx,2);
         sumFy += std::pow(F(ix,iy).u[1], 2); sumdFy += std::pow(dFy,2);
@@ -203,11 +212,11 @@ void PressureIterator::operator()(const double dt)
 
     //sim.dumpPres("iter_"+std::to_string(iter)+"_");
     sim.startProfiler("PIter_update");
-    relDF = updatePenalizationForce(dt);
+    relDF = updatePenalizationForce(dt, iter);
     //sim.dumpTmp("iter_"+std::to_string(iter)+"_");
     sim.stopProfiler();
     printf("iter:%02d - max relative error: %f\n", iter, relDF);
-    if(relDF < 0.002) break;
+    if(relDF < 0.01) break;
   }
 
   if(not sim.muteAll)
