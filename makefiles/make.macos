@@ -1,7 +1,7 @@
-ifneq "$(findstring g++, $(CXX))" ""
+#ifneq "$(findstring g++, $(CXX))" ""
 CXX=g++-8
 LD=g++-8
-endif
+#endif
 
 SMARTIESDIR = /Users/novatig/code/smarties/source/
 
