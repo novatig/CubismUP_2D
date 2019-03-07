@@ -108,7 +108,8 @@ double SmartCylinder::reward(const Real velScale)
   #else
     //const Real timeScale = 2*radius / velScale;
     //const Real enSpent = energySurf  / (forceScale * velScale * timeScale);
-    const Real enSpent = energySurf;
+    //printf("R: 20*%f + %f\n", energySurf, energy  / (forceScale * forceScale));
+    const Real enSpent = energySurf + energy  / (forceScale * forceScale);
   #endif
   energy = 0;
   energySurf = 0;
@@ -118,7 +119,7 @@ double SmartCylinder::reward(const Real velScale)
 void SmartCylinder::act(std::vector<double> action, const Real velScale)
 {
   const Real forceScale = velScale*velScale * 2*radius;
-  const Real torqueScale = forceScale * 2*radius;
+  const Real torqueScale = forceScale * radius;
   #if 0
     appliedForceX = 10*action[0]/(.1+std::fabs(action[0]))*forceScale;
     appliedForceY = 10*action[1]/(.1+std::fabs(action[1]))*forceScale;
@@ -213,7 +214,7 @@ void SmartCylinder::computeVelocities()
   //appliedForceX = -2 * forceScale;
   //appliedForceY = 0 * forceScale;
   //appliedTorque = 0 * forceScale * radius;
-  //cout << appliedForceX << " " << FFX << endl;
+  //cout << "FX: " << appliedForceX << " " << FFX << endl;
   const Real accx = ( appliedForceX + FFX ) / _M;
   const Real accy = ( appliedForceY + FFY ) / _M;
   const Real acca = ( appliedTorque + FTZ ) / _J;
@@ -222,7 +223,7 @@ void SmartCylinder::computeVelocities()
   v = v + sim.dt * accy;
   omega = omega + sim.dt * acca;
   energy -= ( std::pow(appliedForceX, 2) + std::pow(appliedForceY, 2)
-            + std::pow(appliedTorque /(2*radius), 2) ) * sim.dt;
+            + std::pow(appliedTorque/radius, 2) ) * sim.dt;
 
   #ifndef RL_TRAIN
     if(sim.verbose)
