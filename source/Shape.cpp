@@ -81,36 +81,40 @@ Shape::Integrals Shape::integrateObstBlock(const std::vector<BlockInfo>& vInfo)
 {
   double _x=0, _y=0, _m=0, _j=0, _u=0, _v=0, _a=0;
   const double hsq = std::pow(vInfo[0].h_gridpoint, 2);
-  #pragma omp parallel for schedule(dynamic) reduction(+: _x,_y,_m,_j,_u,_v,_a)
+  #pragma omp parallel for schedule(dynamic,1) reduction(+:_x,_y,_m,_j,_u,_v,_a)
   for(size_t i=0; i<vInfo.size(); i++)
   {
     const auto pos = obstacleBlocks[vInfo[i].blockID];
     if(pos == nullptr) continue;
-
+    const CHI_MAT & __restrict__ CHI = pos->chi;
+    const CHI_MAT & __restrict__ RHO = pos->rho;
+    const UDEFMAT & __restrict__ UDEF = pos->udef;
     for(int iy=0; iy<ObstacleBlock::sizeY; ++iy)
-    for(int ix=0; ix<ObstacleBlock::sizeX; ++ix) {
-      const Real chi = pos->chi[iy][ix];
-      if (chi <= 0) continue;
+    for(int ix=0; ix<ObstacleBlock::sizeX; ++ix)
+    {
+      if (CHI[iy][ix] <= 0) continue;
       double p[2];
       vInfo[i].pos(p, ix, iy);
-      const double u_ = pos->udef[iy][ix][0];
-      const double v_ = pos->udef[iy][ix][1];
-      //const double rhochi = chi * pos->rho[iy][ix] * hsq;
-      const double rhochi = chi * hsq;
+      const double rhochi = CHI[iy][ix] * RHO[iy][ix] * hsq;
       _x += rhochi*p[0];
       _y += rhochi*p[1];
       p[0] -= centerOfMass[0];
       p[1] -= centerOfMass[1];
       _m += rhochi;
       _j += rhochi*(p[0]*p[0] + p[1]*p[1]);
-      _u += rhochi*u_;
-      _v += rhochi*v_;
-      _a += rhochi*(p[0]*v_ - p[1]*u_);
+      _u += rhochi*UDEF[iy][ix][0];
+      _v += rhochi*UDEF[iy][ix][1];
+      _a += rhochi*(p[0]*UDEF[iy][ix][1] - p[1]*UDEF[iy][ix][0]);
     }
   }
-  _x /= _m; _y /= _m;
+  _x /= _m;
+  _y /= _m;
   // Parallel axis theorem:
   const double dC[2] = { _x - centerOfMass[0], _y - centerOfMass[1] };
+  assert( std::fabs(dC[0]) < 1000*std::numeric_limits<Real>::epsilon() );
+  assert( std::fabs(dC[1]) < 1000*std::numeric_limits<Real>::epsilon() );
+  assert( std::fabs(M - _m) <  10*std::numeric_limits<Real>::epsilon() );
+
   // I_arbitrary_axis = I_CM + m * dist_CM_axis ^ 2 . Now _j is J around old CM
   _j = _j - _m*(dC[0]*dC[0] + dC[1]*dC[1]);
   _a = _a - ( dC[0]*_v - dC[1]*_u );

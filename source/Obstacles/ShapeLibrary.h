@@ -134,15 +134,15 @@ struct FillBlocks_Plate
 
 struct FillBlocks_VarRhoCylinder
 {
-  const Real radius, safety, rhoTop, rhoBot, angle;
+  const Real radius, h, rhoTop, rhoBot, angle;
   const Real cosang = std::cos(angle), sinang = std::sin(angle);
   const Real pos[2], bbox[2][2] = {
-    { pos[0] - radius - safety, pos[0] + radius + safety },
-    { pos[1] - radius - safety, pos[1] + radius + safety }
+    { pos[0] - radius - 2*h, pos[0] + radius + 2*h },
+    { pos[1] - radius - 2*h, pos[1] + radius + 2*h }
   };
 
-  FillBlocks_VarRhoCylinder(Real R, Real h, const double C[2], Real rhoT,
-    Real rhoB, Real ang) : radius(R), safety(2*h), rhoTop(rhoT), rhoBot(rhoB),
+  FillBlocks_VarRhoCylinder(Real R, Real _h, const double C[2], Real rhoT,
+    Real rhoB, Real ang) : radius(R), h(_h), rhoTop(rhoT), rhoBot(rhoB),
     angle(ang), pos{ (Real) C[0], (Real) C[1] } {}
 
   inline Real distanceTocylinder(const Real x, const Real y) const {
@@ -150,27 +150,27 @@ struct FillBlocks_VarRhoCylinder
   }
 
   inline bool is_touching(const BlockInfo& INFO) const {
-    return _is_touching(INFO, bbox, safety);
+    return _is_touching(INFO, bbox, 2*h);
   }
   void operator()(const BlockInfo& I, ScalarBlock& B, ObstacleBlock& O) const;
 };
 
 struct FillBlocks_VarRhoEllipse
 {
-  const Real e0, e1, safety, pos[2], angle, rhoTop, rhoBot;
+  const Real e0, e1, h, pos[2], angle, rhoTop, rhoBot;
   const Real cosang = std::cos(angle), sinang = std::sin(angle);
   const Real e[2] = {e0, e1}, sqMinSemiAx = e[0]>e[1] ? e[1]*e[1] : e[0]*e[0];
   const Real bbox[2][2] = {
-    { pos[0] - std::max(e0,e1) - safety, pos[0] + std::max(e0,e1) + safety },
-    { pos[1] - std::max(e0,e1) - safety, pos[1] + std::max(e0,e1) + safety }
+    { pos[0] - std::max(e0,e1) - 2*h, pos[0] + std::max(e0,e1) + 2*h },
+    { pos[1] - std::max(e0,e1) - 2*h, pos[1] + std::max(e0,e1) + 2*h }
   };
 
-  FillBlocks_VarRhoEllipse(Real _e0, Real _e1, Real h, const double C[2],
-    Real ang, Real rhoT, Real rhoB): e0(_e0), e1(_e1), safety(2*h),
+  FillBlocks_VarRhoEllipse(Real _e0, Real _e1, Real _h, const double C[2],
+    Real ang, Real rhoT, Real rhoB): e0(_e0), e1(_e1), h(_h),
     pos{(Real)C[0], (Real)C[1]}, angle(ang), rhoTop(rhoT), rhoBot(rhoB) {}
 
   inline bool is_touching(const BlockInfo& INFO) const {
-    return _is_touching(INFO, bbox, safety);
+    return _is_touching(INFO, bbox, 2*h);
   }
 
   void operator()(const BlockInfo& I, ScalarBlock& B, ObstacleBlock& O) const;

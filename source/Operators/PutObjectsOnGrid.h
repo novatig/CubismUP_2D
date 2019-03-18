@@ -17,6 +17,7 @@ class PutObjectsOnGrid : public Operator
 {
   const std::vector<BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
   const std::vector<BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
+  const std::vector<BlockInfo>& invRhoInfo   = sim.invRho->getBlocksInfo();
   const std::vector<BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
   const std::vector<BlockInfo>& forceInfo = sim.force->getBlocksInfo();
 

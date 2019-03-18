@@ -71,10 +71,11 @@ class FFTW_dirichlet : public PoissonSolver
 
   #undef TOT_DOF_X
 
-  void solve() override
+  void solve(const std::vector<BlockInfo>& BSRC,
+             const std::vector<BlockInfo>& BDST) override
   {
     sim.startProfiler("FFTW_cub2fft");
-    cub2rhs();
+    cub2rhs(BSRC);
     sim.stopProfiler();
 
     sim.startProfiler("FFTW_bwd");
@@ -99,7 +100,7 @@ class FFTW_dirichlet : public PoissonSolver
     sim.stopProfiler();
 
     sim.startProfiler("FFTW_fft2cub");
-    sol2cub();
+    sol2cub(BDST);
     sim.stopProfiler();
   }
 

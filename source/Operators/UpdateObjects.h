@@ -15,7 +15,12 @@ class Shape;
 
 class UpdateObjects : public Operator
 {
-  void integrateForce(Shape * const shape) const;
+  const std::vector<BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
+  //const std::vector<BlockInfo>& presInfo  = sim.pres->getBlocksInfo();
+  //const std::vector<BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
+  //const std::vector<BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
+  void integrateMomenta(Shape * const shape) const;
+  void penalize(const double dt) const;
 
  public:
   UpdateObjects(SimulationData& s) : Operator(s) { }

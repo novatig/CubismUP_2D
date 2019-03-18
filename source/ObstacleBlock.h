@@ -10,6 +10,9 @@
 
 #include "Definitions.h"
 
+using CHI_MAT = Real[_BS_][_BS_];
+using UDEFMAT = Real[_BS_][_BS_][2];
+
 struct surface_data
 {
   const int ix, iy;
@@ -27,7 +30,7 @@ struct ObstacleBlock
   // bulk quantities:
   Real chi[sizeY][sizeX];
   Real dist[sizeY][sizeX];
-  //Real rho[sizeY][sizeX]; //maybe unused
+  Real rho[sizeY][sizeX];
   Real udef[sizeY][sizeX][2];
 
   //surface quantities:
@@ -85,17 +88,13 @@ struct ObstacleBlock
     clear_surface();
     memset(chi, 0, sizeof(Real)*sizeX*sizeY);
     memset(dist, 0, sizeof(Real)*sizeX*sizeY);
-    //memset(rho, 0, sizeof(Real)*sizeX*sizeY);
+    memset(rho, 0, sizeof(Real)*sizeX*sizeY);
     memset(udef, 0, sizeof(Real)*sizeX*sizeY*2);
   }
 
-  inline void write(const int ix, const int iy, const Real RHO, const Real CHI,
-    const Real delta, const Real gradUX, const Real gradUY)
+  inline void write(const int ix, const int iy, const Real delta, const Real gradUX, const Real gradUY)
   {
-    if( CHI < chi[iy][ix] ) return;
     assert(!filled);
-    //rho[iy][ix] = _rho;
-    chi[iy][ix] = CHI;
 
     if ( delta > 0 ) {
       n_surfPoints++;

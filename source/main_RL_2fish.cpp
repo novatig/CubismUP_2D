@@ -15,7 +15,7 @@
 
 #include "Communicator.h"
 #include "Simulation.h"
-#include "StefanFish.h"
+#include "Obstacles/StefanFish.h"
 
 #include "mpi.h"
 //
@@ -29,8 +29,8 @@
 // range of angles in initial conditions
 
 inline void resetIC(StefanFish* const a, Shape*const p, Communicator*const c) {
-  uniform_real_distribution<double> disA(-20./180.*M_PI, 20./180.*M_PI);
-  uniform_real_distribution<double> disX(0, 0.5),  disY(-0.25, 0.25);
+  std::uniform_real_distribution<double> disA(-20./180.*M_PI, 20./180.*M_PI);
+  std::uniform_real_distribution<double> disX(0, 0.5),  disY(-0.25, 0.25);
   const double SX = c->isTraining()? disX(c->getPRNG()) : 0.25;
   const double SY = c->isTraining()? disY(c->getPRNG()) : 0.00;
   const double SA = c->isTraining()? disA(c->getPRNG()) : 0.00;
@@ -42,10 +42,10 @@ inline void resetIC(StefanFish* const a, Shape*const p, Communicator*const c) {
   a->setOrientation(SA);
 }
 inline void setAction(StefanFish* const agent,
-  const vector<double> act, const double t) {
+  const std::vector<double> act, const double t) {
   agent->act(t, act);
 }
-inline vector<double> getState(
+inline std::vector<double> getState(
   const StefanFish* const a, const Shape*const p, const double t) {
   const double X = ( a->center[0] - p->center[0] )/ a->length;
   const double Y = ( a->center[1] - p->center[1] )/ a->length;
@@ -54,7 +54,7 @@ inline vector<double> getState(
   const double V = a->getV() * a->Tperiod / a->length;
   const double W = a->getW() * a->Tperiod;
   const double lastT = a->lastTact, lastC = a->lastCurv, oldrC = a->oldrCurv;
-  const vector<double> S = { X, Y, A, T, U, V, W, lastT, lastC, oldrC };
+  const std::vector<double> S = { X, Y, A, T, U, V, W, lastT, lastC, oldrC };
   printf("S:[%f %f %f %f %f %f %f %f %f %f]\n",X,Y,A,T,U,V,W,lastT,lastC,oldrC);
   return S;
 }
@@ -87,7 +87,7 @@ int app_main(
   // Second action affects Tp = (1+act[1])*Tperiod_0 (eg. halved if act[1]=-.5).
   // If too small Re=L^2*Tp/nu would increase too much, we allow it to
   //  double at most, therefore we set the bounds between -0.5 and 0.5.
-  vector<double> upper_action_bound{1.0, 0.25}, lower_action_bound{-1., -.25};
+  std::vector<double> upper_action_bound{1.,.25}, lower_action_bound{-1.,-.25};
   comm->set_action_scales(upper_action_bound, lower_action_bound, true);
 
   Simulation sim(argc, argv);
@@ -140,7 +140,7 @@ int app_main(
       }
       step++;
       tot_steps++;
-      const vector<double> state = getState(agent,object,t);
+      const std::vector<double> state = getState(agent,object,t);
       const double reward = getReward(agent,object);
 
       if (agentOver) {

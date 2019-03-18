@@ -7,7 +7,7 @@
 //
 
 
-#include "advDiff.h"
+#include "advDiffGrav.h"
 //#define DIV_ADVECT
 static constexpr int sizeY = VectorBlock::sizeY;
 static constexpr int sizeX = VectorBlock::sizeX;
@@ -34,9 +34,9 @@ static inline Real dV_adv_dif(const VectorLab&V, const Real uinf[2],
   return advF * dVadv + difF * dVdif;
 }
 
-void advDiff::operator()(const double dt)
+void advDiffGrav::operator()(const double dt)
 {
-  sim.startProfiler("advDiff");
+  sim.startProfiler("advDiffGrav");
   #pragma omp parallel for schedule(static)
   for (size_t i=0; i < Nblocks; i++)
   {
@@ -48,6 +48,7 @@ void advDiff::operator()(const double dt)
   //sim.dumpTmpV("step_"+std::to_string(sim.step)+"_");
 
   const Real UINF[2]= {sim.uinfx, sim.uinfy}, h = sim.getH();
+  const std::array<Real,2>& G = sim.gravity;
   //const Real G[]= {sim.gravity[0],sim.gravity[1]};
   const Real dfac = (sim.nu/h)*(dt/h), afac = -0.5*dt/h;
 
@@ -60,14 +61,18 @@ void advDiff::operator()(const double dt)
     for (size_t i=0; i < Nblocks; i++)
     {
       tmplab.load(tmpVInfo[i], 0); // loads   vel field with ghosts
-      const VectorLab & __restrict__ TMP = tmplab;
-          VectorBlock & __restrict__  V  = *(VectorBlock*) velInfo[i].ptrBlock;
+      const VectorLab  & __restrict__   TMP = tmplab;
+            VectorBlock& __restrict__     V =*(VectorBlock*)velInfo[i].ptrBlock;
+      const ScalarBlock& __restrict__ invRho=*(ScalarBlock*)rhoInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
-        V(ix,iy).u[0] = V(ix,iy).u[0] + dU_adv_dif(TMP,UINF,afac,dfac,ix,iy);
-        V(ix,iy).u[1] = V(ix,iy).u[1] + dV_adv_dif(TMP,UINF,afac,dfac,ix,iy);
+        const Real gravFac = dt * (1 - invRho(ix,iy).s);
+        const Real dUAdvDiff = dU_adv_dif(TMP,UINF,afac,dfac,ix,iy);
+        const Real dVAdvDiff = dV_adv_dif(TMP,UINF,afac,dfac,ix,iy);
+        V(ix,iy).u[0] = V(ix,iy).u[0] + dUAdvDiff + G[0]*gravFac;
+        V(ix,iy).u[1] = V(ix,iy).u[1] + dVAdvDiff + G[1]*gravFac;
       }
     }
   }

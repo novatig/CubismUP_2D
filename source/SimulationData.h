@@ -20,16 +20,18 @@ struct SimulationData
     Profiler * profiler = new Profiler();
   #endif
 
-  ScalarGrid * chi = nullptr;
-  VectorGrid * vel = nullptr;
-  VectorGrid * uDef = nullptr;
-  ScalarGrid * pres = nullptr;
+  ScalarGrid * chi   = nullptr;
+  VectorGrid * vel   = nullptr;
+  VectorGrid * uDef  = nullptr;
+  ScalarGrid * pres  = nullptr;
   VectorGrid * force = nullptr;
 
-  ScalarGrid * pRHS = nullptr;
-  VectorGrid * tmpV = nullptr;
-  VectorGrid * DdF  = nullptr;
-  ScalarGrid * tmp  = nullptr;
+  ScalarGrid * pRHS  = nullptr;
+  VectorGrid * tmpV  = nullptr;
+  VectorGrid * DdF   = nullptr;
+  ScalarGrid * tmp   = nullptr;
+  ScalarGrid * invRho= nullptr;
+  ScalarGrid * pOld  = nullptr;
 
   void allocateGrid();
 
@@ -48,7 +50,7 @@ struct SimulationData
   double nu = 0;
   double dlm = 1;
 
-  Real gravity[2] = { (Real) 0.0, (Real) -9.80665 };
+  std::array<Real,2> gravity = { (Real) 0.0, (Real) -9.80665 };
   // nsteps==0 means that this stopping criteria is not active
   int nsteps = 0;
   // endTime==0  means that this stopping criteria is not active
@@ -103,4 +105,5 @@ struct SimulationData
   void dumpForce(std::string name);
   void dumpTmpV (std::string name);
   void dumpAll  (std::string name);
+  void dumpInvRho  (std::string name);
 };

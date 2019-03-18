@@ -106,10 +106,11 @@ public:
   #undef TOT_DOF_X
   #undef STRIDE
 
-  void solve() override
+  void solve(const std::vector<BlockInfo>& BSRC,
+             const std::vector<BlockInfo>& BDST) override
   {
     sim.startProfiler("FFTW_cub2fft");
-    cub2rhs();
+    cub2rhs(BSRC);
     sim.stopProfiler();
 
     sim.startProfiler("FFTW_bwd");
@@ -134,7 +135,7 @@ public:
     sim.stopProfiler();
 
     sim.startProfiler("FFTW_fft2cub");
-    sol2cub();
+    sol2cub(BDST);
     sim.stopProfiler();
   }
 

@@ -15,8 +15,11 @@
 #include "Operators/Helpers.h"
 #include "Operators/PressureIterator.h"
 #include "Operators/PressureSingle.h"
+#include "Operators/PressureVarRho.h"
+#include "Operators/Penalization.h"
 #include "Operators/PutObjectsOnGrid.h"
 #include "Operators/UpdateObjects.h"
+#include "Operators/advDiffGrav.h"
 #include "Operators/advDiff_RK.h"
 #include "Operators/advDiff.h"
 #include "Operators/presRHS_step1.h"
@@ -77,7 +80,7 @@ void Simulation::parseRuntime()
   sim.path2file = parser("-file").asString("./");
   sim.path4serialization = parser("-serialization").asString(sim.path2file);
 
-  sim.poissonType = parser("-poissonType").asString("hypre");
+  sim.poissonType = parser("-poissonType").asString("");
   // simulation settings
   sim.CFL = parser("-CFL").asDouble(.1);
   sim.lambda = parser("-lambda").asDouble(1e5);
@@ -164,19 +167,23 @@ void Simulation::init()
 
   pipeline.clear();
 
-  pipeline.push_back( new PutObjectsOnGrid(sim) );
-  if(0)
+  if(1)
   {
-    pipeline.push_back( new          advDiff(sim) );
-    pipeline.push_back( new   PressureSingle(sim) );
+    pipeline.push_back( new PutObjectsOnGrid(sim) );
+    if(sim.bVariableDensity) pipeline.push_back( new advDiffGrav(sim) );
+    else  pipeline.push_back( new advDiff(sim) );
+    if(sim.bVariableDensity) pipeline.push_back( new PressureVarRho(sim) );
+    else  pipeline.push_back( new PressureSingle(sim) );
+    pipeline.push_back( new UpdateObjects(sim) );
   }
   else
   {
+    pipeline.push_back( new PutObjectsOnGrid(sim) );
     pipeline.push_back( new    presRHS_step1(sim) );
     pipeline.push_back( new       advDiff_RK(sim) );
     pipeline.push_back( new PressureIterator(sim) );
+    pipeline.push_back( new    UpdateObjects(sim) );
   }
-  pipeline.push_back( new    UpdateObjects(sim) );
 
   std::cout << "Operator ordering:\n";
   for (size_t c=0; c<pipeline.size(); c++)
@@ -192,9 +199,9 @@ void Simulation::reset()
    IC ic(sim);
    ic(0);
    // put objects on grid
-   //(*pipeline[0])(0);
-   //ApplyObjVel initVel(sim);
-   //initVel(0);
+   (*pipeline[0])(0);
+   ApplyObjVel initVel(sim);
+   initVel(0);
 }
 
 void Simulation::simulate()

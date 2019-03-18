@@ -27,7 +27,8 @@ class HYPREdirichlet : public PoissonSolver
   Real pLast = 0;
 
  public:
-  void solve() override;
+  void solve(const std::vector<BlockInfo>& BSRC,
+             const std::vector<BlockInfo>& BDST) override;
 
   HYPREdirichlet(SimulationData& s);
 

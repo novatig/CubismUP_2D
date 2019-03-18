@@ -10,10 +10,9 @@
 #include "PoissonSolver.h"
 
 
-void PoissonSolver::cub2rhs()
+void PoissonSolver::cub2rhs(const std::vector<BlockInfo>& BSRC)
 {
-  const std::vector<BlockInfo>& tmpInfo = sim.tmp->getBlocksInfo();
-  const size_t nBlocks = tmpInfo.size();
+  const size_t nBlocks = BSRC.size();
   Real sumRHS = 0, sumABS = 0;
 
   Real * __restrict__ const dest = buffer;
@@ -21,7 +20,7 @@ void PoissonSolver::cub2rhs()
   #pragma omp parallel for schedule(static) reduction(+ : sumRHS, sumABS)
   for(size_t i=0; i<nBlocks; ++i)
   {
-    const BlockInfo& info = tmpInfo[i];
+    const BlockInfo& info = BSRC[i];
     const size_t blocki = VectorBlock::sizeX * info.index[0];
     const size_t blockj = VectorBlock::sizeY * info.index[1];
     const ScalarBlock& b = *(ScalarBlock*)info.ptrBlock;
@@ -55,10 +54,9 @@ void PoissonSolver::cub2rhs()
   #endif
 }
 
-void PoissonSolver::sol2cub()
+void PoissonSolver::sol2cub(const std::vector<BlockInfo>& BDST)
 {
-  const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
-  const size_t nBlocks = presInfo.size();
+  const size_t nBlocks = BDST.size();
   //const Real F = 0.2, A = F * iter / (1 + F * iter);
   //const Real A = iter == 0 ? 0 : 0;//MOMENTUM_FACTOR;
   //if(iter == 0) std::fill(presMom, presMom + totNy * totNx, 0);
@@ -66,7 +64,7 @@ void PoissonSolver::sol2cub()
   #pragma omp parallel for schedule(static)
   for(size_t i=0; i<nBlocks; ++i)
   {
-    const BlockInfo& info = presInfo[i];
+    const BlockInfo& info = BDST[i];
     const size_t blocki = VectorBlock::sizeX * info.index[0];
     const size_t blockj = VectorBlock::sizeY * info.index[1];
     ScalarBlock& b = *(ScalarBlock*)info.ptrBlock;

@@ -89,20 +89,24 @@ void PressureSingle::updatePressureRHS(const double dt) const
   #pragma omp parallel
   {
     static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 2, 2, 1};
-    VectorLab vellab; vellab.prepare(*(sim.vel), stenBeg, stenEnd, 0);
-
+    VectorLab velLab;  velLab.prepare( *(sim.vel),  stenBeg, stenEnd, 0);
+    VectorLab uDefLab; uDefLab.prepare(*(sim.uDef), stenBeg, stenEnd, 0);
     #pragma omp for schedule(static)
     for (size_t i=0; i < Nblocks; i++)
     {
-      vellab.load(velInfo[i], 0);
-      const VectorLab  & __restrict__ V = vellab;
+      velLab.load(velInfo[i], 0); uDefLab.load(uDefInfo[i], 0);
+      const VectorLab  & __restrict__ V   = velLab;
+      const VectorLab  & __restrict__ UDEF= uDefLab;
+      const ScalarBlock& __restrict__ CHI = *(ScalarBlock*)chiInfo[i].ptrBlock;
             ScalarBlock& __restrict__ TMP = *(ScalarBlock*)tmpInfo[i].ptrBlock;
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
-        const Real divVx = facDiv*(V(ix+1,iy).u[0] - V(ix-1,iy).u[0]);
-        const Real divVy = facDiv*(V(ix,iy+1).u[1] - V(ix,iy-1).u[1]);
-        TMP(ix, iy).s = divVx + divVy;
+        const Real divVx  = V(ix+1,iy).u[0]    - V(ix-1,iy).u[0];
+        const Real divVy  = V(ix,iy+1).u[1]    - V(ix,iy-1).u[1];
+        const Real divUSx = UDEF(ix+1,iy).u[0] - UDEF(ix-1,iy).u[0];
+        const Real divUSy = UDEF(ix,iy+1).u[1] - UDEF(ix,iy-1).u[1];
+        TMP(ix, iy).s = facDiv*(divVx+divVy - CHI(ix,iy).s*(divUSx+divUSy));
       }
     }
   }
@@ -123,19 +127,13 @@ void PressureSingle::pressureCorrection(const double dt) const
       plab.load(presInfo[i], 0); // loads pres field with ghosts
       const ScalarLab  &__restrict__   P = plab; // only this needs ghosts
             VectorBlock&__restrict__   V = *(VectorBlock*)  velInfo[i].ptrBlock;
-      const VectorBlock&__restrict__  US = *(VectorBlock*) uDefInfo[i].ptrBlock;
-      const ScalarBlock&__restrict__   X = *(ScalarBlock*)  chiInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
-        const Real Ufluid = V(ix,iy).u[0] + pFac *(P(ix+1,iy).s-P(ix-1,iy).s);
-        const Real Vfluid = V(ix,iy).u[1] + pFac *(P(ix,iy+1).s-P(ix,iy-1).s);
         // update vel field after most recent force and pressure response:
-        V(ix,iy).u[0] = ( Ufluid + X(ix,iy).s*US(ix,iy).u[0] )/(1+X(ix,iy).s);
-        V(ix,iy).u[1] = ( Vfluid + X(ix,iy).s*US(ix,iy).u[1] )/(1+X(ix,iy).s);
-        //V(ix,iy).u[0] =  Ufluid;
-        //V(ix,iy).u[1] =  Vfluid;
+        V(ix,iy).u[0] = V(ix,iy).u[0] + pFac *(P(ix+1,iy).s-P(ix-1,iy).s);
+        V(ix,iy).u[1] = V(ix,iy).u[1] + pFac *(P(ix,iy+1).s-P(ix,iy-1).s);
       }
     }
   }
@@ -143,12 +141,12 @@ void PressureSingle::pressureCorrection(const double dt) const
 
 void PressureSingle::operator()(const double dt)
 {
-  sim.startProfiler("PCorrect");
+  sim.startProfiler("Prhs");
   updatePressureRHS(dt);
   fadeoutBorder(dt);
   sim.stopProfiler();
 
-  pressureSolver->solve();
+  pressureSolver->solve(tmpInfo, presInfo);
 
   sim.startProfiler("PCorrect");
   pressureCorrection(dt);

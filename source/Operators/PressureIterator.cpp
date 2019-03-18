@@ -208,7 +208,7 @@ void PressureIterator::operator()(const double dt)
     sim.stopProfiler();
 
     pressureSolver->iter = iter;
-    pressureSolver->solve();
+    pressureSolver->solve(tmpInfo, presInfo);
 
     //sim.dumpPres("iter_"+std::to_string(iter)+"_");
     sim.startProfiler("PIter_update");

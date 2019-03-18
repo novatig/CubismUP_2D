@@ -6,7 +6,6 @@
 //  Created by Guido Novati (novatig@ethz.ch).
 //
 
-
 #include "FishLibrary.h"
 #include "FishUtilities.h"
 
@@ -410,7 +409,8 @@ void PutFishOnBlocks::signedDistanceSqrt(const BlockInfo& info, ScalarBlock& b,
     // change from signed squared distance function to normal sdf
     o->dist[iy][ix] = o->dist[iy][ix]>=0 ?  std::sqrt( o->dist[iy][ix])
                                          : -std::sqrt(-o->dist[iy][ix]);
-    b(ix,iy).s = o->dist[iy][ix];
+    b(ix,iy).s = std::max(b(ix,iy).s, o->dist[iy][ix]);;
+    o->chi[iy][ix] = 0;
   }
 }
 
@@ -448,15 +448,18 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, ScalarBlock& b,
         // special treatment of tail (width = 0 --> no ellipse, just line)
         Real myP[2]= { rX[ss+0] +width[ss+0]*signp*norX[ss+0],
                        rY[ss+0] +width[ss+0]*signp*norY[ss+0]  };
-        Real pP[2] = { rX[ss+1] +width[ss+1]*signp*norX[ss+1],
-                       rY[ss+1] +width[ss+1]*signp*norY[ss+1]  };
-        Real pM[2] = { rX[ss-1] +width[ss-1]*signp*norX[ss-1],
-                       rY[ss-1] +width[ss-1]*signp*norY[ss-1]  };
         changeToComputationalFrame(myP);
-        changeToComputationalFrame(pP);
-        changeToComputationalFrame(pM);
         const int iap[2] = {  (int)std::floor((myP[0]-org[0])*invh),
                               (int)std::floor((myP[1]-org[1])*invh) };
+        if(iap[0]+3 <= 0 || iap[0]-1 >= BS[0]) continue; // NearNeigh loop
+        if(iap[1]+3 <= 0 || iap[1]-1 >= BS[1]) continue; // does not intersect
+
+        Real pP[2] = { rX[ss+1] +width[ss+1]*signp*norX[ss+1],
+                       rY[ss+1] +width[ss+1]*signp*norY[ss+1]  };
+        changeToComputationalFrame(pP);
+        Real pM[2] = { rX[ss-1] +width[ss-1]*signp*norX[ss-1],
+                       rY[ss-1] +width[ss-1]*signp*norY[ss-1]  };
+        changeToComputationalFrame(pM);
         Real udef[2] = { vX[ss+0] +width[ss+0]*signp*vNorX[ss+0],
                          vY[ss+0] +width[ss+0]*signp*vNorY[ss+0]    };
         changeVelocityToComputationalFrame(udef);
@@ -528,6 +531,7 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, ScalarBlock& b,
             o->udef[sy][sx][1] = udef[1];
             o->dist[sy][sx] = sign2d*dist1;
             o->chi [sy][sx] = 1;
+            o->rho [sy][sx] = 1;
           }
           // Not chi yet, I stored squared distance from analytical boundary
           // distSq is updated only if curr value is smaller than the old one
@@ -565,11 +569,14 @@ void PutFishOnBlocks::constructInternl(const BlockInfo& info, ScalarBlock& b,
         changeToComputationalFrame(xp);
         xp[0] = (xp[0]-org[0])*invh; // how many grid points from this block
         xp[1] = (xp[1]-org[1])*invh; // origin is this fishpoint located at?
+        const Real ap[2] = { std::floor(xp[0]), std::floor(xp[1]) };
+        const int iap[2] = { (int)ap[0], (int)ap[1] };
+        if(iap[0]+2 <= 0 || iap[0] >= BS[0]) continue; // hatP2M loop
+        if(iap[1]+2 <= 0 || iap[1] >= BS[1]) continue; // does not intersect
+
         Real udef[2] = { cfish.vX[ss] + offsetW*cfish.vNorX[ss],
                          cfish.vY[ss] + offsetW*cfish.vNorY[ss] };
         changeVelocityToComputationalFrame(udef);
-        const Real ap[2] = { std::floor(xp[0]), std::floor(xp[1]) };
-        const int iap[2] = { (int)ap[0], (int)ap[1] };
         Real wghts[2][2]; // P2M weights
         for(int c=0; c<2; ++c) {
           const Real t[2] = { // we floored, hat between xp and grid point +-1
@@ -578,16 +585,18 @@ void PutFishOnBlocks::constructInternl(const BlockInfo& info, ScalarBlock& b,
           wghts[c][0] = 1 - t[0];
           wghts[c][1] = 1 - t[1];
         }
-        for(int sy = std::max(0,0-iap[1]); sy < std::min(2,BS[1]-iap[1]); ++sy)
-        for(int sx = std::max(0,0-iap[0]); sx < std::min(2,BS[0]-iap[0]); ++sx)
+
+        for(int idy =std::max(0, iap[1]); idy <std::min(iap[1]+2, BS[1]); ++idy)
+        for(int idx =std::max(0, iap[0]); idx <std::min(iap[0]+2, BS[0]); ++idx)
         {
+          const int sx = idx - iap[0], sy = idy - iap[1];
           const Real wxwy = wghts[1][sy] * wghts[0][sx];
-          const int idx = iap[0]+sx, idy = iap[1]+sy;
           assert(idx>=0 && idx<ScalarBlock::sizeX && wxwy>=0);
           assert(idy>=0 && idy<ScalarBlock::sizeY && wxwy<=1);
           o->udef[idy][idx][0] += wxwy*udef[0];
           o->udef[idy][idx][1] += wxwy*udef[1];
           o->chi [idy][idx] += wxwy;
+          o->rho[idy][idx] = 1;
           // set sign for all interior points
           static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
           if( std::fabs(o->dist[idy][idx]+1) < EPS ) o->dist[idy][idx] = 1;

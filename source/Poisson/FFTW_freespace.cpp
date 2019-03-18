@@ -9,12 +9,13 @@
 
 #include "FFTW_freespace.h"
 
-void FFTW_freespace::solve()
+void FFTW_freespace::solve(const std::vector<BlockInfo>& BSRC,
+                           const std::vector<BlockInfo>& BDST)
 {
   memset(buffer, 0, 2 * MY * MX_hat * sizeof(Real));
 
   sim.startProfiler("FFTW_cub2fft");
-  cub2rhs();
+  cub2rhs(BSRC);
   sim.stopProfiler();
 
   sim.startProfiler("FFTW_fwd");
@@ -48,7 +49,7 @@ void FFTW_freespace::solve()
   sim.stopProfiler();
 
   sim.startProfiler("FFTW_fft2cub");
-  sol2cub();
+  sol2cub(BDST);
   sim.stopProfiler();
 }
 

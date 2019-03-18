@@ -66,7 +66,8 @@ OBJECTS = \
 		PressureSingle.o PressureIterator.o presRHS_step1.o PoissonSolver.o \
 		HYPREdirichlet.o FFTW_freespace.o PutObjectsOnGrid.o UpdateObjects.o \
 		advDiff.o advDiff_RK.o BufferedLogger.o Helpers.o BlowFish.o Fish.o \
-		FishLibrary.o StefanFish.o CarlingFish.o
+		FishLibrary.o StefanFish.o CarlingFish.o PressureVarRho.o \
+		Penalization.o advDiffGrav.o
 
 ifneq "$(gpu)" "off"
 LIBS += -lcufft

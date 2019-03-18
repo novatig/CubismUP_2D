@@ -23,6 +23,9 @@ void SimulationData::allocateGrid()
   tmpV  = new VectorGrid(bpdx, bpdy, 1);
   tmp   = new ScalarGrid(bpdx, bpdy, 1);
   DdF   = new VectorGrid(bpdx, bpdy, 1);
+
+  invRho= new ScalarGrid(bpdx, bpdy, 1);
+  pOld  = new ScalarGrid(bpdx, bpdy, 1);
 }
 
 void SimulationData::dumpChi(std::string name) {
@@ -64,6 +67,11 @@ void SimulationData::dumpTmpV(std::string name) {
   std::stringstream ss; ss<<name<<std::setfill('0')<<std::setw(7)<<step;
   DumpHDF5<VectorGrid,StreamerVector>(*(tmpV), step, time,
     "tmpV_" + ss.str(), path4serialization);
+}
+void SimulationData::dumpInvRho(std::string name) {
+  std::stringstream ss; ss<<name<<std::setfill('0')<<std::setw(7)<<step;
+  DumpHDF5<ScalarGrid,StreamerScalar>(*(invRho), step, time,
+    "invRho_" + ss.str(), path4serialization);
 }
 
 void SimulationData::resetAll()
@@ -132,6 +140,8 @@ SimulationData::~SimulationData()
   if(force not_eq nullptr) delete force;
   if(pRHS not_eq nullptr) delete pRHS;
   if(tmpV not_eq nullptr) delete tmpV;
+  if(invRho not_eq nullptr) delete invRho;
+  if(pOld not_eq nullptr) delete pOld;
   if(tmp not_eq nullptr) delete tmp;
   while( not shapes.empty() ) {
     Shape * s = shapes.back();
@@ -185,7 +195,7 @@ void SimulationData::dumpAll(std::string name)
 {
   dumpChi  (name);
   dumpPres (name);
-  //dumpPrhs (name);
+  dumpInvRho (name);
   dumpTmp  (name);
   dumpVel  (name);
   //dumpUobj (name);

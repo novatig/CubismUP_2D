@@ -11,13 +11,14 @@
 //#define CONSISTENT
 #ifdef HYPREFFT
 
-void HYPREdirichlet::solve()
+void HYPREdirichlet::solve(const std::vector<BlockInfo>& BSRC,
+                           const std::vector<BlockInfo>& BDST)
 {
   HYPRE_Int ilower[2] = {0,0};
   HYPRE_Int iupper[2] = {(int)totNx-1, (int)totNy-1};
 
   sim.startProfiler("HYPRE_cub2rhs");
-  cub2rhs();
+  cub2rhs(BSRC);
   sim.stopProfiler();
 
   if(not bPeriodic)
@@ -62,7 +63,7 @@ void HYPREdirichlet::solve()
     pLast = buffer[totNx*totNy-1];
     printf("Avg Pressure:%f\n", avgP);
   }
-  sol2cub();
+  sol2cub(BDST);
 
   sim.stopProfiler();
 }
