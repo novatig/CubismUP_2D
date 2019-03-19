@@ -263,10 +263,13 @@ void StefanFish::act(const Real lTact, const std::vector<double>& a) const
   cFish->execute(sim.time, lTact, a);
 }
 
-double StefanFish::getLearnTPeriod() const {
+double StefanFish::getLearnTPeriod() const
+{
   return myFish->l_Tp;
 }
-double StefanFish::getPhase(const double t) const {
+
+double StefanFish::getPhase(const double t) const
+{
   const double Tp = myFish->l_Tp;
   const double T0 = myFish->time0;
   const double Ts = myFish->timeshift;

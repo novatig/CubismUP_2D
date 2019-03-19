@@ -117,12 +117,12 @@ void Glider::create(const std::vector<BlockInfo>& vInfo)
 
 void Glider::updateVelocity(double dt)
 {
-  if(not bForcedx) u = fluidMomX / M;
+  if(not bForcedx) u = fluidMomX / penalM;
 
-  if(not bForcedy) v = fluidMomY / M;
+  if(not bForcedy) v = fluidMomY / penalM;
 
   if(not bBlockang) {
-    const Real omegaNxt = fluidAngMom / J;
+    const Real omegaNxt = fluidAngMom / penalJ;
     const Real TZ = J * (omegaNxt - omega) / dt;
     const Real acca = ( appliedTorque + TZ ) / J;
     omega = omega + dt * acca;
@@ -157,8 +157,8 @@ void Glider::computeForces()
 
 Glider::Glider(SimulationData& s, ArgumentParser& p, double C[2] ) :
   Shape(s,p,C), rewardType(p("-rewType").asInt(1)),
-  semiAxis{(Real) p("-semiAxisX").asDouble(.1),
-           (Real) p("-semiAxisY").asDouble(.2) }
+  semiAxis{(Real) p("-semiAxisX").asDouble(),
+           (Real) p("-semiAxisY").asDouble() }
 {
   printf("Created Glider with axes:%f %f rho:%f\n",semiAxis[0],semiAxis[1], rhoS);
 }

@@ -177,10 +177,10 @@ void SimulationData::startProfiler(std::string name)
 }
 void SimulationData::stopProfiler()
 {
+  #ifndef SMARTIES_APP
   Checker check (*this);
   check.run("after" + profiler->currentAgentName());
 
-  #ifndef SMARTIES_APP
     profiler->pop_stop();
   #endif
 }

@@ -27,8 +27,8 @@ void UpdateObjects::integrateMomenta(Shape * const shape) const
     const VectorBlock& __restrict__ VEL = *(VectorBlock*)velInfo[i].ptrBlock;
 
     if(OBLOCK[velInfo[i].blockID] == nullptr) continue;
-    CHI_MAT & __restrict__ chi = OBLOCK[velInfo[i].blockID]->chi;
-    UDEFMAT & __restrict__ udef = OBLOCK[velInfo[i].blockID]->udef;
+    const CHI_MAT & __restrict__ chi = OBLOCK[velInfo[i].blockID]->chi;
+    const UDEFMAT & __restrict__ udef = OBLOCK[velInfo[i].blockID]->udef;
     for(int iy=0; iy<VectorBlock::sizeY; ++iy)
     for(int ix=0; ix<VectorBlock::sizeX; ++ix)
     {
@@ -50,8 +50,8 @@ void UpdateObjects::integrateMomenta(Shape * const shape) const
   shape->fluidMomX   = UM;
   shape->fluidMomY   = VM;
   shape->fluidAngMom = AM;
-  shape->M = _M;
-  shape->J = _J;
+  shape->penalM = _M;
+  shape->penalJ = _J;
 }
 
 void UpdateObjects::penalize(const double dt) const

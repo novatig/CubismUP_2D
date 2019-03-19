@@ -19,11 +19,11 @@ bool Shape::bVariableDensity() const {
 
 void Shape::updateVelocity(double dt)
 {
-  if(not bForcedx) u = fluidMomX / M;
+  if(not bForcedx) u = fluidMomX / penalM;
 
-  if(not bForcedy) v = fluidMomY / M;
+  if(not bForcedy) v = fluidMomY / penalM;
 
-  if(not bBlockang) omega = fluidAngMom / J;
+  if(not bBlockang) omega = fluidAngMom / penalJ;
 }
 
 void Shape::updateLabVelocity( int nSum[2], double uSum[2] )
@@ -128,7 +128,6 @@ void Shape::removeMoments(const std::vector<BlockInfo>& vInfo)
 {
   static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
   Shape::Integrals I = integrateObstBlock(vInfo);
-  //cout << I.m << " " << I.j << endl;
   M = I.m;
   J = I.j;
   #ifndef RL_TRAIN
@@ -173,9 +172,10 @@ void Shape::removeMoments(const std::vector<BlockInfo>& vInfo)
 
   #ifndef NDEBUG
    Shape::Integrals Itest = integrateObstBlock(vInfo);
-   if( std::fabs(Itest.u)>10*EPS || std::fabs(Itest.x-centerOfMass[0])>10*EPS ||
-       std::fabs(Itest.v)>10*EPS || std::fabs(Itest.y-centerOfMass[1])>10*EPS ||
-       std::fabs(Itest.a)>10*EPS ) {
+   if( std::fabs(Itest.u)>1000*EPS || std::fabs(Itest.v)>1000*EPS ||
+       std::fabs(Itest.x-centerOfMass[0])>1000*EPS ||
+       std::fabs(Itest.y-centerOfMass[1])>1000*EPS ||
+       std::fabs(Itest.a)>1000*EPS ) {
     printf("After correction: linm [%e %e] angm [%e] deltaCM=[%e %e]\n",
     Itest.u,Itest.v,Itest.a,Itest.x-centerOfMass[0],Itest.y-centerOfMass[1]);
     fflush(0); abort();

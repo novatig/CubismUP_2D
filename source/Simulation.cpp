@@ -143,6 +143,8 @@ void Simulation::createShapes()
         shape = new EllipseVarDensity(sim, ffparser, center);
       else if (objectName=="blowfish")
         shape = new BlowFish(         sim, ffparser, center);
+      else if (objectName=="glider")
+        shape = new Glider(           sim, ffparser, center);
       else if (objectName=="stefanfish")
         shape = new StefanFish(       sim, ffparser, center);
       else if (objectName=="carlingfish")

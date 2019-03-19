@@ -45,11 +45,8 @@ class Shape
   double fluidMomX = 0;
   double fluidMomY = 0;
   double fluidAngMom = 0;
-  double area_penal = 0;
-  double mass_penal = 0;
-  double forcex_penal = 0;
-  double forcey_penal = 0;
-  double torque_penal = 0;
+  double penalM = 0;
+  double penalJ = 0;
 
   double perimeter=0, forcex=0, forcey=0, forcex_P=0, forcey_P=0;
   double forcex_V=0, forcey_V=0, torque=0, torque_P=0, torque_V=0;
