@@ -123,6 +123,10 @@ public:
 		getAgent(sAgentName).start();
 	}
 
+  inline std::string currentAgentName() {
+    return m_mapStoppedAgents.top();
+  }
+
 	inline void pop_stop()
 	{
 		std::string sCurrentAgentName = m_mapStoppedAgents.top();

@@ -14,7 +14,7 @@
 
 #include "Communicator.h"
 #include "Simulation.h"
-#include "SmartCylinder.h"
+#include "Obstacles/SmartCylinder.h"
 
 #include "mpi.h"
 //
@@ -31,7 +31,7 @@
 inline void resetIC(
   SmartCylinder*const a, Shape*const p, Communicator*const c)
 {
-  uniform_real_distribution<double> dis(-0.5, 0.5);
+  std::uniform_real_distribution<double> dis(-0.5, 0.5);
   //const double SX = c->isTraining()? dis(c->getPRNG()) : 0;
   //const double SY = c->isTraining()? dis(c->getPRNG()) : 0;
   const double SX = c->isTraining()? dis(c->getPRNG()) : 0;
@@ -152,7 +152,7 @@ int app_main(
     //chdir(dirname);
     sim.reset();
     resetIC(agent, object, comm); // randomize initial conditions
-    sim.reinit();
+    sim.reset();
 
     double t = 0, tNextAct = 0;
     unsigned step = 0;
@@ -180,7 +180,7 @@ int app_main(
       }
       step++;
       tot_steps++;
-      vector<double> state = getState(agent,object,t);
+      std::vector<double> state = getState(agent,object,t);
       double reward = getReward(agent,object);
 
       if ( agentOver || checkNaN(state, reward) ) {

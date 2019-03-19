@@ -1,20 +1,15 @@
 //
-//  Shape.h
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Virtual shape class which defines the interface
-//  Default simple geometries are also provided and can be used as references
+//  Created by Guido Novati (novatig@ethz.ch).
 //
-//  This class only contains static information (position, orientation,...), no dynamics are included (e.g. velocities,...)
-//
-//  Created by Christian Conti on 3/6/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
-//
+
 
 #pragma once
 
-#include "common.h"
-#include "Definitions.h"
+#include "SimulationData.h"
 #include "ObstacleBlock.h"
 
 class Shape
@@ -30,25 +25,6 @@ class Shape
   double d_gm[2] = {0,0}; // distance of center of geometry to center of mass
   double labCenterOfMass[2] = {0,0};
   double orientation;
-  double M = 0;
-  double V = 0;
-  double J = 0;
-  double u = 0; // in lab frame, not sim frame
-  double v = 0; // in lab frame, not sim frame
-  double omega = 0;
-  double computedu = 0;
-  double computedv = 0;
-  double computedo = 0;
-  double area_penal = 0;
-  double mass_penal = 0;
-  double forcex_penal = 0;
-  double forcey_penal = 0;
-  double torque_penal = 0;
-
-  double perimeter=0, forcex=0, forcey=0, forcex_P=0, forcey_P=0;
-  double forcex_V=0, forcey_V=0, torque=0, torque_P=0, torque_V=0;
-  double drag=0, thrust=0, circulation=0, Pout=0, PoutBnd=0, defPower=0;
-  double defPowerBnd=0, Pthrust=0, Pdrag=0, EffPDef=0, EffPDefBnd=0;
 
   const double rhoS;
   const bool bForced;
@@ -61,23 +37,42 @@ class Shape
   const double forcedu;
   const double forcedv;
 
-  virtual void resetAll() {
-             center[0] = origC[0];
-             center[1] = origC[1];
-       centerOfMass[0] = origC[0];
-       centerOfMass[1] = origC[1];
+  double M = 0;
+  double J = 0;
+  double u = forcedu; // in lab frame, not sim frame
+  double v = forcedv; // in lab frame, not sim frame
+  double omega = 0;
+  double fluidMomX = 0;
+  double fluidMomY = 0;
+  double fluidAngMom = 0;
+  double area_penal = 0;
+  double mass_penal = 0;
+  double forcex_penal = 0;
+  double forcey_penal = 0;
+  double torque_penal = 0;
+
+  double perimeter=0, forcex=0, forcey=0, forcex_P=0, forcey_P=0;
+  double forcex_V=0, forcey_V=0, torque=0, torque_P=0, torque_V=0;
+  double drag=0, thrust=0, circulation=0, Pout=0, PoutBnd=0, defPower=0;
+  double defPowerBnd=0, Pthrust=0, Pdrag=0, EffPDef=0, EffPDefBnd=0;
+
+  virtual void resetAll()
+  {
+    center[0] = origC[0];
+    center[1] = origC[1];
+    centerOfMass[0] = origC[0];
+    centerOfMass[1] = origC[1];
     labCenterOfMass[0] = 0;
     labCenterOfMass[1] = 0;
     orientation = origAng;
     M = 0;
-    V = 0;
     J = 0;
     u = forcedu;
     v = forcedv;
     omega = 0;
-    computedu = 0;
-    computedv = 0;
-    computedo = 0;
+    fluidMomX = 0;
+    fluidMomY = 0;
+    fluidAngMom = 0;
     d_gm[0] = 0;
     d_gm[1] = 0;
     for(auto & entry : obstacleBlocks) delete entry;
@@ -95,25 +90,9 @@ class Shape
   }
 */
  public:
-  Shape( SimulationData& s, ArgumentParser& p, double C[2] ) :
-  sim(s), origC{C[0],C[1]}, origAng( p("-angle").asDouble(0)*M_PI/180 ),
-  center{C[0],C[1]}, centerOfMass{C[0],C[1]}, orientation(origAng),
-  rhoS( p("-rhoS").asDouble(1) ),
-  bForced( p("-bForced").asBool(false) ),
-  bFixed( p("-bFixed").asBool(false) ),
-  bForcedx(p("-bForcedx").asBool(bForced)),
-  bForcedy(p("-bForcedy").asBool(bForced)),
-  bBlockang( p("-bBlockAng").asBool(bForcedx || bForcedy) ),
-  bFixedx(p("-bFixedx" ).asBool(bFixed) ),
-  bFixedy(p("-bFixedy" ).asBool(bFixed) ),
-  forcedu( - p("-xvel").asDouble(0) ),
-  forcedv( - p("-yvel").asDouble(0) )
-  {  }
+  Shape( SimulationData& s, ArgumentParser& p, double C[2] );
 
-  virtual ~Shape() {
-    for(auto & entry : obstacleBlocks) delete entry;
-    obstacleBlocks.clear();
-  }
+  virtual ~Shape();
 
   virtual Real getCharLength() const = 0;
   virtual Real getCharSpeed() const {
@@ -121,8 +100,9 @@ class Shape
   }
   virtual Real getCharMass() const;
 
-  virtual void create(const vector<BlockInfo>& vInfo) = 0;
+  virtual void create(const std::vector<BlockInfo>& vInfo) = 0;
 
+  virtual void updateVelocity(double dt);
   virtual void updatePosition(double dt);
 
   void setCentroid(double C[2])
@@ -178,7 +158,7 @@ class Shape
 
   virtual Real getMinRhoS() const;
   virtual bool bVariableDensity() const;
-  virtual void outputSettings(ostream &outStream) const;
+  virtual void outputSettings(std::ostream &outStream) const;
 
   struct Integrals {
     const double x, y, m, j, u, v, a;
@@ -188,63 +168,15 @@ class Shape
       x(c.x), y(c.y), m(c.m), j(c.j), u(c.u), v(c.v), a(c.a) {}
   };
 
-  Integrals integrateObstBlock(const vector<BlockInfo>& vInfo);
+  Integrals integrateObstBlock(const std::vector<BlockInfo>& vInfo);
 
-  void removeMoments(const vector<BlockInfo>& vInfo);
+  void removeMoments(const std::vector<BlockInfo>& vInfo);
 
-  virtual void computeVelocities();
-
-  void updateLabVelocity( double mSum[2], double uSum[2] );
+  void updateLabVelocity( int mSum[2], double uSum[2] );
 
   void penalize();
 
   void diagnostics();
-
-  void characteristic_function();
-  void deformation_velocities();
-
-  template <typename Kernel>
-  void compute(const Kernel& kernel, const vector<BlockInfo>& vInfo)
-  {
-    #pragma omp parallel
-    {
-      Lab mylab;
-      mylab.prepare(*(sim.grid), kernel.stencil_start, kernel.stencil_end, false);
-
-      #pragma omp for schedule(dynamic)
-      for (size_t i=0; i<vInfo.size(); i++)
-      {
-        const auto pos = obstacleBlocks[vInfo[i].blockID];
-        if(pos == nullptr) continue; //obstacle is not in the block
-        mylab.load(vInfo[i], 0);
-        FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-        kernel(mylab, vInfo[i], b, pos);
-      }
-    }
-  }
-
-  template <typename Kernel>
-  void compute_surface(const Kernel& kernel, const vector<BlockInfo>& vInfo)
-  {
-    #pragma omp parallel
-    {
-      Lab mylab;
-      mylab.prepare(*(sim.grid), kernel.stencil_start, kernel.stencil_end, false);
-
-      #pragma omp for schedule(dynamic)
-      for (size_t i=0; i<vInfo.size(); i++)
-      {
-        const auto pos = obstacleBlocks[vInfo[i].blockID];
-        if(pos == nullptr) continue; //obstacle is not in the block
-        assert(pos->filled);
-        if(!pos->n_surfPoints) continue; //does not contain surf points
-
-        mylab.load(vInfo[i], 0);
-        FluidBlock& b = *(FluidBlock*)vInfo[i].ptrBlock;
-        kernel(mylab, vInfo[i], b, pos);
-      }
-    }
-  }
 
   virtual void computeForces();
 };

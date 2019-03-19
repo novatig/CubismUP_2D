@@ -1,20 +1,22 @@
 //
-//  main.cpp
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Created by Christian Conti on 1/7/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
+//  Created by Guido Novati (novatig@ethz.ch).
 //
+
 
 #include <iostream>
 #include <string>
 #include <vector>
 #include <cmath>
 #include <sstream>
+//#include <random>
 
 #include "Communicator.h"
 #include "Simulation.h"
-#include "BlowFish.h"
+#include "Obstacles/BlowFish.h"
 
 #include "mpi.h"
 //
@@ -29,43 +31,39 @@
 
 inline void resetIC(BlowFish* const agent, Communicator*const c) {
   const Real A = 5*M_PI/180; // start between -5 and 5 degrees
-  uniform_real_distribution<Real> dis(-A, A);
+  std::uniform_real_distribution<Real> dis(-A, A);
   const auto SA = c->isTraining() ? dis(c->getPRNG()) : 0.00;
   agent->setOrientation(SA);
 }
-inline void setAction(BlowFish* const agent, const vector<double> act) {
+inline void setAction(BlowFish* const agent, const std::vector<double> act) {
   agent->flapAcc_R = act[0]/agent->timescale/agent->timescale;
   agent->flapAcc_L = act[1]/agent->timescale/agent->timescale;
 }
-inline vector<double> getState(const BlowFish* const agent) {
+inline std::vector<double> getState(const BlowFish* const agent) {
   const double velscale = agent->radius / agent->timescale;
-  const double w = agent->getW() * agent->timescale;
-  const double angle = agent->getOrientation();
-  const double u = agent->getU() / velscale;
-  const double v = agent->getV() / velscale;
+  const double w = agent->omega * agent->timescale;
+  const double angle = agent->orientation;
+  const double u = agent->u / velscale;
+  const double v = agent->v / velscale;
   const double cosAng = std::cos(angle), sinAng = std::sin(angle);
   const double U = u*cosAng + v*sinAng, V = v*cosAng - u*sinAng;
   const double WR = agent->flapVel_R * agent->timescale;
   const double WL = agent->flapVel_L * agent->timescale;
   const double AR = agent->flapAng_R, AL = agent->flapAng_L;
-  vector<double> states = {U, V, w, angle, AR, AL, WR, WL};
+  std::vector<double> states = {U, V, w, angle, AR, AL, WR, WL};
   printf("Sending [%f %f %f %f %f %f %f %f]\n", U,V,w,angle,AR,AL,WR,WL);
   return states;
 }
 inline double getReward(const BlowFish* const agent) {
   const double velscale = agent->radius / agent->timescale;
-  const double angle = agent->getOrientation();
-  const double u = agent->getU() / velscale;
-  const double v = agent->getV() / velscale;
-  const double cosAng = std::cos(angle);
+  const double u = agent->u / velscale, v = agent->v / velscale;
+  const double cosAng = std::cos(agent->orientation);
   const bool ended = cosAng<0;
   const double reward = ended ? -10 : cosAng -std::sqrt(u*u+v*v);
   return reward;
 }
 inline bool isTerminal(const BlowFish* const agent) {
-  const Real angle = agent->getOrientation();
-  const Real cosAng = std::cos(angle);
-  return cosAng<0;
+  return std::cos(agent->orientation)<0;
 }
 inline double getTimeToNextAct(const BlowFish* const agent, const double t) {
   return t + agent->timescale / 4;
@@ -132,7 +130,7 @@ int app_main(
       }
       step++;
       tot_steps++;
-      const vector<double> state = getState(agent);
+      const std::vector<double> state = getState(agent);
       const double reward = getReward(agent);
 
       if (agentOver) {

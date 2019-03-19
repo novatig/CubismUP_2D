@@ -44,7 +44,7 @@ struct StencilInfo
 
         if (!isvalid())
         {
-            cout << "Stencilinfo instance not valid. Aborting\n";
+            std::cout << "Stencilinfo instance not valid. Aborting\n";
             abort();
         }
     }

@@ -1,9 +1,17 @@
+//
+//  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
+//
+//  Created by Guido Novati (novatig@ethz.ch).
+//
+
 #pragma once
 
-#include <vector> //surface vector
-#include <cstring> //memset
-#include <stdio.h> //print
 #include "Definitions.h"
+
+using CHI_MAT = Real[_BS_][_BS_];
+using UDEFMAT = Real[_BS_][_BS_][2];
 
 struct surface_data
 {
@@ -20,14 +28,15 @@ struct ObstacleBlock
   static const int sizeY = _BS_;
 
   // bulk quantities:
-  Real chi[sizeX][sizeY];
-  Real rho[sizeX][sizeY]; //maybe unused
-  Real udef[sizeX][sizeY][2];
+  Real chi[sizeY][sizeX];
+  Real dist[sizeY][sizeX];
+  Real rho[sizeY][sizeX];
+  Real udef[sizeY][sizeX][2];
 
   //surface quantities:
   size_t n_surfPoints=0;
   bool filled = false;
-  vector<surface_data*> surface;
+  std::vector<surface_data*> surface;
   Real *pX=nullptr, *pY=nullptr, *P=nullptr, *fX=nullptr, *fY=nullptr;
   Real *vx=nullptr, *vy=nullptr, *vxDef=nullptr, *vyDef=nullptr;
 
@@ -39,6 +48,7 @@ struct ObstacleBlock
 
   ObstacleBlock()
   {
+    clear();
     //rough estimate of surface cutting the block diagonally
     //with 2 points needed on each side of surface
     surface.reserve(4*_BS_);
@@ -50,7 +60,9 @@ struct ObstacleBlock
 
   void clear_surface()
   {
-    n_surfPoints = perimeter = forcex = forcey = forcex_P = forcey_P = 0;
+    filled = false;
+    n_surfPoints = 0;
+    perimeter = forcex = forcey = forcex_P = forcey_P = 0;
     forcex_V = forcey_V = torque = torque_P = torque_V = drag = thrust = 0;
     Pout = PoutBnd = defPower = defPowerBnd = circulation = 0;
 
@@ -75,44 +87,20 @@ struct ObstacleBlock
   {
     clear_surface();
     memset(chi, 0, sizeof(Real)*sizeX*sizeY);
+    memset(dist, 0, sizeof(Real)*sizeX*sizeY);
     memset(rho, 0, sizeof(Real)*sizeX*sizeY);
     memset(udef, 0, sizeof(Real)*sizeX*sizeY*2);
   }
 
-  inline void write(const int ix, const int iy, const Real _udef, const Real _vdef, const Real _rho, const Real _chi, const Real delta, const Real gradUX, const Real gradUY, const Real h)
+  inline void write(const int ix, const int iy, const Real delta, const Real gradUX, const Real gradUY)
   {
-    if(_chi<chi[iy][ix]) return;
     assert(!filled);
-    udef[iy][ix][0] = _udef; udef[iy][ix][1] = _vdef;
-    rho[iy][ix] = _rho; chi[iy][ix] = _chi;
 
-    if (delta>0)
-    {
+    if ( delta > 0 ) {
       n_surfPoints++;
       // multiply by cell area h^2 and by 0.5/h due to finite diff of gradHX
-      const Real dchidx = -delta*gradUX * h*h * .5/h; //gcc will
-      const Real dchidy = -delta*gradUY * h*h * .5/h; //sort it out
-      const Real _delta =  delta        * h*h * .5/h;
-      surface.push_back(new surface_data(ix,iy,dchidx,dchidy,_delta));
-    }
-  }
-
-  //same without udef
-  inline void write(const int ix, const int iy, const Real _rho, const Real _chi, const Real delta, const Real gradUX, const Real gradUY, const Real h)
-  {
-    if(_chi<chi[iy][ix]) return;
-    assert(!filled);
-    udef[iy][ix][0] = 0; udef[iy][ix][1] = 0;
-    rho[iy][ix] = _rho; chi[iy][ix] = _chi;
-
-    if (delta>0)
-    {
-      n_surfPoints++;
-      // multiply by cell area h^2 and by 0.5/h due to finite diff of gradHX
-      const Real dchidx = -delta*gradUX * h*h * .5/h; //gcc will
-      const Real dchidy = -delta*gradUY * h*h * .5/h; //sort it out
-      const Real _delta =  delta        * h*h * .5/h;
-      surface.push_back(new surface_data(ix,iy,dchidx,dchidy,_delta));
+      const Real dchidx = -delta*gradUX, dchidy = -delta*gradUY;
+      surface.push_back( new surface_data(ix, iy, dchidx, dchidy, delta) );
     }
   }
 
@@ -127,7 +115,7 @@ struct ObstacleBlock
     P = new Real[n_surfPoints];
   }
 
-  void print(ofstream& pFile)
+  void print(std::ofstream& pFile)
   {
     assert(filled);
     for(size_t i=0; i<n_surfPoints; i++) {
