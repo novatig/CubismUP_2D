@@ -188,19 +188,13 @@ struct StreamerVector
 // lightweight container
 struct VelChiGlueBlock
 {
-  static constexpr int sizeX = _BS_;
-  static constexpr int sizeY = _BS_;
-  static constexpr int sizeZ = _DIM_ > 2 ? _BS_ : 1;
-  using ElementType = std::array<void*, 2>;
+  static constexpr int sizeX=_BS_, sizeY=_BS_, sizeZ=1; // read by streamer
   GridBlock<ScalarElement> * chiBlock;
   GridBlock<VectorElement> * velBlock;
-  inline void clear() {}
-  void assign(GridBlock<ScalarElement>* c, GridBlock<VectorElement>* v)
-  {
-      chiBlock = c;
-      velBlock = v;
+  inline void clear() {} // required by grid
+  void assign(GridBlock<ScalarElement>* c, GridBlock<VectorElement>* v) {
+      chiBlock = c; velBlock = v;
   }
-
   VelChiGlueBlock(const VelChiGlueBlock&) = delete;
   VelChiGlueBlock& operator=(const VelChiGlueBlock&) = delete;
 };
@@ -210,7 +204,7 @@ struct StreamerGlue
   static constexpr int NCHANNELS = 3;
   template <typename T>
   static inline void operate(const VelChiGlueBlock& b,
-    const int ix, const int iy, const int iz, T output[NCHANNELS])
+    const int ix, const int iy, const int iz, T output[NCHANNELS]) // write
   {
       output[0] = (*b.velBlock)(ix,iy,iz).u[0];
       output[1] = (*b.velBlock)(ix,iy,iz).u[1];
@@ -218,7 +212,7 @@ struct StreamerGlue
   }
   template <typename T>
   static inline void operate(VelChiGlueBlock& b, const T input[NCHANNELS],
-    const int ix, const int iy, const int iz)
+    const int ix, const int iy, const int iz) // read (ie restart)
   {
       (*b.velBlock)(ix,iy,iz).u[0] = input[0];
       (*b.velBlock)(ix,iy,iz).u[1] = input[1];
