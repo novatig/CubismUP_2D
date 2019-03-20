@@ -1,12 +1,14 @@
 ifneq "$(findstring g++, $(CXX))" ""
 
-#CPPFLAGS += -DUSE_VTK -I/usr/include/vtk/
-LIBS += -L${HDF5_ROOT}/lib -lhdf5
-#-L/usr/lib64/vtk/ -lvtkCommonCore -lvtkCommonDataModel -lvtkIOXML
+LIBS += -L${HDF5_ROOT}/lib
 
 else
 
 CPPFLAGS += -I${HDF5_INCLUDE}
-LIBS += -L${HDF5_LIB} -lhdf5
+LIBS += -L${HDF5_LIB}
 
 endif
+
+#LIBS+=-L/home/novatig/hypre/build/lib/
+#CPPFLAGS+=-I/home/novatig/hypre/build/include/
+hypre=false

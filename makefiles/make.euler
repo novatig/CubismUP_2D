@@ -1,17 +1,12 @@
-ifeq "0" "1"
+MPICXX=mpic++
 
-VTKV=-8.1
-VTKD=/cluster/home/novatig/VTK-8.1.1/build/
-
-CPPFLAGS+= -I$(VTKDIR)include/vtk-8.1/ -DUSE_VTK
-LIBS+= -L$(VTKD)lib/ -lvtkCommonCore$(VTKV) -lvtkCommonDataModel$(VTKV) -lvtkIOXML$(VTKV)
-endif
+LIBS+=-L/cluster/home/novatig/hypre/build/lib/
+CPPFLAGS+=-I/cluster/home/novatig/hypre/build/include/
 
 ifeq "$(compiler)" "intel"
-CPPFLAGS+= -I/cluster/home/novatig/fftw-3.3.5/build_intel/include/
-LIBS+= -L/cluster/home/novatig/fftw-3.3.5/build_intel/lib/
+#CPPFLAGS+= -I/cluster/home/novatig/fftw-3.3.5/build_intel/include/
+#LIBS+= -L/cluster/home/novatig/fftw-3.3.5/build_intel/lib/
 else
-CPPFLAGS+= -I/cluster/home/novatig/fftw-3.3.5/build_gnu/include/
-LIBS+= -L/cluster/home/novatig/fftw-3.3.5/build_gnu/lib/
+CPPFLAGS+= -I/cluster/home/novatig/hdf5-1.10.1/gcc_6.3.0_openmpi_2.1/include/
+LIBS+= -L/cluster/home/novatig/hdf5-1.10.1/gcc_6.3.0_openmpi_2.1/lib/
 endif
-#CPPFLAGS+= -fsanitize=address
