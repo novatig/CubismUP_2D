@@ -46,26 +46,28 @@ void Shape::updatePosition(double dt)
   orientation = orientation<-M_PI ? orientation+2*M_PI : orientation;
 
   const double cosang = std::cos(orientation), sinang = std::sin(orientation);
+
   center[0] = centerOfMass[0] + cosang*d_gm[0] - sinang*d_gm[1];
   center[1] = centerOfMass[1] + sinang*d_gm[0] + cosang*d_gm[1];
 
-  #ifndef RL_TRAIN
+  const Real CX = labCenterOfMass[0], CY = labCenterOfMass[1], t = sim.time;
+  const Real cx = centerOfMass[0], cy = centerOfMass[1], angle = orientation;
+
   if(sim.verbose)
-    printf("CM:[%.02f %.02f] C:[%.02f %.02f] u:%.03f v:%.03f omega:%.03f M:%.03e J:%.03e\n",
-    centerOfMass[0], centerOfMass[1], center[0], center[1], u, v, omega, M, J);
+    printf("CM:[%.02f %.02f] C:[%.02f %.02f] ang:%.02f u:%.03f v:%.03f av:%.03f"
+      " M:%e J:%e\n", cx, cy, center[0], center[1], angle, u, v, omega, M, J);
   if(not sim.muteAll)
   {
     std::stringstream ssF;
     ssF<<sim.path2file<<"/velocity_"<<obstacleID<<".dat";
     std::stringstream & fout = logger.get_stream(ssF.str());
     if(sim.step==0)
-     fout<<"time dt CMx CMy angle u v omega M J accx accy torq"<<std::endl;
+     fout<<"t dt CXsim CYsim CXlab CYlab angle u v omega M J accx accy accw\n";
 
-    fout<<sim.time<<" "<<sim.dt<<" "<<centerOfMass[0]<<" "<<centerOfMass[1]<<" "
-        <<orientation<<" "<<u <<" "<<v<<" "<<omega <<" "<<M<<" "<<J<<" "
-        <<fluidMomX<<" "<<fluidMomY<<" "<<fluidAngMom<<std::endl;
+    fout<<t<<" "<<dt<<" "<<cx<<" "<<cy<<" "<<CX<<" "<<CY<<" "<<angle<<" "
+        <<u<<" "<<v<<" "<<omega<<" "<<M<<" "<<J<<" "<<fluidMomX/penalM<<" "
+        <<fluidMomY/penalM<<" "<<fluidAngMom/penalJ<<"\n";
   }
-  #endif
 }
 
 void Shape::outputSettings(std::ostream &outStream) const
@@ -130,12 +132,11 @@ void Shape::removeMoments(const std::vector<BlockInfo>& vInfo)
   Shape::Integrals I = integrateObstBlock(vInfo);
   M = I.m;
   J = I.j;
-  #ifndef RL_TRAIN
-    if(sim.verbose)
-      if( std::max({std::fabs(I.u), std::fabs(I.v), std::fabs(I.a)}) > 10*EPS )
-        printf("Correct: lin mom [%f %f] ang mom [%f]. Error in CM=[%f %f]\n",
-          I.u, I.v, I.a, I.x-centerOfMass[0], I.y-centerOfMass[1]);
-  #endif
+  if(sim.verbose)
+    if( std::max({std::fabs(I.u), std::fabs(I.v), std::fabs(I.a)}) > 10*EPS )
+      printf("Correct: lin mom [%f %f] ang mom [%f]. Error in CM=[%f %f]\n",
+        I.u, I.v, I.a, I.x-centerOfMass[0], I.y-centerOfMass[1]);
+
   //update the center of mass, this operation should not move 'center'
   centerOfMass[0] = I.x; centerOfMass[1] = I.y;
   //center[0] = I.X; center[1] = I.Y;
@@ -257,7 +258,6 @@ void Shape::computeForces()
   EffPDef    = Pthrust/(Pthrust-min(defPower,(double)0));
   EffPDefBnd = Pthrust/(Pthrust-    defPowerBnd);
 
-  #ifndef RL_TRAIN
   if (sim._bDump && not sim.muteAll)
   {
     stringstream ssF; ssF<<sim.path2file<<"/surface_"<<obstacleID
@@ -284,7 +284,6 @@ void Shape::computeForces()
       filePower<<"time Pthrust Pdrag PoutBnd Pout defPowerBnd defPower EffPDefBnd EffPDef"<<std::endl;
     filePower<<sim.time<<" "<<Pthrust<<" "<<Pdrag<<" "<<PoutBnd<<" "<<Pout<<" "<<defPowerBnd<<" "<<defPower<<" "<<EffPDefBnd<<" "<<EffPDef<<endl;
   }
-  #endif
   */
 }
 

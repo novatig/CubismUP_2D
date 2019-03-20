@@ -2,6 +2,8 @@ CXX=CC
 LD=CC
 MPICXX=CC
 
+gpu=true
+
 CPPFLAGS+= -I/users/novatig/hypre/build/include/
 LIBS+= -L/users/novatig/hypre/build/lib/
 

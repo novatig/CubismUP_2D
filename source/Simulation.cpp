@@ -237,11 +237,10 @@ double Simulation::calcMaxTimestep()
     const double rampCFL = std::exp(std::log(1e-3)*(1-x) + std::log(sim.CFL)*x);
     sim.dt = rampCFL * std::min({dtCFL, dtFourier, dtBody});
   }
-  #ifndef RL_TRAIN
-    if(sim.verbose)
-      printf("step:%d, time:%f, dt=%f, uinf:[%f %f], maxU:%f\n",
-        sim.step, sim.time, sim.dt, sim.uinfx, sim.uinfy, maxU);
-  #endif
+
+  if(sim.verbose)
+    printf("step:%d, time:%f, dt=%f, uinf:[%f %f], maxU:%f\n",
+      sim.step, sim.time, sim.dt, sim.uinfx, sim.uinfy, maxU);
 
   if(sim.dlm > 0) sim.lambda = sim.dlm / sim.dt;
   return sim.dt;

@@ -23,7 +23,7 @@
 inline void resetIC(Glider* const agent, Communicator*const c) {
   const Real A = 5*M_PI/180; // start between -5 and 5 degrees
   std::uniform_real_distribution<Real> dis(-A, A);
-  const auto SA = c->isTraining() ? dis(c->getPRNG()) : 0.00;
+  const auto SA = c->isTraining() ? dis(c->getPRNG()) : 0;
   agent->setOrientation(SA);
 }
 

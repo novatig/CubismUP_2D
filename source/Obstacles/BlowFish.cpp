@@ -72,13 +72,11 @@ void BlowFish::updatePosition(double dt)
     if(flapAcc_L<0) flapAcc_L = 0;
   }
 
-  #ifndef RL_TRAIN
   if(sim.verbose)
   if(  std::fabs(flapVel_R) + std::fabs(flapAcc_R) + std::fabs(flapVel_L)
      + std::fabs(flapAcc_L) > std::numeric_limits<Real>::epsilon() )
     printf("[ang, angvel, angacc] : right:[%f %f %f] left:[%f %f %f]\n",
       flapAng_R, flapVel_R, flapAcc_R, flapAng_L, flapVel_L, flapAcc_L);
-  #endif
 }
 
 void BlowFish::create(const std::vector<BlockInfo>& vInfo)
