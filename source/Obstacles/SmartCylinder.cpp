@@ -179,23 +179,6 @@ void SmartCylinder::updateVelocity(double dt)
   energy -= ( std::pow(appliedForceX, 2) + std::pow(appliedForceY, 2)
             + std::pow(appliedTorque/radius, 2) ) * dt;
 
-  /*
-  #ifndef RL_TRAIN
-    if(sim.verbose)
-      printf("CM:[%f %f] C:[%f %f] u:%f v:%f omega:%f M:%f J:%f V:%f\n",
-      centerOfMass[0],centerOfMass[1], center[0],center[1], u,v,omega, M, J, V);
-    if(not sim.muteAll)
-    {
-      stringstream ssF;
-      ssF<<sim.path2file<<"/velocity_"<<obstacleID<<".dat";
-      std::stringstream &fileSpeed = logger.get_stream(ssF.str());
-      if(sim.step==0)
-        fileSpeed<<"time dt CMx CMy angle u v omega M J FFX FFY FTZ"<<std::endl;
-
-      fileSpeed<<sim.time<<" "<<sim.dt<<" "<<centerOfMass[0]<<" "<<centerOfMass[1]<<" "<<orientation<<" "<<u <<" "<<v<<" "<<omega<<" "<<M<<" "<<J<<" "<<FFX<<" "<<FFY<<" "<<FTZ<<endl;
-    }
-  #endif
-  */
   //if(bForcedx) { u = forcedu; cout << "bForcedx" << endl; }
   //if(bForcedy) v = forcedv;
   //if(bBlockang) omega = 0;
