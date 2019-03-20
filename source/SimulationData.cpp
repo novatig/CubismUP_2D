@@ -26,8 +26,15 @@ void SimulationData::allocateGrid()
 
   invRho= new ScalarGrid(bpdx, bpdy, 1);
   pOld  = new ScalarGrid(bpdx, bpdy, 1);
+
+  dump  = new DumpGrid(bpdx, bpdy, 1);
 }
 
+void SimulationData::dumpGlue(std::string name) {
+  std::stringstream ss; ss<<name<<std::setfill('0')<<std::setw(7)<<step;
+  DumpHDF5<DumpGrid,StreamerGlue>(*(dump), step, time,
+    "velChi_" + ss.str(), path4serialization);
+}
 void SimulationData::dumpChi(std::string name) {
   std::stringstream ss; ss<<name<<std::setfill('0')<<std::setw(7)<<step;
   DumpHDF5<ScalarGrid,StreamerScalar>(*(chi), step, time,
@@ -178,9 +185,8 @@ void SimulationData::startProfiler(std::string name)
 void SimulationData::stopProfiler()
 {
   #ifndef SMARTIES_APP
-  Checker check (*this);
-  check.run("after" + profiler->currentAgentName());
-
+    Checker check (*this);
+    check.run("after" + profiler->currentAgentName());
     profiler->pop_stop();
   #endif
 }
@@ -191,14 +197,27 @@ void SimulationData::printResetProfiler()
     profiler->reset();
   #endif
 }
+
 void SimulationData::dumpAll(std::string name)
 {
-  dumpChi  (name);
+  const std::vector<BlockInfo>& chiInfo = chi->getBlocksInfo();
+  const std::vector<BlockInfo>& velInfo = vel->getBlocksInfo();
+  const std::vector<BlockInfo>& dmpInfo =dump->getBlocksInfo();
+  #pragma omp parallel for schedule(static)
+  for (size_t i=0; i < velInfo.size(); i++)
+  {
+    VectorBlock* VEL = (VectorBlock*) velInfo[i].ptrBlock;
+    ScalarBlock* CHI = (ScalarBlock*) chiInfo[i].ptrBlock;
+    VelChiGlueBlock& DMP = * (VelChiGlueBlock*) dmpInfo[i].ptrBlock;
+    DMP.assign(CHI, VEL); // TODO USER MIGHT WANT TO HAVE invRho instead of chi?
+  }
+  //dumpChi  (name); // glued together: skip
+  //dumpVel  (name); // glued together: skip
+  dumpGlue(name);
   dumpPres (name);
   dumpInvRho (name);
-  dumpTmp  (name);
-  dumpVel  (name);
+  //dumpTmp  (name); // usually signed dist is here
   //dumpUobj (name);
   //dumpForce(name);
-  //dumpTmpV (name);
+  //dumpTmpV (name); // probably useless
 }

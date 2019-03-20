@@ -32,6 +32,7 @@ struct SimulationData
   ScalarGrid * tmp   = nullptr;
   ScalarGrid * invRho= nullptr;
   ScalarGrid * pOld  = nullptr;
+  DumpGrid   * dump  = nullptr;
 
   void allocateGrid();
 
@@ -96,14 +97,15 @@ struct SimulationData
   void printResetProfiler();
   ~SimulationData();
 
-  void dumpChi  (std::string name);
-  void dumpPres (std::string name);
-  void dumpPrhs (std::string name);
-  void dumpTmp  (std::string name);
-  void dumpVel  (std::string name);
-  void dumpUobj (std::string name);
-  void dumpForce(std::string name);
-  void dumpTmpV (std::string name);
-  void dumpAll  (std::string name);
-  void dumpInvRho  (std::string name);
+  void dumpChi   (std::string name);
+  void dumpPres  (std::string name);
+  void dumpPrhs  (std::string name);
+  void dumpTmp   (std::string name);
+  void dumpVel   (std::string name);
+  void dumpUobj  (std::string name);
+  void dumpForce (std::string name);
+  void dumpTmpV  (std::string name);
+  void dumpAll   (std::string name);
+  void dumpInvRho(std::string name);
+  void dumpGlue  (std::string name);
 };

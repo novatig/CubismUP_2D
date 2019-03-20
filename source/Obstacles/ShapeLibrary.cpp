@@ -101,7 +101,7 @@ void FillBlocks_Ellipse::operator()(const BlockInfo& I,
     {
       Real p[2], xs[2];
       I.pos(p, ix, iy); p[0] -= pos[0]; p[1] -= pos[1];
-      const Real t[2] = {cosang*p[0]-sinang*p[1], sinang*p[0]+cosang*p[1]};
+      const Real t[2] = {cosang*p[0]+sinang*p[1], cosang*p[1]-sinang*p[0]};
       const Real sqDist = p[0]*p[0] + p[1]*p[1];
       Real dist = 0;
       if (std::fabs(t[0]) > e[0]+safety || std::fabs(t[1]) > e[1]+safety )
@@ -131,7 +131,7 @@ void FillBlocks_VarRhoEllipse::operator()(const BlockInfo& I,
     {
       Real p[2], xs[2];
       I.pos(p, ix, iy); p[0] -= pos[0]; p[1] -= pos[1];
-      const Real t[2] = {cosang*p[0]-sinang*p[1], sinang*p[0]+cosang*p[1]};
+      const Real t[2] = {cosang*p[0]+sinang*p[1], cosang*p[1]-sinang*p[0]};
       const Real sqDist = p[0]*p[0] + p[1]*p[1];
       Real dist = 0;
       if (std::fabs(t[0]) > e[0]+2*h || std::fabs(t[1]) > e[1]+2*h )

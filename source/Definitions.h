@@ -154,7 +154,8 @@ class BlockLabOpen: public BlockLab<BlockType, allocator>
   BlockLabOpen& operator=(const BlockLabOpen&) = delete;
 };
 
-struct StreamerScalar {
+struct StreamerScalar
+{
   static constexpr int NCHANNELS = 1;
   template <typename TBlock, typename T>
   static inline void operate(const TBlock& b,
@@ -182,9 +183,56 @@ struct StreamerVector
   static const char * getAttributeName() { return "Vector"; }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+// code to dump a 2d field and a scalar in same hdf5 vector grid
+// lightweight container
+struct VelChiGlueBlock
+{
+  static constexpr int sizeX = _BS_;
+  static constexpr int sizeY = _BS_;
+  static constexpr int sizeZ = _DIM_ > 2 ? _BS_ : 1;
+  using ElementType = std::array<void*, 2>;
+  GridBlock<ScalarElement> * chiBlock;
+  GridBlock<VectorElement> * velBlock;
+  inline void clear() {}
+  void assign(GridBlock<ScalarElement>* c, GridBlock<VectorElement>* v)
+  {
+      chiBlock = c;
+      velBlock = v;
+  }
+
+  VelChiGlueBlock(const VelChiGlueBlock&) = delete;
+  VelChiGlueBlock& operator=(const VelChiGlueBlock&) = delete;
+};
+// streamer
+struct StreamerGlue
+{
+  static constexpr int NCHANNELS = 3;
+  template <typename T>
+  static inline void operate(const VelChiGlueBlock& b,
+    const int ix, const int iy, const int iz, T output[NCHANNELS])
+  {
+      output[0] = (*b.velBlock)(ix,iy,iz).u[0];
+      output[1] = (*b.velBlock)(ix,iy,iz).u[1];
+      output[2] = (*b.chiBlock)(ix,iy,iz).s;
+  }
+  template <typename T>
+  static inline void operate(VelChiGlueBlock& b, const T input[NCHANNELS],
+    const int ix, const int iy, const int iz)
+  {
+      (*b.velBlock)(ix,iy,iz).u[0] = input[0];
+      (*b.velBlock)(ix,iy,iz).u[1] = input[1];
+      (*b.chiBlock)(ix,iy,iz).s = input[2];
+  }
+  static std::string prefix() { return std::string(""); }
+  static const char * getAttributeName() { return "Vector"; }
+};
+////////////////////////////////////////////////////////////////////////////////
+
 using ScalarBlock = GridBlock<ScalarElement>;
 using VectorBlock = GridBlock<VectorElement>;
 using VectorGrid = Grid<VectorBlock, std::allocator>;
 using ScalarGrid = Grid<ScalarBlock, std::allocator>;
+using DumpGrid = Grid<VelChiGlueBlock, std::allocator>;
 using VectorLab = BlockLabOpen<VectorBlock, std::allocator>;
 using ScalarLab = BlockLabOpen<ScalarBlock, std::allocator>;
