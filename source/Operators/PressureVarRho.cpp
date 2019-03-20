@@ -8,44 +8,12 @@
 
 
 #include "PressureVarRho.h"
-#include "../Poisson/FFTW_freespace.h"
-#ifdef HYPREFFT
-#include "../Poisson/HYPREdirichlet.h"
-#endif
-#include "../Poisson/FFTW_dirichlet.h"
-#include "../Poisson/FFTW_periodic.h"
-#ifdef CUDAFFT
-#include "../Poisson/CUDA_all.h"
-#endif
+#include "../Poisson/PoissonSolver.h"
 
 template<typename T>
 static inline T mean(const T A, const T B)
 {
   return 0.5*(A+B);
-}
-
-static inline PoissonSolver * makeSolver(SimulationData& sim)
-{
-  #ifdef HYPREFFT
-  if (sim.poissonType == "hypre")
-    return static_cast<PoissonSolver*>(new HYPREdirichlet(sim));
-  else
-  #endif
-  if (sim.poissonType == "periodic")
-    return static_cast<PoissonSolver*>(new FFTW_periodic(sim));
-  else
-  if (sim.poissonType == "cosine")
-    return static_cast<PoissonSolver*>(new FFTW_dirichlet(sim));
-  #ifdef CUDAFFT
-  else
-  if (sim.poissonType == "cuda-periodic")
-    return static_cast<PoissonSolver*>(new CUDA_periodic(sim));
-  else
-  if (sim.poissonType == "cuda-freespace")
-    return static_cast<PoissonSolver*>(new CUDA_freespace(sim));
-  #endif
-  else
-    return static_cast<PoissonSolver*>(new FFTW_freespace(sim));
 }
 
 void PressureVarRho::fadeoutBorder(const double dt) const
@@ -204,7 +172,7 @@ void PressureVarRho::operator()(const double dt)
   }
 }
 
-PressureVarRho::PressureVarRho(SimulationData& s) : Operator(s), pressureSolver( makeSolver(s) )  { }
+PressureVarRho::PressureVarRho(SimulationData& s) : Operator(s), pressureSolver( PoissonSolver::makeSolver(s) )  { }
 
 PressureVarRho::~PressureVarRho() {
     delete pressureSolver;

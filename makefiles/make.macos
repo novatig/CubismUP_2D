@@ -3,26 +3,14 @@ CXX=g++-8
 LD=g++-8
 #endif
 
-SMARTIESDIR = /Users/novatig/code/smarties/source/
+SMARTIESDIR = ../../smarties/source/
 MPICXX=mpic++
 
-
-
-ifeq "0" "1"
-
-VTKV=-8.1
-VTKD=/usr/local/Cellar/vtk/8.1.1/
-
-CPPFLAGS+= -I$(VTKDIR)include/vtk$(VTKVER)/ -DUSE_VTK
-LIBS+= -L$(VTKD)lib/ -lvtkCommonCore$(VTKV) -lvtkCommonDataModel$(VTKV) -lvtkIOXML$(VTKV)
-
-else
 CPPFLAGS+= -I/usr/local/Cellar/hdf5/1.10.5/include/
 LIBS+= -L/usr/local/Cellar/hdf5/1.10.5/lib/
+
 CPPFLAGS+= -I/usr/local/Cellar/fftw/3.3.8/include/
 LIBS+= -L/usr/local/Cellar/fftw/3.3.8/lib/
+
 CPPFLAGS+= -I/usr/local/Cellar/hypre/2.11.2_3/include/
 LIBS+= -L/usr/local/Cellar/hypre/2.11.2_3/lib/
-
-LIBS+=-lhdf5
-endif

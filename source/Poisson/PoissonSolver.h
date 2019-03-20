@@ -35,4 +35,6 @@ class PoissonSolver
                      const std::vector<BlockInfo>& BDST) = 0;
 
   virtual ~PoissonSolver() { }
+
+  static PoissonSolver * makeSolver(SimulationData& sim);
 };

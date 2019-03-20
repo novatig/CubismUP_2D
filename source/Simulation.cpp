@@ -85,8 +85,8 @@ void Simulation::parseRuntime()
   sim.poissonType = parser("-poissonType").asString("");
   // simulation settings
   sim.CFL = parser("-CFL").asDouble(.1);
-  sim.lambda = parser("-lambda").asDouble(1e5);
-  sim.dlm = parser("-dlm").asDouble(1);
+  sim.lambda = parser("-lambda").asDouble(1e6);
+  sim.dlm = parser("-dlm").asDouble(0);
   sim.nu = parser("-nu").asDouble(1e-2);
 
   sim.verbose = parser("-verbose").asInt(1);
@@ -231,7 +231,6 @@ double Simulation::calcMaxTimestep()
   const double maxUb = sim.maxRelSpeed(), dtBody = maxUb<2.2e-16? 1 : h/maxUb;
   sim.dt = sim.CFL * std::min({dtCFL, dtFourier, dtBody});
 
-  if(sim.dlm >= 1) sim.lambda = sim.dlm / sim.dt;
   if (sim.step < 100)
   {
     const double x = (sim.step+1.0)/100;
@@ -268,7 +267,7 @@ bool Simulation::advance(const double dt)
 
   const bool bOver = sim.bOver();
 
-  if (bOver || (sim.step % 5 == 0 && sim.verbose) ) sim.printResetProfiler();
+  if (bOver || (sim.step % 50 == 0 && sim.verbose) ) sim.printResetProfiler();
 
   return bOver;
 }

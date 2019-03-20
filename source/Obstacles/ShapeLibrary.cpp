@@ -106,8 +106,8 @@ void FillBlocks_Ellipse::operator()(const BlockInfo& I,
       Real dist = 0;
       if (std::fabs(t[0]) > e[0]+safety || std::fabs(t[1]) > e[1]+safety )
         dist = -1; //is outside
-      else if (sqDist + safety*safety < sqMinSemiAx)
-        dist =  1; //is inside
+      //else if (sqDist + safety*safety < sqMinSemiAx)
+      //  dist =  1; //is inside
       else {
         const Real absdist = distPointEllipse (e, t, xs);
         const int sign = sqDist > (xs[0]*xs[0]+xs[1]*xs[1]) ? -1 : 1;

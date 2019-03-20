@@ -42,7 +42,8 @@ void Disk::updateVelocity(double dt)
     const std::vector<BlockInfo>& tmpVInfo = sim.tmpV->getBlocksInfo();
     const size_t Nblocks = tmpInfo.size();
     const Real uInfX = -forcedu, uInfY = forcedv;
-    const Real velScaleSq = forcedu*forcedu + forcedv*forcedv;
+    static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
+    const Real velScaleSq = std::max(forcedu*forcedu +forcedv*forcedv, EPS);
     printf("uinf %f %f \n", uInfX, uInfY);
     #pragma omp parallel for schedule(dynamic, 1)
     for(size_t i=0; i<Nblocks; i++)

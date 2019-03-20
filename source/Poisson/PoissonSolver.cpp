@@ -6,9 +6,54 @@
 //  Created by Guido Novati (novatig@ethz.ch).
 //
 
+//#include "PoissonSolver.h"
+#include "../Poisson/FFTW_freespace.h"
+#ifdef HYPREFFT
+#include "../Poisson/HYPREdirichlet.h"
+#endif
+#include "../Poisson/FFTW_dirichlet.h"
+#include "../Poisson/FFTW_periodic.h"
+#ifdef CUDAFFT
+#include "../Poisson/CUDA_all.h"
+#endif
 
-#include "PoissonSolver.h"
+PoissonSolver * PoissonSolver::makeSolver(SimulationData& sim)
+{
+  #ifdef HYPREFFT
+    if (sim.poissonType == "hypre")
+      return static_cast<PoissonSolver*>(new HYPREdirichlet(sim));
+    else
+  #endif
 
+  #ifdef CUDAFFT
+
+    if (sim.poissonType == "periodic")
+      return static_cast<PoissonSolver*>(new CUDA_periodic(sim));
+    else
+    if (sim.poissonType == "freespace")
+      return static_cast<PoissonSolver*>(new CUDA_freespace(sim));
+    else
+    if (sim.poissonType == "cpu_periodic")
+      return static_cast<PoissonSolver*>(new FFTW_periodic(sim));
+    else
+    if (sim.poissonType == "cpu_freespace")
+      return static_cast<PoissonSolver*>(new FFTW_freespace(sim));
+    else
+
+  #else
+
+    if (sim.poissonType == "periodic")
+      return static_cast<PoissonSolver*>(new FFTW_periodic(sim));
+    else
+    if (sim.poissonType == "freespace")
+      return static_cast<PoissonSolver*>(new FFTW_freespace(sim));
+    else
+
+  #endif
+
+  // default is dirichlet BC
+  return static_cast<PoissonSolver*>(new FFTW_dirichlet(sim));
+}
 
 void PoissonSolver::cub2rhs(const std::vector<BlockInfo>& BSRC)
 {
