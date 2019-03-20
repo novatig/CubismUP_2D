@@ -58,10 +58,11 @@ class CUDA_periodic : public PoissonSolver
   #undef TOT_DOF_X
   #undef STRIDE
 
-  void solve() override {
-    cub2rhs();
+  void solve(const std::vector<BlockInfo>& BSRC,
+             const std::vector<BlockInfo>& BDST) override {
+    cub2rhs(BSRC);
     dPeriodic(fwd, bwd, MY, MX, sim.getH(), buffer, rhs_gpu);
-    sol2cub();
+    sol2cub(BDST);
   }
 
   ~CUDA_periodic() {
@@ -98,10 +99,11 @@ class CUDA_freespace : public PoissonSolver
   }
   #undef TOT_DOF_X
 
-  void solve()  override {
-    cub2rhs();
+  void solve(const std::vector<BlockInfo>& BSRC,
+             const std::vector<BlockInfo>& BDST)  override {
+    cub2rhs(BSRC);
     dFreespace(fwd, bwd, totNy, totNx, buffer, m_kernel, rhs_gpu);
-    sol2cub();
+    sol2cub(BDST);
   }
 
   ~CUDA_freespace() {
