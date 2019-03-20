@@ -50,8 +50,8 @@ void Shape::updatePosition(double dt)
   center[0] = centerOfMass[0] + cosang*d_gm[0] - sinang*d_gm[1];
   center[1] = centerOfMass[1] + sinang*d_gm[0] + cosang*d_gm[1];
 
-  const Real CX = labCenterOfMass[0], CY = labCenterOfMass[0], t = sim.time;
-  const Real cx = centerOfMass[0], cy = centerOfMass[0], angle = orientation;
+  const Real CX = labCenterOfMass[0], CY = labCenterOfMass[1], t = sim.time;
+  const Real cx = centerOfMass[0], cy = centerOfMass[1], angle = orientation;
 
   if(sim.verbose)
     printf("CM:[%.02f %.02f] C:[%.02f %.02f] ang:%.02f u:%.03f v:%.03f av:%.03f"
