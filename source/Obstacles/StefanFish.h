@@ -30,7 +30,7 @@ class StefanFish: public Fish
 
   void resetAll() override;
   StefanFish(SimulationData&s, ArgumentParser&p, double C[2]);
-  void create(const vector<BlockInfo>& vInfo) override;
+  void create(const std::vector<BlockInfo>& vInfo) override;
   
 /* member functions for state/reward
   std::vector<double> state(const double OX, const double OY, const double t) const;

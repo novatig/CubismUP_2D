@@ -29,8 +29,8 @@
 // range of angles in initial conditions
 
 inline void resetIC(StefanFish* const a, Shape*const p, Communicator*const c) {
-  uniform_real_distribution<double> disA(-20./180.*M_PI, 20./180.*M_PI);
-  uniform_real_distribution<double> disX(0, 0.2),  disY(-0.25, 0.25); // changed 0.5->0.2 in order to avoid hitting right boundary (PW)
+  std::uniform_real_distribution<double> disA(-20./180.*M_PI, 20./180.*M_PI);
+  std::uniform_real_distribution<double> disX(0, 0.2),  disY(-0.25, 0.25); // changed 0.5->0.2 in order to avoid hitting right boundary (PW)
   const double SX = c->isTraining()? disX(c->getPRNG()) : 0.25;
   const double SY = c->isTraining()? disY(c->getPRNG()) : 0.00;
   const double SA = c->isTraining()? disA(c->getPRNG()) : 0.00;
@@ -54,7 +54,7 @@ inline std::vector<double> getState(
   const double V = a->getV() * a->Tperiod / a->length;
   const double W = a->getW() * a->Tperiod;
   const double lastT = a->lastTact, lastC = a->lastCurv, oldrC = a->oldrCurv;
-  const	vector<double> S = { X, Y, A, T, U, V, W, lastT, lastC, oldrC };
+  const	std::vector<double> S = { X, Y, A, T, U, V, W, lastT, lastC, oldrC };
 /* version using member-function (PW)
   std::vector<double> S = a->state(p->center[0], p->center[1], t);
   printf("S:[%f %f %f %f %f %f %f %f %f %f]\n",S[0], S[1], S[2], S[3], S[4], S[5], S[6], S[7], S[8], S[9]);
@@ -158,7 +158,7 @@ int app_main(
       }
       step++;
       tot_steps++;
-      vector<double> state = getState(agent,object,t);
+      std::vector<double> state = getState(agent,object,t);
       double reward = getReward(agent,object);
 
       if (agentOver || checkNaN(state, reward) ) {
