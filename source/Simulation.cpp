@@ -231,7 +231,6 @@ double Simulation::calcMaxTimestep()
   const double maxUb = sim.maxRelSpeed(), dtBody = maxUb<2.2e-16? 1 : h/maxUb;
   sim.dt = sim.CFL * std::min({dtCFL, dtFourier, dtBody});
 
-  if(sim.dlm >= 1) sim.lambda = sim.dlm / sim.dt;
   if (sim.step < 100)
   {
     const double x = (sim.step+1.0)/100;
@@ -268,7 +267,7 @@ bool Simulation::advance(const double dt)
 
   const bool bOver = sim.bOver();
 
-  if (bOver || (sim.step % 5 == 0 && sim.verbose) ) sim.printResetProfiler();
+  if (bOver || (sim.step % 50 == 0 && sim.verbose) ) sim.printResetProfiler();
 
   return bOver;
 }
