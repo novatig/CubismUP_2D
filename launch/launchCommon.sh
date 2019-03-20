@@ -45,7 +45,7 @@ fi
 elif [ ${HOST:0:3} == 'eu-' ] ;
 then
 
-BASEPATH="/cluster/scratch/webepasc/CubismUP_2D"
+BASEPATH="$SCRATCH/CubismUP_2D"
 NCPUSTR=`lscpu | grep "Core"`
 #export OMP_NUM_THREADS=${NCPUSTR: -3}
 export OMP_NUM_THREADS=36
