@@ -15,9 +15,9 @@ endif
 
 NVCC ?= nvcc
 
-hypre ?= on
-gpu ?= off
-hdf5 ?= on
+hypre ?= false
+gpu ?= false
+hdf5 ?= true
 config ?= production
 precision ?= double
 smarties ?= false
@@ -70,7 +70,7 @@ OBJECTS = \
 		FishLibrary.o StefanFish.o CarlingFish.o PressureVarRho.o \
 		Penalization.o advDiffGrav.o SmartCylinder.o Glider.o
 
-ifneq "$(gpu)" "off"
+ifneq "$(gpu)" "false"
 LIBS += -lcufft
 OBJECTS += CUDA_all.o
 CPPFLAGS += -DCUDAFFT
@@ -84,7 +84,7 @@ else
     LIBS += -lfftw3  -lfftw3_omp
 endif
 
-ifeq "$(hypre)" "on"
+ifneq "$(hypre)" "false"
 LIBS+= -lHYPRE
 CPPFLAGS += -DHYPREFFT
 endif
@@ -99,7 +99,7 @@ SMARTIESDIR ?= ../../smarties/source/
 CPPFLAGS += -I$(SMARTIESDIR)/Communicators/ -DSMARTIES_APP
 endif
 
-ifeq "$(hdf5)" "on"
+ifneq "$(hdf5)" "false"
 LIBS+= -lhdf5
 CPPFLAGS+= -D_USE_HDF_
 endif

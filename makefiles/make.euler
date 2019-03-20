@@ -1,11 +1,3 @@
-ifeq "0" "1"
-VTKV=-8.1
-VTKD=/cluster/home/novatig/VTK-8.1.1/build/
-
-CPPFLAGS+= -I$(VTKDIR)include/vtk-8.1/ -DUSE_VTK
-LIBS+= -L$(VTKD)lib/ -lvtkCommonCore$(VTKV) -lvtkCommonDataModel$(VTKV) -lvtkIOXML$(VTKV)
-endif
-
 MPICXX=mpic++
 
 LIBS+=-L/cluster/home/novatig/hypre/build/lib/
