@@ -64,7 +64,7 @@ void Shape::updatePosition(double dt)
     if(sim.step==0)
      fout<<"t dt CXsim CYsim CXlab CYlab angle u v omega M J accx accy accw\n";
 
-    fout<<t<" "<<dt<<" "<<cx<<" "<<cy<<" "<<CX<<" "<<CY<<" "<<angle<<" "
+    fout<<t<<" "<<dt<<" "<<cx<<" "<<cy<<" "<<CX<<" "<<CY<<" "<<angle<<" "
         <<u<<" "<<v<<" "<<omega<<" "<<M<<" "<<J<<" "<<fluidMomX/penalM<<" "
         <<fluidMomY/penalM<<" "<<fluidAngMom/penalJ<<"\n";
   }
