@@ -1,106 +1,59 @@
 //
-//  Sim_FSI_Gravity.cpp
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Created by Christian Conti on 1/26/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
+//  Created by Guido Novati (novatig@ethz.ch).
 //
+
 
 #include "Simulation.h"
 
-#ifdef USE_VTK
-#include <SerializerIO_ImageVTK.h>
-#elif defined(_USE_HDF_)
 #include <HDF5Dumper.h>
-#endif
 //#include <ZBinDumper.h>
 
-#include "HelperOperators.h"
-#include "CoordinatorIC.h"
-#include "CoordinatorAdvection.h"
-#include "CoordinatorMultistep.h"
-#include "CoordinatorDiffusion.h"
-#include "CoordinatorShape.h"
-#include "CoordinatorPressure.h"
-#include "CoordinatorGravity.h"
-#include "FactoryFileLineParser.h"
+#include "Operators/Helpers.h"
+#include "Operators/PressureIterator.h"
+#include "Operators/PressureSingle.h"
+#include "Operators/PressureVarRho.h"
+#include "Operators/Penalization.h"
+#include "Operators/PutObjectsOnGrid.h"
+#include "Operators/UpdateObjects.h"
+#include "Operators/advDiffGrav.h"
+#include "Operators/advDiff_RK.h"
+#include "Operators/advDiff.h"
+#include "Operators/presRHS_step1.h"
+#include "Utils/FactoryFileLineParser.h"
 
-#include "ShapesSimple.h"
-#include "BlowFish.h"
-#include "SmartCylinder.h"
-#include "StefanFish.h"
-#include "CarlingFish.h"
-#include "Profiler.h"
+#include "Obstacles/ShapesSimple.h"
+#include "Obstacles/CarlingFish.h"
+#include "Obstacles/StefanFish.h"
+#include "Obstacles/BlowFish.h"
+#include "Obstacles/SmartCylinder.h"
+#include "Obstacles/Glider.h"
 
 #include <regex>
 #include <algorithm>
 #include <iterator>
 
-
-static inline vector<string> split(const string &s, const char delim) {
-  stringstream ss(s); string item; vector<string> tokens;
-  while (getline(ss, item, delim)) tokens.push_back(item);
+static inline std::vector<std::string> split(const std::string&s,const char dlm)
+{
+  std::stringstream ss(s); std::string item; std::vector<std::string> tokens;
+  while (std::getline(ss, item, dlm)) tokens.push_back(item);
   return tokens;
-}
-
-void Simulation::reset()
-{
-  sim.resetAll();
-  for(const auto& shape : sim.shapes) shape->resetAll();
-}
-
-void Simulation::reinit()
-{
-  (*pipeline[0])(0);
-  // setup initial conditions
-  CoordinatorIC coordIC(sim);
-  #ifndef SMARTIES_APP
-    profiler->push_start(coordIC.getName());
-  #endif
-  coordIC(0);
-  #ifndef SMARTIES_APP
-    profiler->pop_stop();
-  #endif
-}
-
-void Simulation::dump(string fname)
-{
-  stringstream ss;
-  ss<<"avemaria_"<<fname<<std::setfill('0')<<std::setw(7)<<sim.step;
-  #ifdef USE_VTK
-    SerializerIO_ImageVTK<FluidGrid, FluidVTKStreamer> dumper;
-    dumper.Write( *(sim.grid), sim.path4serialization + ss.str() + ".vti" );
-  #elif defined(_USE_HDF_)
-    DumpHDF5<FluidGrid,StreamerVelocityVector>(*(sim.grid), sim.step, sim.time,
-      StreamerVelocityVector::prefix() + ss.str(), sim.path4serialization);
-    //if(sim.bVariableDensity)
-      DumpHDF5<FluidGrid,StreamerPressure>(*(sim.grid), sim.step, sim.time,
-      StreamerPressure::prefix() + ss.str(), sim.path4serialization);
-    if(sim.bVariableDensity)
-      DumpHDF5<FluidGrid,StreamerRho>(*(sim.grid), sim.step, sim.time,
-      StreamerRho::prefix() + ss.str(), sim.path4serialization);
-  #endif
-  //DumpZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
-  //ReadZBin<FluidGrid, StreamerSerialization>(*grid, serializedGrid.str(), path4serialization);
 }
 
 Simulation::Simulation(int argc, char ** argv) : parser(argc,argv)
 {
-  #ifndef SMARTIES_APP
-    profiler = new Profiler();
-  #endif
-  cout << "=================================================================\n";
-  cout << "\t\tFlow past a falling obstacle\n";
-  cout << "=================================================================\n";
+ std::cout<<"===============================================================\n";
+ std::cout<<"                  Flow past a falling obstacle                 \n";
+ std::cout<<"===============================================================\n";
 }
 
 Simulation::~Simulation()
 {
-  #ifndef SMARTIES_APP
-    delete profiler;
-  #endif
   while( not pipeline.empty() ) {
-    GenericCoordinator * g = pipeline.back();
+    Operator * g = pipeline.back();
     pipeline.pop_back();
     if(g not_eq nullptr) delete g;
   }
@@ -109,14 +62,13 @@ Simulation::~Simulation()
 void Simulation::parseRuntime()
 {
   sim.bRestart = parser("-restart").asBool(false);
-  cout << "bRestart is " << sim.bRestart << endl;
+  std::cout << "bRestart is " << sim.bRestart << std::endl;
 
   // initialize grid
   parser.set_strict_mode();
   sim.bpdx = parser("-bpdx").asInt();
   sim.bpdy = parser("-bpdy").asInt();
-  sim.grid = new FluidGrid(sim.bpdx, sim.bpdy, 1);
-  assert( sim.grid not_eq nullptr );
+  sim.allocateGrid();
 
   // simulation ending parameters
   parser.unset_strict_mode();
@@ -124,20 +76,17 @@ void Simulation::parseRuntime()
   sim.endTime = parser("-tend").asDouble(0);
 
   // output parameters
-  sim.dumpFreq = parser("-fdump").asDouble(0);
+  sim.dumpFreq = parser("-fdump").asInt(0);
   sim.dumpTime = parser("-tdump").asDouble(0);
 
   sim.path2file = parser("-file").asString("./");
   sim.path4serialization = parser("-serialization").asString(sim.path2file);
-  if ( parser("-bFreeSpace").asInt(0) )
-    sim.poissonType = 1;
-  if ( parser("-bNeumann").asInt(0) )
-    sim.poissonType = 2;
 
+  sim.poissonType = parser("-poissonType").asString("");
   // simulation settings
   sim.CFL = parser("-CFL").asDouble(.1);
-  sim.lambda = parser("-lambda").asDouble(1e4);
-  sim.dlm = parser("-dlm").asDouble(1.);
+  sim.lambda = parser("-lambda").asDouble(1e5);
+  sim.dlm = parser("-dlm").asDouble(1);
   sim.nu = parser("-nu").asDouble(1e-2);
 
   sim.verbose = parser("-verbose").asInt(1);
@@ -148,13 +97,11 @@ void Simulation::parseRuntime()
 void Simulation::createShapes()
 {
   parser.set_strict_mode();
-  const Real axX = parser("-bpdx").asInt();
-  const Real axY = parser("-bpdy").asInt();
-  const Real ext = std::max(axX, axY);
+  const Real ext = std::max(sim.bpdx, sim.bpdy);
   parser.unset_strict_mode();
-  const string shapeArg = parser("-shapes").asString("");
-  stringstream descriptors( shapeArg );
-  string lines;
+  const std::string shapeArg = parser("-shapes").asString("");
+  std::stringstream descriptors( shapeArg );
+  std::string lines;
   unsigned k = 0;
 
   while (std::getline(descriptors, lines))
@@ -166,19 +113,19 @@ void Simulation::createShapes()
     // will create a vector of strings, the first containing foo and the second
     // bar so that they can be parsed separately. Reason being that in many
     // situations \n will not be read as line escape but as backslash n.
-    const vector<string> vlines = split(lines, ',');
-    for (const string line: vlines)
+    const std::vector<std::string> vlines = split(lines, ',');
+    for (const std::string line: vlines)
     {
-      istringstream line_stream(line);
-      string objectName;
-      cout << line << endl;
+      std::istringstream line_stream(line);
+      std::string objectName;
+      std::cout << line << std::endl;
       line_stream >> objectName;
       // Comments and empty lines ignored:
       if(objectName.empty() or objectName[0]=='#') continue;
       FactoryFileLineParser ffparser(line_stream);
       double center[2] = {
-        ffparser("-xpos").asDouble(.5*axX/ext),
-        ffparser("-ypos").asDouble(.5*axY/ext)
+        ffparser("-xpos").asDouble(.5*sim.bpdx/ext),
+        ffparser("-ypos").asDouble(.5*sim.bpdy/ext)
       };
       //ffparser.print_args();
       Shape* shape = nullptr;
@@ -196,12 +143,14 @@ void Simulation::createShapes()
         shape = new EllipseVarDensity(sim, ffparser, center);
       else if (objectName=="blowfish")
         shape = new BlowFish(         sim, ffparser, center);
+      else if (objectName=="glider")
+        shape = new Glider(           sim, ffparser, center);
       else if (objectName=="stefanfish")
         shape = new StefanFish(       sim, ffparser, center);
       else if (objectName=="carlingfish")
         shape = new CarlingFish(      sim, ffparser, center);
       else {
-        cout << "FATAL - shape is not recognized!" << std::endl; abort();
+        std::cout << "FATAL - shape is not recognized!" << std::endl; abort();
       }
       assert(shape not_eq nullptr);
       shape->obstacleID = k++;
@@ -224,67 +173,75 @@ void Simulation::init()
 
   pipeline.clear();
 
-  pipeline.push_back( new CoordinatorComputeShape(sim) );
+  if(1)
+  {
+    pipeline.push_back( new PutObjectsOnGrid(sim) );
+    if(sim.bVariableDensity) pipeline.push_back( new advDiffGrav(sim) );
+    else  pipeline.push_back( new advDiff(sim) );
+    if(sim.bVariableDensity) pipeline.push_back( new PressureVarRho(sim) );
+    else  pipeline.push_back( new PressureSingle(sim) );
+    pipeline.push_back( new UpdateObjects(sim) );
+  }
+  else
+  {
+    pipeline.push_back( new PutObjectsOnGrid(sim) );
+    pipeline.push_back( new    presRHS_step1(sim) );
+    pipeline.push_back( new       advDiff_RK(sim) );
+    pipeline.push_back( new PressureIterator(sim) );
+    pipeline.push_back( new    UpdateObjects(sim) );
+  }
 
-  #if 1 // in one sweep advect, diffuse, add hydrostatic
-    pipeline.push_back( new CoordinatorMultistep<Lab>(sim) );
-  #else
-    pipeline.push_back( new CoordinatorAdvection<Lab>(sim) );
-    pipeline.push_back( new CoordinatorDiffusion<Lab>(sim) );
-    pipeline.push_back( new CoordinatorGravity(sim) );
-  #endif
-
-  pipeline.push_back( new CoordinatorPressure<Lab>(sim) );
-  pipeline.push_back( new CoordinatorVelocities(sim) );
-  pipeline.push_back( new CoordinatorPenalization(sim) );
-  pipeline.push_back( new CoordinatorComputeForces(sim) );
-  //if( sim.poissonType not_eq 1 )
-  //  pipeline.push_back( new CoordinatorFadeOut(sim) );
-
-  cout << "Coordinator/Operator ordering:\n";
+  std::cout << "Operator ordering:\n";
   for (size_t c=0; c<pipeline.size(); c++)
-    cout << "\t" << pipeline[c]->getName() << endl;
+    std::cout << "\t" << pipeline[c]->getName() << "\n";
 
-  reinit();
-  dump("init");
+  reset();
+  sim.dumpAll("IC");
+}
+
+void Simulation::reset()
+{
+   sim.resetAll();
+   IC ic(sim);
+   ic(0);
+   // put objects on grid
+   (*pipeline[0])(0);
+   ApplyObjVel initVel(sim);
+   initVel(0);
 }
 
 void Simulation::simulate()
 {
-  while (1) {
-    #ifndef SMARTIES_APP
-     profiler->push_start("DT");
-    #endif
+  while (1)
+  {
+    sim.startProfiler("DT");
     const double dt = calcMaxTimestep();
-    #ifndef SMARTIES_APP
-     profiler->pop_stop();
-    #endif
+    sim.stopProfiler();
     if (advance(dt)) break;
   }
 }
 
 double Simulation::calcMaxTimestep()
 {
-  const Real maxU = findMaxUOMP( sim ); assert(maxU>=0);
+  const auto findMaxU_op = findMaxU(sim);
+  const Real maxU = findMaxU_op.run(); assert(maxU>=0);
+
   const double h = sim.getH();
   const double dtFourier = h*h/sim.nu, dtCFL = maxU<2.2e-16? 1 : h/maxU;
-  sim.dt = sim.CFL * std::min(dtCFL, dtFourier);
+  const double maxUb = sim.maxRelSpeed(), dtBody = maxUb<2.2e-16? 1 : h/maxUb;
+  sim.dt = sim.CFL * std::min({dtCFL, dtFourier, dtBody});
 
-  const double maxUb = sim.maxRelSpeed();
-  const double dtBody = maxUb<2.2e-16? 1 : h/maxUb;
-  sim.dt = std::min( sim.dt, sim.CFL*dtBody );
-
-  if (sim.step < 100) {
+  if(sim.dlm >= 1) sim.lambda = sim.dlm / sim.dt;
+  if (sim.step < 100)
+  {
     const double x = (sim.step+1.0)/100;
     const double rampCFL = std::exp(std::log(1e-3)*(1-x) + std::log(sim.CFL)*x);
-    sim.dt = rampCFL*std::min({dtCFL, dtFourier, dtBody});
+    sim.dt = rampCFL * std::min({dtCFL, dtFourier, dtBody});
   }
   #ifndef RL_TRAIN
-  if(sim.verbose)
-    cout << "step, time, dt "// (Fourier, CFL, body): "
-    <<sim.step<<" "<<sim.time<<" "<<sim.dt<<" "<<sim.uinfx<<" "<<sim.uinfy
-    //<<" "<<dtFourier<<" "<<dtCFL<<" "<<dtBody
-    <<endl;
+    if(sim.verbose)
+      printf("step:%d, time:%f, dt=%f, uinf:[%f %f], maxU:%f\n",
+        sim.step, sim.time, sim.dt, sim.uinfx, sim.uinfy, maxU);
   #endif
 
   if(sim.dlm > 0) sim.lambda = sim.dlm / sim.dt;
@@ -296,43 +253,22 @@ bool Simulation::advance(const double dt)
   assert(dt>2.2e-16);
   const bool bDump = sim.bDump();
 
-  for (size_t c=0; c<pipeline.size(); c++) {
-    #ifndef SMARTIES_APP
-     profiler->push_start(pipeline[c]->getName());
-    #endif
-    (*pipeline[c])(sim.dt);
-    #ifndef SMARTIES_APP
-     profiler->pop_stop();
-    #endif
-    // stringstream ss; ss<<path2file<<"avemaria_"<<pipeline[c]->getName();
-    // ss<<"_"<<std::setfill('0')<<std::setw(7)<<step<<".vti"; dump(ss);
-  }
+  for (size_t c=0; c<pipeline.size(); c++) (*pipeline[c])(sim.dt);
 
   sim.time += sim.dt;
   sim.step++;
 
   //dump some time steps every now and then
-  #ifndef SMARTIES_APP
-   profiler->push_start("Dump");
-  #endif
+  sim.startProfiler("Dump");
   if(bDump) {
     sim.registerDump();
-    dump();
+    sim.dumpAll("avemaria_");
   }
-  #ifndef SMARTIES_APP
-   profiler->pop_stop();
-  #endif
-
-  if (sim.step % 100 == 0 && sim.verbose) {
-    #ifndef SMARTIES_APP
-     profiler->printSummary();
-     profiler->reset();
-    #endif
-  }
+  sim.stopProfiler();
 
   const bool bOver = sim.bOver();
-  #ifndef SMARTIES_APP
-   if(bOver) profiler->printSummary();
-  #endif
+
+  if (bOver || (sim.step % 5 == 0 && sim.verbose) ) sim.printResetProfiler();
+
   return bOver;
 }

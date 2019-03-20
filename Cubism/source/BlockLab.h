@@ -449,6 +449,21 @@ public:
 #endif
 		return m_cacheBlock->Access(ix-m_stencilStart[0], iy-m_stencilStart[1], iz-m_stencilStart[2]);
 	}
+  const ElementType& operator()(int ix, int iy=0, int iz=0) const
+	{
+#ifndef NDEBUG
+		assert(m_state == eMRAGBlockLab_Loaded);
+
+		const int nX = m_cacheBlock->getSize()[0];
+		const int nY = m_cacheBlock->getSize()[1];
+		const int nZ = m_cacheBlock->getSize()[2];
+
+		assert(ix-m_stencilStart[0]>=0 && ix-m_stencilStart[0]<nX);
+		assert(iy-m_stencilStart[1]>=0 && iy-m_stencilStart[1]<nY);
+		assert(iz-m_stencilStart[2]>=0 && iz-m_stencilStart[2]<nZ);
+#endif
+		return m_cacheBlock->Access(ix-m_stencilStart[0], iy-m_stencilStart[1], iz-m_stencilStart[2]);
+	}
 
 	/** Just as BlockLab::operator() but returning a const. */
 	const ElementType& read(int ix, int iy=0, int iz=0) const

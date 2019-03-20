@@ -15,7 +15,9 @@ endif
 
 NVCC ?= nvcc
 
-poisson ?= cpu
+hypre ?= on
+gpu ?= off
+hdf5 ?= on
 config ?= production
 precision ?= double
 smarties ?= false
@@ -25,6 +27,9 @@ ifeq ($(UNAME_S),Darwin)
 include make.macos
 endif
 
+ifneq "$(findstring panda,$(shell hostname))" ""
+include make.falcon
+endif
 ifneq "$(findstring falcon,$(shell hostname))" ""
 include make.falcon
 endif
@@ -40,6 +45,9 @@ ifneq "$(findstring daint,$(shell hostname))" ""
 include make.daint
 endif
 
+CXX=$(MPICXX)
+LD=$(MPICXX)
+
 bs ?= 32
 nthreads ?= 24
 CPPFLAGS+= -D_BS_=$(bs) -D_ALIGNBYTES_=32 -DNTHREADS=$(nthreads)
@@ -47,6 +55,26 @@ NVFLAGS+= -code=sm_60 -arch=compute_60
 
 CPPFLAGS += -I../source/ -I../Cubism/source/
 NVFLAGS += -I../Cubism/source/
+
+BUILDDIR = .
+SRC_DIR = $(BUILDDIR)/../source/
+DIRS = $(sort $(dir $(wildcard ../source/*/)))
+
+CUBISM_DIR = $(BUILDDIR)/../Cubism/source/
+#OBJECTS = Simulation.o Definitions.o Shape.o ShapeLibrary.o ShapesSimple.o
+OBJECTS = \
+		Simulation.o SimulationData.o Shape.o ShapeLibrary.o ShapesSimple.o \
+		PressureSingle.o PressureIterator.o presRHS_step1.o PoissonSolver.o \
+		HYPREdirichlet.o FFTW_freespace.o PutObjectsOnGrid.o UpdateObjects.o \
+		advDiff.o advDiff_RK.o BufferedLogger.o Helpers.o BlowFish.o Fish.o \
+		FishLibrary.o StefanFish.o CarlingFish.o PressureVarRho.o \
+		Penalization.o advDiffGrav.o SmartCylinder.o Glider.o
+
+ifneq "$(gpu)" "off"
+LIBS += -lcufft
+OBJECTS += CUDA_all.o
+CPPFLAGS += -DCUDAFFT
+endif
 
 ifeq "$(precision)" "single"
     CPPFLAGS += -D_FLOAT_PRECISION_
@@ -56,28 +84,24 @@ else
     LIBS += -lfftw3  -lfftw3_omp
 endif
 
-BUILDDIR = .
-SRC_DIR = $(BUILDDIR)/../source/
-CUBISM_DIR = $(BUILDDIR)/../Cubism/source/
-OBJECTS = Simulation.o Definitions.o Shape.o ShapeLibrary.o ShapesSimple.o BlowFish.o Fish.o FishLibrary.o StefanFish.o BufferedLogger.o CarlingFish.o SmartCylinder.o
+ifeq "$(hypre)" "on"
+LIBS+= -lHYPRE
+CPPFLAGS += -DHYPREFFT
+endif
+CPP_FILES = $(notdir $(OBJECTS:.o=.cpp))
 
-VPATH := $(SRC_DIR):$(CUBISM_DIR)
+VPATH := $(DIRS) $(CUBISM_DIR)
+#  vpath %.cpp $(DIRS)
+#  vpath %.h   $(DIRS)
 
 ifneq "$(smarties)" "false"
 SMARTIESDIR ?= ../../smarties/source/
 CPPFLAGS += -I$(SMARTIESDIR)/Communicators/ -DSMARTIES_APP
 endif
 
-hdf5 ?= on
 ifeq "$(hdf5)" "on"
 LIBS+= -lhdf5
 CPPFLAGS+= -D_USE_HDF_
-endif
-
-ifeq "$(poisson)" "gpu"
-LIBS += -lcufft
-OBJECTS += PoissonSolverScalarCUDA.o
-CPPFLAGS += -DCUDAFFT
 endif
 
 all: simulation
@@ -92,6 +116,8 @@ blowfish: main_RL_blowfish.o $(OBJECTS)
 smartCyl: main_RL_smartCyl.o $(OBJECTS)
 	ar rs libsimulation.a $^
 
+glider: main_RL_glider.o $(OBJECTS)
+	ar rs libsimulation.a $^
 
 simulation: main.o $(OBJECTS)
 	$(LD) main.o $(OBJECTS) $(LIBS) -o $@
@@ -102,7 +128,7 @@ simulation: main.o $(OBJECTS)
 %.d: %.cpp
 	$(CC) $(CPPFLAGS) -c -MD $<
 
-PoissonSolverScalarCUDA.o: PoissonSolverScalarCUDA.cu
+CUDA_all.o: CUDA_all.cu
 	nvcc $(NVFLAGS) -c $< -o $@
 
 clean:

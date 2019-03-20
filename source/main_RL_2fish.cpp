@@ -1,10 +1,11 @@
 //
-//  main.cpp
 //  CubismUP_2D
+//  Copyright (c) 2018 CSE-Lab, ETH Zurich, Switzerland.
+//  Distributed under the terms of the MIT license.
 //
-//  Created by Christian Conti on 1/7/15.
-//  Copyright (c) 2015 ETHZ. All rights reserved.
+//  Created by Guido Novati (novatig@ethz.ch).
 //
+
 
 #include <iostream>
 #include <string>
@@ -14,7 +15,7 @@
 
 #include "Communicator.h"
 #include "Simulation.h"
-#include "StefanFish.h"
+#include "Obstacles/StefanFish.h"
 
 #include "mpi.h"
 //
@@ -29,7 +30,7 @@
 
 inline void resetIC(StefanFish* const a, Shape*const p, Communicator*const c) {
   uniform_real_distribution<double> disA(-20./180.*M_PI, 20./180.*M_PI);
-  uniform_real_distribution<double> disX(0, 0.2),  disY(-0.25, 0.25);
+  uniform_real_distribution<double> disX(0, 0.2),  disY(-0.25, 0.25); // changed 0.5->0.2 in order to avoid hitting right boundary (PW)
   const double SX = c->isTraining()? disX(c->getPRNG()) : 0.25;
   const double SY = c->isTraining()? disY(c->getPRNG()) : 0.00;
   const double SA = c->isTraining()? disA(c->getPRNG()) : 0.00;
@@ -41,10 +42,11 @@ inline void resetIC(StefanFish* const a, Shape*const p, Communicator*const c) {
   a->setOrientation(SA);
 }
 inline void setAction(StefanFish* const agent,
-  const vector<double> act, const double t) {
+  const std::vector<double> act, const double t) {
   agent->act(t, act);
 }
-inline vector<double> getState( const StefanFish* const a, const Shape*const p, const double t) {
+inline std::vector<double> getState(
+  const StefanFish* const a, const Shape*const p, const double t) {
   const double X = ( a->center[0] - p->center[0] )/ a->length;
   const double Y = ( a->center[1] - p->center[1] )/ a->length;
   const double A = a->getOrientation(), T = a->getPhase(t);
@@ -57,6 +59,7 @@ inline vector<double> getState( const StefanFish* const a, const Shape*const p, 
   std::vector<double> S = a->state(p->center[0], p->center[1], t);
   printf("S:[%f %f %f %f %f %f %f %f %f %f]\n",S[0], S[1], S[2], S[3], S[4], S[5], S[6], S[7], S[8], S[9]);
 */
+  printf("S:[%f %f %f %f %f %f %f %f %f %f]\n",X,Y,A,T,U,V,W,lastT,lastC,oldrC);
   return S;
 }
 inline bool isTerminal(const StefanFish*const a, const Shape*const p) {
@@ -102,7 +105,7 @@ int app_main(
   // Second action affects Tp = (1+act[1])*Tperiod_0 (eg. halved if act[1]=-.5).
   // If too small Re=L^2*Tp/nu would increase too much, we allow it to
   //  double at most, therefore we set the bounds between -0.5 and 0.5.
-  vector<double> upper_action_bound{1.0, 0.25}, lower_action_bound{-1., -.25};
+  std::vector<double> upper_action_bound{1.,.25}, lower_action_bound{-1.,-.25};
   comm->set_action_scales(upper_action_bound, lower_action_bound, true);
 
   Simulation sim(argc, argv);

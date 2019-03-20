@@ -14,7 +14,7 @@
 
 #include "Communicator.h"
 #include "Simulation.h"
-#include "SmartCylinder.h"
+#include "Obstacles/SmartCylinder.h"
 
 #include "mpi.h"
 //
@@ -26,18 +26,18 @@
 // number of actions per characteristic time scale
 // max number of actions per simulation
 // range of angles in initial conditions
-#define FREQ_ACTIONS 0.5
+#define FREQ_ACTIONS 1
 
 inline void resetIC(
   SmartCylinder*const a, Shape*const p, Communicator*const c)
 {
-  uniform_real_distribution<double> dis(-1, 1);
+  std::uniform_real_distribution<double> dis(-0.5, 0.5);
   //const double SX = c->isTraining()? dis(c->getPRNG()) : 0;
   //const double SY = c->isTraining()? dis(c->getPRNG()) : 0;
   const double SX = c->isTraining()? dis(c->getPRNG()) : 0;
   const double SY = c->isTraining()? dis(c->getPRNG()) : 0;
   const Real L = a->getCharLength()/2, OX = p->center[0], OY = p->center[1];
-  double C[2] = { OX + (4+SX)*L, OY + SY*L };
+  double C[2] = { OX + (3+SX)*L, OY + SY*L };
   if(a->bFixedy) {
     const Real deltaY = C[1]-OY, MA = a->getCharMass(), MP = p->getCharMass();
     p->centerOfMass[1] = OY - deltaY * MA / (MA + MP);
@@ -72,14 +72,14 @@ inline bool isTerminal(
 {
   const Real L = a->getCharLength()/2, OX = p->center[0], OY = p->center[1];
   const double X = (a->center[0]-OX)/ L, Y = (a->center[1]-OY)/ L;
-  return X<2 || X>6 || std::fabs(Y)>2;
+  return X<2 || X>8 || std::fabs(Y)>2;
 }
 
 inline double getReward(
   SmartCylinder*const a, const Shape*const p)
 {
   const Real energy = a->reward(p->getCharSpeed()); // force call to reset
-  return isTerminal(a, p)? -100 : energy;
+  return isTerminal(a, p)? -1000 : energy;
 }
 
 inline double getTimeToNextAct(
@@ -95,7 +95,7 @@ inline bool checkNaN(std::vector<double>& state, double& reward)
   for(size_t i=0; i<state.size(); i++) if(std::isnan(state[i])) bTrouble = true;
   if ( bTrouble )
   {
-    reward = -100;
+    reward = -1000;
     printf("Caught a nan!\n");
     state = std::vector<double>(state.size(), 0);
   }
@@ -117,6 +117,8 @@ int app_main(
   #endif
   const unsigned maxLearnStepPerSim = 500; // random number... TODO
 
+  const std::vector<double> lower_act_bound{-2,-1,-1}, upper_act_bound{0,1,1};
+  comm->set_action_scales(upper_act_bound, lower_act_bound, false);
   comm->update_state_action_dims(nStates, nActions);
   // Tell smarties that action space should be bounded.
   // First action modifies curvature, only makes sense between -1 and 1
@@ -150,7 +152,7 @@ int app_main(
     //chdir(dirname);
     sim.reset();
     resetIC(agent, object, comm); // randomize initial conditions
-    sim.reinit();
+    sim.reset();
 
     double t = 0, tNextAct = 0;
     unsigned step = 0;
@@ -178,7 +180,7 @@ int app_main(
       }
       step++;
       tot_steps++;
-      vector<double> state = getState(agent,object,t);
+      std::vector<double> state = getState(agent,object,t);
       double reward = getReward(agent,object);
 
       if ( agentOver || checkNaN(state, reward) ) {
