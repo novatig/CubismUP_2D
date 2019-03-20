@@ -275,3 +275,32 @@ double StefanFish::getPhase(const double t) const {
   const double phase = std::fmod(arg, 2*M_PI);
   return (phase<0) ? 2*M_PI + phase : phase;
 }
+/* apparently unnecessary, solved by simply removing const in declaration of state, reward in main (PW)
+std::vector<double> StefanFish::state(const double OX, const double OY, const double t) const{
+/  std::vector<double> S(10,0);
+  S[0] = ( center[0] - OX )/ length;
+  S[1] = ( center[1] - OY )/ length;
+  S[2] = getOrientation();
+  S[3] = getPhase(t);
+  S[4] = getU() * Tperiod / length;
+  S[5] = getV() * Tperiod / length;
+  S[6] = getW() * Tperiod;
+  S[7] = lastTact;
+  S[8] = lastCurv;
+  S[9] = oldrCurv;
+/
+  const double X = ( center[0] - OX )/ length;
+  const double Y = ( center[1] - OY )/ length;
+  const double A = getOrientation(), T = getPhase(t);
+  const double U = getU() * Tperiod / length;
+  const double V = getV() * Tperiod / length;
+  const double W = getW() * Tperiod;
+  const double lastT = lastTact, lastC = lastCurv, oldrC = oldrCurv;
+  std::vector<double> S = { X, Y, A, T, U, V, W, lastT, lastC, oldrC }; 
+  return S;
+}
+double StefanFish::reward() const{
+  //double efficiency = EffPDefBnd;
+  return EffPDefBnd;
+}
+*/
