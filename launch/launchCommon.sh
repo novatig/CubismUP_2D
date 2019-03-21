@@ -8,8 +8,8 @@ RUNNAME=$1
 
 unset LSB_AFFINITY_HOSTFILE #euler cluster
 export MV2_ENABLE_AFFINITY=0 #MVAPICH
-export OMP_PROC_BIND=CLOSE
-export OMP_PLACES=cores
+#export OMP_PROC_BIND=CLOSE
+#export OMP_PLACES=cores
 
 if [ ${OS_D} == 'Darwin' ] ;
 then
@@ -63,8 +63,8 @@ else
 BASEPATH="../runs/"
 NCPUSTR=`lscpu | grep "Core"`
 export OMP_NUM_THREADS=${NCPUSTR: -3}
-export OMP_PROC_BIND=CLOSE
-export OMP_PLACES=cores
+#export OMP_PROC_BIND=CLOSE
+#export OMP_PLACES=cores
 echo "Setting nThreads to "${OMP_NUM_THREADS}
 FOLDERNAME=${BASEPATH}/${RUNNAME}
 mkdir -p ${FOLDERNAME}

@@ -99,17 +99,17 @@ void HYPREdirichletVarRho::updateRHSandMAT(const double dt) const
         const Real divVy  = V(ix,iy+1).u[1]    - V(ix,iy-1).u[1];
         const Real divUSx = UDEF(ix+1,iy).u[0] - UDEF(ix-1,iy).u[0];
         const Real divUSy = UDEF(ix,iy+1).u[1] - UDEF(ix,iy-1).u[1];
-        dest[idx] = facDiv*( divVx+divVy - CHI(ix,iy).s*(divUSx+divUSy) );
+        dest[idx] = - facDiv*( divVx+divVy - CHI(ix,iy).s*(divUSx+divUSy) );
 
         const Real coefN = mean(IRHO(ix+1,iy).s, IRHO(ix,iy).s);
         const Real coefS = mean(IRHO(ix-1,iy).s, IRHO(ix,iy).s);
         const Real coefE = mean(IRHO(ix,iy+1).s, IRHO(ix,iy).s);
         const Real coefW = mean(IRHO(ix,iy-1).s, IRHO(ix,iy).s);
-        mat[idx][0] = -coefN -coefS -coefE -coefW;
-        mat[idx][1] = coefW;
-        mat[idx][2] = coefE;
-        mat[idx][3] = coefS;
-        mat[idx][4] = coefN;
+        mat[idx][0] = coefN + coefS + coefE + coefW;
+        mat[idx][1] = - coefW;
+        mat[idx][2] = - coefE;
+        mat[idx][3] = - coefS;
+        mat[idx][4] = - coefN;
       }
     }
   }
@@ -228,7 +228,7 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
 #define STRIDE s.vel->getBlocksPerDimension(0) * VectorBlock::sizeX
 
 HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
-  PoissonSolver(s, STRIDE), solver("smg")
+  PoissonSolver(s, STRIDE), solver("pcg")
 {
   printf("Employing VarRho HYPRE-based Poisson solver with Dirichlet BCs.\n");
   buffer = new Real[totNy * totNx];
@@ -284,7 +284,7 @@ HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
   if (solver == "gmres") {
     printf("Using GMRES solver\n");
     HYPRE_StructGMRESCreate(COMM, &hypre_solver);
-    HYPRE_StructGMRESSetTol(hypre_solver, 1e-2);
+    HYPRE_StructGMRESSetTol(hypre_solver, 1e-3);
     HYPRE_StructGMRESSetPrintLevel(hypre_solver, 2);
     HYPRE_StructGMRESSetMaxIter(hypre_solver, 1000);
     HYPRE_StructGMRESSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
@@ -305,14 +305,13 @@ HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
   else {
     printf("Using PCG solver\n");
     HYPRE_StructPCGCreate(COMM, &hypre_solver);
-    HYPRE_StructPCGSetMaxIter(hypre_solver, 1000);
-    HYPRE_StructPCGSetTol(hypre_solver, 1e-2);
-    HYPRE_StructPCGSetPrintLevel(hypre_solver, 2);
-    if(0)
-    { // Use SMG preconditioner
+    HYPRE_StructPCGSetMaxIter(hypre_solver, 100);
+    HYPRE_StructPCGSetTol(hypre_solver, 0.001);
+    HYPRE_StructPCGSetPrintLevel(hypre_solver, 0);
+    if(0) { // Use SMG preconditioner: BAD
       HYPRE_StructSMGCreate(COMM, &hypre_precond);
-      HYPRE_StructSMGSetMaxIter(hypre_precond, 1000);
-      HYPRE_StructSMGSetTol(hypre_precond, 0);
+      HYPRE_StructSMGSetMaxIter(hypre_precond, 100);
+      HYPRE_StructSMGSetTol(hypre_precond, 1e-3);
       HYPRE_StructSMGSetNumPreRelax(hypre_precond, 1);
       HYPRE_StructSMGSetNumPostRelax(hypre_precond, 1);
       HYPRE_StructPCGSetPrecond(hypre_solver, HYPRE_StructSMGSolve,
