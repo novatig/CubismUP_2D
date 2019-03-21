@@ -15,7 +15,7 @@ endif
 
 NVCC ?= nvcc
 
-hypre ?= false
+hypre ?= true
 gpu ?= false
 hdf5 ?= true
 config ?= production

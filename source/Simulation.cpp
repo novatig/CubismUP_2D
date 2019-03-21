@@ -16,6 +16,7 @@
 #include "Operators/PressureIterator.h"
 #include "Operators/PressureSingle.h"
 #include "Operators/PressureVarRho.h"
+#include "Operators/PressureVarRho_proper.h"
 #include "Operators/Penalization.h"
 #include "Operators/PutObjectsOnGrid.h"
 #include "Operators/UpdateObjects.h"
@@ -172,13 +173,19 @@ void Simulation::init()
   createShapes();
 
   pipeline.clear();
-
+  {
+    IC ic(sim);
+    ic(0);
+  }
   if(1)
   {
     pipeline.push_back( new PutObjectsOnGrid(sim) );
     if(sim.bVariableDensity) pipeline.push_back( new advDiffGrav(sim) );
     else  pipeline.push_back( new advDiff(sim) );
-    if(sim.bVariableDensity) pipeline.push_back( new PressureVarRho(sim) );
+    if(sim.bVariableDensity) {
+      //pipeline.push_back( new PressureVarRho(sim) );
+      pipeline.push_back( new PressureVarRho_proper(sim) );
+    }
     else  pipeline.push_back( new PressureSingle(sim) );
     pipeline.push_back( new UpdateObjects(sim) );
   }

@@ -19,6 +19,7 @@ void IC::operator()(const double dt)
   const std::vector<BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
   const std::vector<BlockInfo>& pRHSInfo  = sim.pRHS->getBlocksInfo();
   const std::vector<BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
+  const std::vector<BlockInfo>& iRhoInfo  = sim.invRho->getBlocksInfo();
 
   #pragma omp parallel for schedule(static)
   for (size_t i=0; i < Nblocks; i++)
@@ -32,6 +33,7 @@ void IC::operator()(const double dt)
     ScalarBlock& TMP = *(ScalarBlock*)  tmpInfo[i].ptrBlock;  TMP.clear();
     ScalarBlock& PRHS= *(ScalarBlock*) pRHSInfo[i].ptrBlock; PRHS.clear();
     VectorBlock& TMPV= *(VectorBlock*) tmpVInfo[i].ptrBlock; TMPV.clear();
+    VectorBlock& IRHO= *(VectorBlock*) iRhoInfo[i].ptrBlock; IRHO.set(1);
     assert(velInfo[i].blockID ==  uDefInfo[i].blockID);
     assert(velInfo[i].blockID ==   chiInfo[i].blockID);
     assert(velInfo[i].blockID ==  presInfo[i].blockID);

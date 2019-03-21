@@ -9,6 +9,5 @@ LIBS += -L${HDF5_LIB}
 
 endif
 
-#LIBS+=-L/home/novatig/hypre/build/lib/
-#CPPFLAGS+=-I/home/novatig/hypre/build/include/
-hypre=false
+LIBS+=-L/home/novatig/hypre/build/lib/
+CPPFLAGS+=-I/home/novatig/hypre/build/include/

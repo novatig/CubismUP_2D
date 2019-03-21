@@ -19,8 +19,9 @@ static inline T mean(const T A, const T B)
 
 void HYPREdirichletVarRho::fadeoutBorder(const double dt) const
 {
-  static constexpr int Z = 8, buffer = 8;
-  const Real h = sim.getH(), iWidth = 1/(buffer*h);
+  static constexpr int Z = 8, B = 8;
+  Real * __restrict__ const dest = buffer;
+  const Real h = sim.getH(), iWidth = 1/(B*h);
   const std::vector<BlockInfo>& velInfo  = sim.vel->getBlocksInfo();
   const Real extent[2] = {sim.bpdx/ (Real) std::max(sim.bpdx, sim.bpdy),
                           sim.bpdy/ (Real) std::max(sim.bpdx, sim.bpdy)};
@@ -28,30 +29,30 @@ void HYPREdirichletVarRho::fadeoutBorder(const double dt) const
     Real min_pos[2], max_pos[2];
     i.pos(max_pos, VectorBlock::sizeX-1, VectorBlock::sizeY-1);
     i.pos(min_pos, 0, 0);
-    const bool touchN = (Z+buffer)*h >= extent[1] - max_pos[1];
-    const bool touchE = (Z+buffer)*h >= extent[0] - max_pos[0];
-    const bool touchS = (Z+buffer)*h >= min_pos[1];
-    const bool touchW = (Z+buffer)*h >= min_pos[0];
+    const bool touchN = (Z+B)*h >= extent[1] - max_pos[1];
+    const bool touchE = (Z+B)*h >= extent[0] - max_pos[0];
+    const bool touchS = (Z+B)*h >= min_pos[1];
+    const bool touchW = (Z+B)*h >= min_pos[0];
     return touchN || touchE || touchS || touchW;
   };
 
   #pragma omp parallel for schedule(dynamic)
-  for (size_t i=0; i < Nblocks; i++)
+  for (size_t i=0; i < velInfo.size(); i++)
   {
     if( not _is_touching(velInfo[i]) ) continue;
-    const size_t blocki = VectorBlock::sizeX * velInfo.index[0];
-    const size_t blockj = VectorBlock::sizeY * velInfo.index[1];
+    const size_t blocki = VectorBlock::sizeX * velInfo[i].index[0];
+    const size_t blockj = VectorBlock::sizeY * velInfo[i].index[1];
     const size_t blockStart = blocki + stride * blockj;
     for(int iy=0; iy<VectorBlock::sizeY; ++iy)
     for(int ix=0; ix<VectorBlock::sizeX; ++ix)
     {
       Real p[2];
       velInfo[i].pos(p, ix, iy);
-      const Real arg1= std::max((Real)0, (Z+buffer)*h -(extent[0]-p[0]) );
-      const Real arg2= std::max((Real)0, (Z+buffer)*h -(extent[1]-p[1]) );
-      const Real arg3= std::max((Real)0, (Z+buffer)*h -p[0] );
-      const Real arg4= std::max((Real)0, (Z+buffer)*h -p[1] );
-      const Real dist= std::min(std::max({arg1, arg2, arg3, arg4}), buffer*h);
+      const Real arg1= std::max((Real)0, (Z+B)*h -(extent[0]-p[0]) );
+      const Real arg2= std::max((Real)0, (Z+B)*h -(extent[1]-p[1]) );
+      const Real arg3= std::max((Real)0, (Z+B)*h -p[0] );
+      const Real arg4= std::max((Real)0, (Z+B)*h -p[1] );
+      const Real dist= std::min(std::max({arg1, arg2, arg3, arg4}), B*h);
       const size_t idx = blockStart + ix + stride*iy;
       //RHS(ix, iy).s = std::max(1-factor, 1 - factor*std::pow(dist*iWidth, 2));
       dest[idx] *= 1 - std::pow(dist*iWidth, 2);
@@ -77,10 +78,10 @@ void HYPREdirichletVarRho::updateRHSandMAT(const double dt) const
     ScalarLab iRhoLab; iRhoLab.prepare(*(sim.invRho), stenBeg, stenEnd, 0);
 
     #pragma omp for schedule(static)
-    for (size_t i=0; i < Nblocks; i++)
+    for (size_t i=0; i < velInfo.size(); i++)
     {
-      const size_t blocki = VectorBlock::sizeX * velInfo.index[0];
-      const size_t blockj = VectorBlock::sizeY * velInfo.index[1];
+      const size_t blocki = VectorBlock::sizeX * velInfo[i].index[0];
+      const size_t blockj = VectorBlock::sizeY * velInfo[i].index[1];
       const size_t blockStart = blocki + stride * blockj;
       velLab. load( velInfo[i], 0);
       uDefLab.load(uDefInfo[i], 0);
@@ -113,7 +114,7 @@ void HYPREdirichletVarRho::updateRHSandMAT(const double dt) const
     }
   }
 
-  fadeoutBorder();
+  fadeoutBorder(dt);
 
   {
     Real sumRHS = 0, sumABS = 0;
@@ -133,41 +134,47 @@ void HYPREdirichletVarRho::updateRHSandMAT(const double dt) const
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < totNx; i++) {
       // first south row
-      mat[totNx*(0)       +i][0] += mat[totNx*(0)       +i][3]; // center
-      mat[totNx*(0)       +i][3]  = 0; // south
+      mat[stride*(0)       +i][0] += mat[stride*(0)       +i][3]; // center
+      mat[stride*(0)       +i][3]  = 0; // south
       // first north row
-      mat[totNx*(totNy-1) +i][0] += mat[totNx*(totNy-1) +i][4]; // center
-      mat[totNx*(totNy-1) +i][4]  = 0; // north
+      mat[stride*(totNy-1) +i][0] += mat[stride*(totNy-1) +i][4]; // center
+      mat[stride*(totNy-1) +i][4]  = 0; // north
     }
     #pragma omp parallel for schedule(static)
     for (size_t j = 0; j < totNy; j++) {
       // first west col
-      mat[totNx*j +       0][0] += mat[totNx*j +       0][1]; // center
-      mat[totNx*j +       0][1]  = 0; // west
+      mat[stride * j +      0][0] += mat[stride*j +       0][1]; // center
+      mat[stride * j +      0][1]  = 0; // west
       // first east col
-      mat[totNx*j + totNx-1][0] += mat[totNx*j + totNx-1][2]; // center
-      mat[totNx*j + totNx-1][2]  = 0; // east
+      mat[stride * j +totNx-1][0] += mat[stride*j + totNx-1][2]; // center
+      mat[stride * j +totNx-1][2]  = 0; // east
     }
   }
   {
-    // set last corner such that last point has pressure pLast
-    mat[totNx*(totNy-1) +totNx-1][1] = 0; // west
-    mat[totNx*(totNy-1) +totNx-1][2] = 0; // east
-    mat[totNx*(totNy-1) +totNx-1][3] = 0; // south
-    mat[totNx*(totNy-1) +totNx-1][4] = 0; // north
+    // set second to last corner such that last point has pressure pLast
+    const size_t dofFix00 = stride*(totNy-2) +totNx-2;
+    const size_t dofFixMx = stride*(totNy-2) +totNx-3;
+    const size_t dofFixPx = stride*(totNy-2) +totNx-1;
+    const size_t dofFixMy = stride*(totNy-3) +totNx-2;
+    const size_t dofFixPy = stride*(totNy-1) +totNx-2;
+
+    mat [dofFix00][1] = 0; mat [dofFix00][2] = 0; // west east
+    mat [dofFix00][3] = 0; mat [dofFix00][4] = 0; // south north
+    assert(std::fabs(mat[dofFix00][0]) > 2e-16);
     // preserve conditioning? P * coef = pLast * coef -> P = pLast
-    dest[totNx*(totNy-1) +totNx-1]  = pLast * mat[totNx*(totNy-1) +totNx-1][0];
+    dest[dofFix00]  = pLast * mat[dofFix00][0];
     // dof to the west and to the south get affected:
-    dest[totNx*(totNy-2) +totNx-1] -= pLast * mat[totNx*(totNy-2) +totNx-1][4];
-    mat [totNx*(totNy-2) +totNx-1][4] = 0;
-    dest[totNx*(totNy-1) +totNx-2] -= pLast * mat[totNx*(totNy-1) +totNx-2][2];
-    mat [totNx*(totNy-1) +totNx-2][2] = 0;
+    dest[dofFixMy] -= pLast * mat[dofFixMy][4]; mat[dofFixMy][4] = 0;
+    dest[dofFixPy] -= pLast * mat[dofFixPy][3]; mat[dofFixPy][3] = 0;
+    dest[dofFixMx] -= pLast * mat[dofFixMx][2]; mat[dofFixMx][2] = 0;
+    dest[dofFixPx] -= pLast * mat[dofFixPx][1]; mat[dofFixPx][1] = 0;
   }
   // TODO fix last dof for periodic BC
 
   Real * const linV = (Real*) matAry;
   // These indices must match to those in the offset array:
   HYPRE_Int inds[5] = {0, 1, 2, 3, 4};
+  HYPRE_Int ilower[2] = {0,0}, iupper[2] = {(int)totNx-1, (int)totNy-1};
   HYPRE_StructMatrixSetBoxValues(hypre_mat, ilower, iupper, 5, inds, linV);
   HYPRE_StructMatrixAssemble(hypre_mat);
 }
@@ -224,6 +231,7 @@ HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
 {
   printf("Employing VarRho HYPRE-based Poisson solver with Dirichlet BCs.\n");
   buffer = new Real[totNy * totNx];
+  HYPRE_Int ilower[2] = {0,0}, iupper[2] = {(int)totNx-1, (int)totNy-1};
 
   const auto COMM = MPI_COMM_SELF;
   // Grid
@@ -315,7 +323,7 @@ HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
 // let's relinquish STRIDE which was only added for clarity:
 #undef STRIDE
 
-HYPREdirichletVarRho::~HYPREdirichlet()
+HYPREdirichletVarRho::~HYPREdirichletVarRho()
 {
   if (solver == "gmres")
     HYPRE_StructGMRESDestroy(hypre_solver);
@@ -329,7 +337,7 @@ HYPREdirichletVarRho::~HYPREdirichlet()
   HYPRE_StructVectorDestroy(hypre_rhs);
   HYPRE_StructVectorDestroy(hypre_sol);
   delete [] buffer;
-  delete [] vals;
+  delete [] matAry;
 }
 
 #endif

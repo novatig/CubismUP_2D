@@ -27,7 +27,6 @@ class HYPREdirichletVarRho : public PoissonSolver
   Real pLast = 0;
   using RowType = Real[5];
   RowType * matAry = new RowType[totNy*totNx];
-  HYPRE_Int ilower[2] = {0,0}, iupper[2] = {(int)totNx-1, (int)totNy-1};
   void fadeoutBorder(const double dt) const;
   void updateRHSandMAT(const double dt) const;
  public:
