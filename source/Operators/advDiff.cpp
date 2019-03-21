@@ -9,8 +9,6 @@
 
 #include "advDiff.h"
 //#define DIV_ADVECT
-static constexpr int sizeY = VectorBlock::sizeY;
-static constexpr int sizeX = VectorBlock::sizeX;
 
 static inline Real dU_adv_dif(const VectorLab&V, const Real uinf[2],
   const Real advF, const Real difF, const int ix, const int iy)

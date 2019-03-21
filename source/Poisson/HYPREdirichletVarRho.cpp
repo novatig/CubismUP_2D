@@ -216,7 +216,8 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < totNy*totNx; i++) nxtGuess[i] -= avgP;
     HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, buffer);
-    pLast = buffer[totNx*totNy-1];
+    const size_t dofFix00 = stride*(totNy-2) +totNx-2;
+    pLast = buffer[dofFix00];
     printf("Avg Pressure:%f\n", avgP);
   }
   sol2cub(BDST);
