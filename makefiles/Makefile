@@ -68,7 +68,8 @@ OBJECTS = \
 		HYPREdirichlet.o FFTW_freespace.o PutObjectsOnGrid.o UpdateObjects.o \
 		advDiff.o advDiff_RK.o BufferedLogger.o Helpers.o BlowFish.o Fish.o \
 		FishLibrary.o StefanFish.o CarlingFish.o PressureVarRho.o \
-		Penalization.o advDiffGrav.o SmartCylinder.o Glider.o
+		Penalization.o advDiffGrav.o SmartCylinder.o Glider.o \
+		HYPREdirichletVarRho.o PressureVarRho_proper.o
 
 ifneq "$(gpu)" "false"
 LIBS += -lcufft

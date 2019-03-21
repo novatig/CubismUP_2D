@@ -83,6 +83,7 @@ void Glider::act(std::vector<double> action)
   old_distance = std::fabs(X - 100);
   old_torque = appliedTorque;
   old_angle = std::atan2(sinAng, cosAng);
+  printf("Received action [%f]\n", action[0]);
   appliedTorque = action[0]*torquescale;
 }
 
