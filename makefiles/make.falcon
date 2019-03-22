@@ -1,7 +1,7 @@
 ifneq "$(findstring g++, $(CXX))" ""
 
 LIBS += -L${HDF5_ROOT}/lib
-LIBS+=-L/home/novatig/hypre/build/lib/
+LIBS+= -L/home/novatig/hypre/build/lib/
 CPPFLAGS+=-I/home/novatig/hypre/build/include/
 
 else
@@ -9,8 +9,7 @@ else
 CPPFLAGS += -I${HDF5_INCLUDE}
 LIBS += -L${HDF5_LIB}
 
-LIBS+=-L/home/novatig/hypre/build_intel/lib/
+LIBS+= -L/home/novatig/hypre/build_intel/lib/
 CPPFLAGS+=-I/home/novatig/hypre/build_intel/include/
 
 endif
-

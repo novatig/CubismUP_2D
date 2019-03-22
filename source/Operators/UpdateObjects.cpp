@@ -102,31 +102,4 @@ void UpdateObjects::operator()(const double dt)
   }
   penalize(dt);
   sim.stopProfiler();
-
-
-  // 2) update objects' velocities
-  sim.startProfiler("Obj_update");
-  //for(Shape * const shape : sim.shapes) shape->updateVelocity(dt);
-
-  // 3) update simulation frame's velocity
-  int nSum[2] = {0, 0};
-  double uSum[2] = {0, 0};
-  for(Shape * const shape : sim.shapes) shape->updateLabVelocity(nSum, uSum);
-  if(nSum[0]>0) sim.uinfx = uSum[0]/nSum[0];
-  if(nSum[1]>0) sim.uinfy = uSum[1]/nSum[1];
-
-  // 4) update objects' centres of mass
-  for(Shape * const shape : sim.shapes)
-  {
-    shape->updatePosition(dt);
-    double p[2] = {0,0};
-    shape->getCentroid(p);
-    const Real maxExtent = std::max(sim.bpdx, sim.bpdy);
-    double simExtent[2] = {sim.bpdx/maxExtent, sim.bpdy/maxExtent};
-    if (p[0]<0 || p[0]>simExtent[0] || p[1]<0 || p[1]>simExtent[1]) {
-      std::cout << "Body out of domain: " << p[0] << " " << p[1] << std::endl;
-      exit(0);
-    }
-  }
-  sim.stopProfiler();
 }

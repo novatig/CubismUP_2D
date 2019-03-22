@@ -133,7 +133,7 @@ void PutObjectsOnGrid::putObjectVelOnGrid(Shape * const shape) const
 void PutObjectsOnGrid::operator()(const double dt)
 {
   // TODO I NEED SIGNED DISTANCE PER OBSTACLE
-  // 1) clear chi^t and udef^t
+  // 0) clear chi^t and udef^t
   sim.startProfiler("ObjGrid_clear");
   #pragma omp parallel for schedule(static)
   for (size_t i=0; i < Nblocks; i++) {
@@ -145,6 +145,28 @@ void PutObjectsOnGrid::operator()(const double dt)
     CHI.clear();
     TMP.set(-1);
     IRHO.set(1);
+  }
+  sim.stopProfiler();
+
+
+  // 1) update objects' position (advect)
+  sim.startProfiler("Obj_move");
+  int nSum[2] = {0, 0}; double uSum[2] = {0, 0};
+  for(Shape * const shape : sim.shapes) shape->updateLabVelocity(nSum, uSum);
+  if(nSum[0]>0) sim.uinfx = uSum[0]/nSum[0];
+  if(nSum[1]>0) sim.uinfy = uSum[1]/nSum[1];
+
+  for(Shape * const shape : sim.shapes)
+  {
+    shape->updatePosition(dt);
+    double p[2] = {0,0};
+    shape->getCentroid(p);
+    const Real maxExtent = std::max(sim.bpdx, sim.bpdy);
+    double simExtent[2] = {sim.bpdx/maxExtent, sim.bpdy/maxExtent};
+    if (p[0]<0 || p[0]>simExtent[0] || p[1]<0 || p[1]>simExtent[1]) {
+      std::cout << "Body out of domain: " << p[0] << " " << p[1] << std::endl;
+      exit(0);
+    }
   }
   sim.stopProfiler();
 
