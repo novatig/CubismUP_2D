@@ -31,7 +31,6 @@ class Glider : public Shape
   double old_angle = 0;
   double old_torque = 0;
   double old_distance = 100;
-  double appliedTorque = 0;
   double energy = 0, energySurf = 0;
 
   void resetAll() override

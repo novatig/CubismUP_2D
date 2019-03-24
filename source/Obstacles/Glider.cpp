@@ -113,16 +113,8 @@ void Glider::create(const std::vector<BlockInfo>& vInfo)
 
 void Glider::updateVelocity(double dt)
 {
-  if(not bForcedx) u = fluidMomX / penalM;
+  Shape::updateVelocity(dt);
 
-  if(not bForcedy) v = fluidMomY / penalM;
-
-  if(not bBlockang) {
-    const Real omegaNxt = fluidAngMom / penalJ;
-    const Real TZ = J * (omegaNxt - omega) / dt;
-    const Real acca = ( appliedTorque + TZ ) / J;
-    omega = omega + dt * acca;
-  }
   energy -= std::pow(appliedTorque/torquescale, 2) * dt;
   //powerOutput += dt*Torque*Torque;
 }

@@ -42,11 +42,16 @@ class Shape
   double u = forcedu; // in lab frame, not sim frame
   double v = forcedv; // in lab frame, not sim frame
   double omega = 0;
+  double fluidAngMom = 0;
   double fluidMomX = 0;
   double fluidMomY = 0;
-  double fluidAngMom = 0;
+  double penalDX = 0;
+  double penalDY = 0;
   double penalM = 0;
   double penalJ = 0;
+  double appliedForceX = 0;
+  double appliedForceY = 0;
+  double appliedTorque = 0;
 
   double perimeter=0, forcex=0, forcey=0, forcex_P=0, forcey_P=0;
   double forcex_V=0, forcey_V=0, torque=0, torque_P=0, torque_V=0;
@@ -70,6 +75,9 @@ class Shape
     fluidMomX = 0;
     fluidMomY = 0;
     fluidAngMom = 0;
+    appliedForceX = 0;
+    appliedForceY = 0;
+    appliedTorque = 0;
     d_gm[0] = 0;
     d_gm[1] = 0;
     for(auto & entry : obstacleBlocks) delete entry;

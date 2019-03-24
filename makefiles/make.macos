@@ -6,6 +6,8 @@ LD=g++-8
 SMARTIESDIR = ../../smarties/source/
 MPICXX=mpic++
 
+GSL_ROOT_DIR=/usr/local/Cellar/gsl/2.5/
+
 CPPFLAGS+= -I/usr/local/Cellar/hdf5/1.10.5/include/
 LIBS+= -L/usr/local/Cellar/hdf5/1.10.5/lib/
 

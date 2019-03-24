@@ -19,39 +19,44 @@ void UpdateObjects::integrateMomenta(Shape * const shape) const
   const Real Cx = shape->centerOfMass[0], Cy = shape->centerOfMass[1];
   const Real lambdt = sim.lambda * sim.dt;
   const double hsq = std::pow(velInfo[0].h_gridpoint, 2);
-  double _M = 0, _J = 0, UM = 0, VM = 0, AM = 0; //linear momenta
+  double PM=0, PJ=0, PX=0, PY=0, UM=0, VM=0, AM=0; //linear momenta
 
-  #pragma omp parallel for schedule(dynamic, 1) reduction(+ : _M,_J,UM,VM,AM)
+  #pragma omp parallel for schedule(dynamic,1) reduction(+:PM,PJ,PX,PY,UM,VM,AM)
   for(size_t i=0; i<Nblocks; i++)
   {
     const VectorBlock& __restrict__ VEL = *(VectorBlock*)velInfo[i].ptrBlock;
 
     if(OBLOCK[velInfo[i].blockID] == nullptr) continue;
+    const CHI_MAT & __restrict__ rho = OBLOCK[velInfo[i].blockID]->rho;
     const CHI_MAT & __restrict__ chi = OBLOCK[velInfo[i].blockID]->chi;
     const UDEFMAT & __restrict__ udef = OBLOCK[velInfo[i].blockID]->udef;
     for(int iy=0; iy<VectorBlock::sizeY; ++iy)
     for(int ix=0; ix<VectorBlock::sizeX; ++ix)
     {
       if (chi[iy][ix] <= 0) continue;
-      const Real penalFac = hsq * chi[iy][ix]*lambdt / (1 + chi[iy][ix]*lambdt);
+      const Real F = hsq*lambdt*rho[iy][ix]*chi[iy][ix]/(1+chi[iy][ix]*lambdt);
       double p[2]; velInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;
       const Real udiff[2] = {
         VEL(ix,iy).u[0] - udef[iy][ix][0],
         VEL(ix,iy).u[1] - udef[iy][ix][1]
       };
-      _M += penalFac;
-      UM += penalFac * udiff[0];
-      VM += penalFac * udiff[1];
-      _J += penalFac * (p[0]*p[0] + p[1]*p[1]);
-      AM += penalFac * (p[0]*udiff[1] - p[1]*udiff[0]);
+      PM += F;
+      PJ += F * (p[0]*p[0] + p[1]*p[1]);
+      PX += F * p[0];
+      PY += F * p[1];
+      UM += F * udiff[0];
+      VM += F * udiff[1];
+      AM += F * (p[0]*udiff[1] - p[1]*udiff[0]);
     }
   }
 
-  shape->fluidMomX   = UM;
-  shape->fluidMomY   = VM;
   shape->fluidAngMom = AM;
-  shape->penalM = _M;
-  shape->penalJ = _J;
+  shape->fluidMomX = UM;
+  shape->fluidMomY = VM;
+  shape->penalDX = PX;
+  shape->penalDY = PY;
+  shape->penalM = PM;
+  shape->penalJ = PJ;
 }
 
 void UpdateObjects::penalize(const double dt) const

@@ -95,9 +95,15 @@ VPATH := $(DIRS) $(CUBISM_DIR)
 #  vpath %.cpp $(DIRS)
 #  vpath %.h   $(DIRS)
 
+ifneq "$(GSL_ROOT_DIR)" ""
+	CPPFLAGS += -I$(GSL_ROOT_DIR)/include
+	LIBS += -L$(GSL_ROOT_DIR)/lib
+endif
+LIBS += -lgsl -lgslcblas
+
 ifneq "$(smarties)" "false"
-SMARTIESDIR ?= ../../smarties/source/
-CPPFLAGS += -I$(SMARTIESDIR)/Communicators/ -DSMARTIES_APP
+	SMARTIESDIR ?= ../../smarties/source/
+	CPPFLAGS += -I$(SMARTIESDIR)/Communicators/ -DSMARTIES_APP
 endif
 
 ifneq "$(hdf5)" "false"

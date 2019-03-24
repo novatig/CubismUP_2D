@@ -10,6 +10,7 @@
 #include "Shape.h"
 //#include "OperatorComputeForces.h"
 #include "Utils/BufferedLogger.h"
+#include <gsl/gsl_linalg.h>
 
 Real Shape::getMinRhoS() const { return rhoS; }
 Real Shape::getCharMass() const { return 0; }
@@ -19,12 +20,62 @@ bool Shape::bVariableDensity() const {
 
 void Shape::updateVelocity(double dt)
 {
-  if(not bForcedx) u = fluidMomX / penalM;
+  double A[3][3] = {
+    {   penalM,       0, -penalDY },
+    {        0,  penalM,  penalDX },
+    { -penalDY, penalDX,  penalJ  }
+  };
+  double b[3] = {
+    fluidMomX   + dt * appliedForceX,
+    fluidMomY   + dt * appliedForceY,
+    fluidAngMom + dt * appliedTorque
+  };
 
-  if(not bForcedy) v = fluidMomY / penalM;
+  if(bForcedx) {
+    A[0][1] = 0; A[0][2] = 0; b[0] = penalM * forcedu;
+  }
+  if(bForcedy) {
+    A[1][0] = 0; A[1][2] = 0; b[1] = penalM * forcedv;
+  }
+  if(bBlockang) {
+    A[2][0] = 0; A[2][1] = 0; b[2] = 0;
+  }
 
-  if(not bBlockang) omega = fluidAngMom / penalJ;
+  gsl_matrix_view Agsl = gsl_matrix_view_array (&A[0][0], 3, 3);
+  gsl_vector_view bgsl = gsl_vector_view_array (b, 3);
+  gsl_vector * xgsl = gsl_vector_alloc (3);
+  int sgsl;
+  gsl_permutation * permgsl = gsl_permutation_alloc (3);
+  gsl_linalg_LU_decomp (& Agsl.matrix, permgsl, & sgsl);
+  gsl_linalg_LU_solve (& Agsl.matrix, permgsl, & bgsl.vector, xgsl);
+
+  if(not bForcedy)  u     = gsl_vector_get(xgsl, 0);
+  if(not bForcedy)  v     = gsl_vector_get(xgsl, 1);
+  if(not bBlockang) omega = gsl_vector_get(xgsl, 2);
 }
+
+/*
+if(not bForcedx) {
+  const Real uNxt = fluidMomX / penalM;
+  const Real FX = M * (uNxt - u) / dt;
+  const Real accx = ( appliedForceX + FX ) / M;
+  u = u + dt * accx;
+}
+
+if(not bForcedy) {
+  const Real vNxt = fluidMomY / penalM;
+  const Real FY = M * (vNxt - v) / dt;
+  const Real accy = ( appliedForceY + FY ) / M;
+  v = v + dt * accy;
+}
+
+if(not bBlockang) {
+  const Real omegaNxt = fluidAngMom / penalJ;
+  const Real TZ = J * (omegaNxt - omega) / dt;
+  const Real acca = ( appliedTorque + TZ ) / J;
+  omega = omega + dt * acca;
+}
+*/
 
 void Shape::updateLabVelocity( int nSum[2], double uSum[2] )
 {

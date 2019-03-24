@@ -16,9 +16,6 @@ class SmartCylinder : public Shape
 {
   const double radius;
  public:
-  Real appliedForceX = 0;
-  Real appliedForceY = 0;
-  Real appliedTorque = 0;
   Real energy = 0, energySurf = 0;
 
   void act(std::vector<double> action, const Real velScale);

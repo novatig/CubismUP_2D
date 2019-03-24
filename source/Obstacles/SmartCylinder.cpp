@@ -151,32 +151,10 @@ void SmartCylinder::create(const std::vector<BlockInfo>& vInfo)
 
 void SmartCylinder::updateVelocity(double dt)
 {
-  if(not bForcedx) {
-    const Real uNxt = fluidMomX / penalM;
-    const Real FX = M * (uNxt - u) / dt;
-    const Real accx = ( appliedForceX + FX ) / M;
-    u = u + dt * accx;
-  }
+  Shape::updateVelocity(dt);
 
-  if(not bForcedy) {
-    const Real vNxt = fluidMomY / penalM;
-    const Real FY = M * (vNxt - v) / dt;
-    const Real accy = ( appliedForceY + FY ) / M;
-    v = v + dt * accy;
-  }
-
-  if(not bBlockang) {
-    const Real omegaNxt = fluidAngMom / penalJ;
-    const Real TZ = J * (omegaNxt - omega) / dt;
-    const Real acca = ( appliedTorque + TZ ) / J;
-    omega = omega + dt * acca;
-  }
   energy -= ( std::pow(appliedForceX, 2) + std::pow(appliedForceY, 2)
             + std::pow(appliedTorque/radius, 2) ) * dt;
-
-  //if(bForcedx) { u = forcedu; cout << "bForcedx" << endl; }
-  //if(bForcedy) v = forcedv;
-  //if(bBlockang) omega = 0;
 }
 
 void SmartCylinder::updatePosition(double dt)
