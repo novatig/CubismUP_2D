@@ -132,7 +132,7 @@ void CurvatureFish::computeMidline(const Real time, const Real dt)
   //std::stringstream curvCout;
   //curvCout << "Profile t:"<<time<<" t0:"<<baseScheduler.t0;
   //for(int i=0; i<7; ++i) curvCout <<baseScheduler.parameters_t0[i] <<" ";
-  std::cout << curvCout.str() << std::endl;
+  //std::cout << curvCout.str() << std::endl;
     curvScheduler.gimmeValues(time,            curvature_points, Nm,rS, rC,vC);
     baseScheduler.gimmeValues(time,l_Tp,length, baseline_points, Nm,rS, rB,vB);
   adjustScheduler.gimmeValues(time,            curvature_points, Nm,rS, rA,vA);
