@@ -58,6 +58,10 @@ class Glider : public Shape
   {
     return 2 * majax;
   }
+  Real getMaxVel() const override
+  {
+    return std::sqrt(u*u + v*v) + std::fabs(omega) * majax;
+  }
   Real getCharMass() const override { return M_PI * semiAxis[0] * semiAxis[1]; }
 
   void outputSettings(std::ostream &outStream) const override

@@ -14,6 +14,7 @@
 
 Real Shape::getMinRhoS() const { return rhoS; }
 Real Shape::getCharMass() const { return 0; }
+Real Shape::getMaxVel() const { return std::sqrt(u*u + v*v); }
 bool Shape::bVariableDensity() const {
   return std::fabs(rhoS-1.0) > std::numeric_limits<Real>::epsilon();
 }

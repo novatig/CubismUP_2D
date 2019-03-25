@@ -119,8 +119,7 @@ double SimulationData::maxSpeed() const
 {
   double maxS = 0;
   for(const auto& shape : shapes) {
-    maxS = std::max(maxS, (double) std::fabs( shape->getU() ) );
-    maxS = std::max(maxS, (double) std::fabs( shape->getV() ) );
+    maxS = std::max(maxS, (double) shape->getMaxVel() );
   }
   return maxS;
 }
@@ -128,10 +127,8 @@ double SimulationData::maxSpeed() const
 double SimulationData::maxRelSpeed() const
 {
   double maxS = 0;
-  for(const auto& shape : shapes) {
-    maxS = std::max(maxS, (double) std::fabs(shape->getU() + uinfx ));
-    maxS = std::max(maxS, (double) std::fabs(shape->getV() + uinfy ));
-  }
+  for(const auto& shape : shapes)
+    maxS = std::max(maxS, (double) shape->getMaxVel() );
   return maxS;
 }
 

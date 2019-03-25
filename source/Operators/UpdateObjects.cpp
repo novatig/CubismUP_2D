@@ -34,7 +34,8 @@ void UpdateObjects::integrateMomenta(Shape * const shape) const
     for(int ix=0; ix<VectorBlock::sizeX; ++ix)
     {
       if (chi[iy][ix] <= 0) continue;
-      const Real F = hsq*lambdt*rho[iy][ix]*chi[iy][ix]/(1+chi[iy][ix]*lambdt);
+      const Real Xlamdt = chi[iy][ix] * lambdt;
+      const Real F = hsq * rho[iy][ix] * Xlamdt / (1 + Xlamdt);
       double p[2]; velInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;
       const Real udiff[2] = {
         VEL(ix,iy).u[0] - udef[iy][ix][0],

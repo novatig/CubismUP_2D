@@ -104,6 +104,7 @@ class Shape
     return std::sqrt(forcedu*forcedu + forcedv*forcedv);
   }
   virtual Real getCharMass() const;
+  virtual Real getMaxVel() const;
 
   virtual void create(const std::vector<BlockInfo>& vInfo) = 0;
 
