@@ -10,7 +10,7 @@
 #include "StefanFish.h"
 #include "FishLibrary.h"
 #include "FishUtilities.h"
-
+#include <sstream>
 
 class CurvatureFish : public FishData
 {
@@ -77,7 +77,7 @@ void CurvatureFish::_correctTrajectory(const Real dtheta, const Real t, Real dt)
   std::array<Real, 6> tmp_curv;
   tmp_curv.fill(dtheta);
   //adjustScheduler.transition(time,time,time+2*dt,tmp_curv, true);
-  adjustScheduler.transition(t, t-10*dt, t+10*dt, tmp_curv, true);
+  adjustScheduler.transition(t, t-2*dt, t+2*dt, tmp_curv, true);
 }
 
 void CurvatureFish::_correctAmplitude(Real dAmp, Real vAmp, const Real time, const Real dt)
@@ -129,6 +129,10 @@ void CurvatureFish::computeMidline(const Real time, const Real dt)
   //const std::array<Real ,6> curvature_values = std::array<Real, 6>();
   //curvScheduler.transition(time,0,Tperiod,curvature_values,curvature_values);
   // query the schedulers for current values
+  //std::stringstream curvCout;
+  //curvCout << "Profile t:"<<time<<" t0:"<<baseScheduler.t0;
+  //for(int i=0; i<7; ++i) curvCout <<baseScheduler.parameters_t0[i] <<" ";
+  std::cout << curvCout.str() << std::endl;
     curvScheduler.gimmeValues(time,            curvature_points, Nm,rS, rC,vC);
     baseScheduler.gimmeValues(time,l_Tp,length, baseline_points, Nm,rS, rB,vB);
   adjustScheduler.gimmeValues(time,            curvature_points, Nm,rS, rA,vA);
@@ -238,9 +242,9 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
   if (bCorrectTrajectory) {
     assert(followX < 0 && followY < 0);
     const Real AngDiff  = std::atan2(-v, -u);
-    adjTh = (Tperiod-sim.dt) * adjTh + sim.dt * AngDiff;
-    const Real INST = (AngDiff*omega>0) ? AngDiff*std::fabs(omega) : 0;
-    const Real PID  = 0.1*adjTh + 0.1*INST;
+    adjTh = (Tperiod-sim.dt)/Tperiod * adjTh + sim.dt/Tperiod * AngDiff;
+    const Real INST = (AngDiff*omega>0) ? AngDiff*std::fabs(omega)*Tperiod : 0;
+    const Real PID  = 0.1*adjTh + 0.01*INST;
     if(not sim.muteAll) {
       std::ofstream filePID;
       std::stringstream ssF; ssF<<sim.path2file<<"/PID_"<<obstacleID<<".dat";
@@ -259,7 +263,7 @@ void StefanFish::act(const Real lTact, const std::vector<double>& a) const
   CurvatureFish* const cFish = dynamic_cast<CurvatureFish*>( myFish );
   oldrCurv = lastCurv;
   lastCurv = a[0];
-  if(a.size()>0) lastTact = a[1];
+  if(a.size()>1) lastTact = a[1];
   cFish->execute(sim.time, lTact, a);
 }
 
@@ -298,7 +302,7 @@ std::vector<double> StefanFish::state(const double OX, const double OY, const do
   const double V = getV() * Tperiod / length;
   const double W = getW() * Tperiod;
   const double lastT = lastTact, lastC = lastCurv, oldrC = oldrCurv;
-  std::vector<double> S = { X, Y, A, T, U, V, W, lastT, lastC, oldrC }; 
+  std::vector<double> S = { X, Y, A, T, U, V, W, lastT, lastC, oldrC };
   return S;
 }
 double StefanFish::reward() const{
