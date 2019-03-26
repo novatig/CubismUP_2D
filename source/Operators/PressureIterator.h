@@ -10,35 +10,28 @@
 #pragma once
 
 #include "../Operator.h"
+#ifdef HYPREFFT
+class HYPREdirichletVarRho;
+#endif
 
-class PoissonSolver;
-
-class PressureIterator : public Operator
+class PressureVarRho_iterator : public Operator
 {
-  const std::vector<BlockInfo>& velInfo   = sim.vel->getBlocksInfo();
-  const std::vector<BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
-  const std::vector<BlockInfo>& presInfo  = sim.pres->getBlocksInfo();
-  const std::vector<BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
-  const std::vector<BlockInfo>& forceInfo = sim.force->getBlocksInfo();
+  #ifdef HYPREFFT
+    HYPREdirichletVarRho * const pressureSolver;
+  #endif
 
-  const std::vector<BlockInfo>& pRHSInfo  = sim.pRHS->getBlocksInfo();
-  const std::vector<BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
-  const std::vector<BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
-
-  PoissonSolver * const pressureSolver;
-
-  Real updatePenalizationForce(const double dt, const int iter) const;
-  void initPenalizationForce(const double dt) const;
-  void updatePressureRHS(const double dt) const;
-  void fadeoutBorder(const double dt) const;
+  void finalizePressure(const double dt) const;
+  Real penalize(const double dt) const;
+  void integrateMomenta(Shape * const shape) const;
+  void pressureCorrection(const double dt) const;
 
  public:
   void operator()(const double dt);
 
-  PressureIterator(SimulationData& s);
-  ~PressureIterator();
+  PressureVarRho_iterator(SimulationData& s);
+  ~PressureVarRho_iterator();
 
   std::string getName() {
-    return "PressureIterator";
+    return "PressureVarRho_iterator";
   }
 };

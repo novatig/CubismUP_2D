@@ -28,8 +28,9 @@ class HYPREdirichletVarRho : public PoissonSolver
   using RowType = Real[5];
   RowType * matAry = new RowType[totNy*totNx];
   void fadeoutBorder(const double dt) const;
-  void updateRHSandMAT(const double dt) const;
+  void updateRHSandMAT(const double dt, const bool updateMat) const;
  public:
+  bool bUpdateMat = true;
   void solve(const std::vector<BlockInfo>& BSRC,
              const std::vector<BlockInfo>& BDST) override;
 

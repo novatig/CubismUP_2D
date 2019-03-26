@@ -177,25 +177,20 @@ void Simulation::init()
     IC ic(sim);
     ic(0);
   }
-  if(1)
+  if(sim.bVariableDensity)
   {
     pipeline.push_back( new PutObjectsOnGrid(sim) );
-    if(sim.bVariableDensity) pipeline.push_back( new advDiffGrav(sim) );
-    else  pipeline.push_back( new advDiff(sim) );
-    if(sim.bVariableDensity) {
-      //pipeline.push_back( new PressureVarRho(sim) );
-      pipeline.push_back( new PressureVarRho_proper(sim) );
-    }
-    else  pipeline.push_back( new PressureSingle(sim) );
-    pipeline.push_back( new UpdateObjects(sim) );
+    pipeline.push_back( new advDiffGrav(sim) );
+    pipeline.push_back( new PressureVarRho_iterator(sim) );
   }
   else
   {
     pipeline.push_back( new PutObjectsOnGrid(sim) );
-    pipeline.push_back( new    presRHS_step1(sim) );
-    pipeline.push_back( new       advDiff_RK(sim) );
-    pipeline.push_back( new PressureIterator(sim) );
-    pipeline.push_back( new    UpdateObjects(sim) );
+    pipeline.push_back( new advDiff(sim) );
+    //pipeline.push_back( new PressureVarRho(sim) );
+    //pipeline.push_back( new PressureVarRho_proper(sim) );
+    pipeline.push_back( new PressureSingle(sim) );
+    pipeline.push_back( new UpdateObjects(sim) );
   }
 
   std::cout << "Operator ordering:\n";

@@ -60,7 +60,7 @@ void HYPREdirichletVarRho::fadeoutBorder(const double dt) const
   }
 };
 
-void HYPREdirichletVarRho::updateRHSandMAT(const double dt) const
+void HYPREdirichletVarRho::updateRHSandMAT(const double dt, const bool updateMat) const
 {
   const std::vector<BlockInfo>& chiInfo  = sim.chi->getBlocksInfo();
   const std::vector<BlockInfo>& velInfo  = sim.vel->getBlocksInfo();
@@ -85,10 +85,8 @@ void HYPREdirichletVarRho::updateRHSandMAT(const double dt) const
       const size_t blockStart = blocki + stride * blockj;
       velLab. load( velInfo[i], 0);
       uDefLab.load(uDefInfo[i], 0);
-      iRhoLab.load(iRhoInfo[i], 0);
       const VectorLab  & __restrict__ V   =  velLab;
       const VectorLab  & __restrict__ UDEF= uDefLab;
-      const ScalarLab  & __restrict__ IRHO= iRhoLab;
       const ScalarBlock& __restrict__ CHI = *(ScalarBlock*)chiInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
@@ -100,16 +98,25 @@ void HYPREdirichletVarRho::updateRHSandMAT(const double dt) const
         const Real divUSx = UDEF(ix+1,iy).u[0] - UDEF(ix-1,iy).u[0];
         const Real divUSy = UDEF(ix,iy+1).u[1] - UDEF(ix,iy-1).u[1];
         dest[idx] = - facDiv*( divVx+divVy - CHI(ix,iy).s*(divUSx+divUSy) );
-
-        const Real coefN = mean(IRHO(ix+1,iy).s, IRHO(ix,iy).s);
-        const Real coefS = mean(IRHO(ix-1,iy).s, IRHO(ix,iy).s);
-        const Real coefE = mean(IRHO(ix,iy+1).s, IRHO(ix,iy).s);
-        const Real coefW = mean(IRHO(ix,iy-1).s, IRHO(ix,iy).s);
-        mat[idx][0] = coefN + coefS + coefE + coefW;
-        mat[idx][1] = - coefW;
-        mat[idx][2] = - coefE;
-        mat[idx][3] = - coefS;
-        mat[idx][4] = - coefN;
+      }
+      if(updateMat)
+      {
+        iRhoLab.load(iRhoInfo[i], 0);
+        const ScalarLab  & __restrict__ IRHO= iRhoLab;
+        for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+        for(int ix=0; ix<VectorBlock::sizeX; ++ix)
+        {
+          const size_t idx = blockStart + ix + stride*iy;
+          const Real coefN = mean(IRHO(ix+1,iy).s, IRHO(ix,iy).s);
+          const Real coefS = mean(IRHO(ix-1,iy).s, IRHO(ix,iy).s);
+          const Real coefE = mean(IRHO(ix,iy+1).s, IRHO(ix,iy).s);
+          const Real coefW = mean(IRHO(ix,iy-1).s, IRHO(ix,iy).s);
+          mat[idx][0] = coefN + coefS + coefE + coefW;
+          mat[idx][1] = - coefW;
+          mat[idx][2] = - coefE;
+          mat[idx][3] = - coefS;
+          mat[idx][4] = - coefN;
+        }
       }
     }
   }
@@ -129,7 +136,8 @@ void HYPREdirichletVarRho::updateRHSandMAT(const double dt) const
     for(size_t i=0; i<totNy*totNx; i++) dest[i] -= std::fabs(dest[i])*corr;
   }
 
-  if(not bPeriodic) // 0 Neumann BC
+  // apply Neumann boundary conditions:
+  if(not bPeriodic && updateMat)
   {
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < totNx; i++) {
@@ -150,6 +158,7 @@ void HYPREdirichletVarRho::updateRHSandMAT(const double dt) const
       mat[stride * j +totNx-1][2]  = 0; // east
     }
   }
+  if(0) // fix mean pressure
   {
     // set second to last corner such that last point has pressure pLast
     const size_t dofFix00 = stride*(totNy-2) +totNx-2;
@@ -169,14 +178,16 @@ void HYPREdirichletVarRho::updateRHSandMAT(const double dt) const
     dest[dofFixMx] -= pLast * mat[dofFixMx][2]; mat[dofFixMx][2] = 0;
     dest[dofFixPx] -= pLast * mat[dofFixPx][1]; mat[dofFixPx][1] = 0;
   }
-  // TODO fix last dof for periodic BC
 
-  Real * const linV = (Real*) matAry;
-  // These indices must match to those in the offset array:
-  HYPRE_Int inds[5] = {0, 1, 2, 3, 4};
-  HYPRE_Int ilower[2] = {0,0}, iupper[2] = {(int)totNx-1, (int)totNy-1};
-  HYPRE_StructMatrixSetBoxValues(hypre_mat, ilower, iupper, 5, inds, linV);
-  HYPRE_StructMatrixAssemble(hypre_mat);
+  if(updateMat)
+  {
+    Real * const linV = (Real*) matAry;
+    // These indices must match to those in the offset array:
+    HYPRE_Int inds[5] = {0, 1, 2, 3, 4};
+    HYPRE_Int ilower[2] = {0,0}, iupper[2] = {(int)totNx-1, (int)totNy-1};
+    HYPRE_StructMatrixSetBoxValues(hypre_mat, ilower, iupper, 5, inds, linV);
+    HYPRE_StructMatrixAssemble(hypre_mat);
+  }
 }
 
 void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
@@ -186,7 +197,7 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
   HYPRE_Int iupper[2] = {(int)totNx-1, (int)totNy-1};
 
   sim.startProfiler("HYPRE_cub2rhs");
-  updateRHSandMAT(sim.dt);
+  updateRHSandMAT(sim.dt, bUpdateMat);
   sim.stopProfiler();
 
   sim.startProfiler("HYPRE_setBoxV");
@@ -262,7 +273,7 @@ HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
   { // Matrix
     HYPRE_StructMatrixCreate(COMM, hypre_grid, hypre_stencil, &hypre_mat);
     HYPRE_StructMatrixInitialize(hypre_mat);
-    updateRHSandMAT(1.0);
+    updateRHSandMAT(1.0, true);
   }
 
   // Rhs and initial guess
