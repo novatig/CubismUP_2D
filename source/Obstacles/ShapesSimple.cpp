@@ -36,7 +36,7 @@ void Disk::create(const std::vector<BlockInfo>& vInfo)
 
 void Disk::updateVelocity(double dt)
 {
-  if(sim.step == 0)
+  if(0) //(sim.step == 0)
   {
     std::cout << "Checking against potential flow solution." << std::endl;
     const std::vector<BlockInfo>& velInfo = sim.vel->getBlocksInfo();
