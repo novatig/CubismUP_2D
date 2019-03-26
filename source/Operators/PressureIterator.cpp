@@ -10,7 +10,9 @@
 #include "PressureIterator.h"
 #include "../Poisson/HYPREdirichletVarRho.h"
 #include "../Shape.h"
-//#include "Utils/BufferedLogger.h"
+#include "Utils/BufferedLogger.h"
+
+using namespace cubism;
 
 using CHI_MAT = Real[VectorBlock::sizeY][VectorBlock::sizeX];
 using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];

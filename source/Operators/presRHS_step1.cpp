@@ -11,6 +11,8 @@
 
 #include "presRHS_step1.h"
 
+using namespace cubism;
+
 // computes: - \chi_{t+1} div( Udef_{t+1})
 void presRHS_step1::operator()(const double dt)
 {

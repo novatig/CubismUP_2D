@@ -209,12 +209,12 @@ struct PutFishOnBlocks
   PutFishOnBlocks(const FishData& cf, const double pos[2],
     const Real ang): cfish(cf), position{(Real)pos[0],(Real)pos[1]}, angle(ang) { }
 
-  void operator()(const BlockInfo& i, ScalarBlock& b,
+  void operator()(const cubism::BlockInfo& i, ScalarBlock& b,
     ObstacleBlock* const o, const std::vector<AreaSegment*>& v) const;
-  virtual void constructSurface(  const BlockInfo& i, ScalarBlock& b,
+  virtual void constructSurface(  const cubism::BlockInfo& i, ScalarBlock& b,
     ObstacleBlock* const o, const std::vector<AreaSegment*>& v) const;
-  virtual void constructInternl(  const BlockInfo& i, ScalarBlock& b,
+  virtual void constructInternl(  const cubism::BlockInfo& i, ScalarBlock& b,
     ObstacleBlock* const o, const std::vector<AreaSegment*>& v) const;
-  virtual void signedDistanceSqrt(const BlockInfo& i, ScalarBlock& b,
+  virtual void signedDistanceSqrt(const cubism::BlockInfo& i, ScalarBlock& b,
     ObstacleBlock* const o, const std::vector<AreaSegment*>& v) const;
 };

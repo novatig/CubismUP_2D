@@ -23,11 +23,11 @@ using Real = double;
 using Real = float;
 #endif // _FLOAT_PRECISION_
 
-#include <ArgumentParser.h>
-#include <Grid.h>
-#include <BlockInfo.h>
-#include <BlockLab.h>
-#include <StencilInfo.h>
+#include <Cubism/ArgumentParser.h>
+#include <Cubism/Grid.h>
+#include <Cubism/BlockInfo.h>
+#include <Cubism/BlockLab.h>
+#include <Cubism/StencilInfo.h>
 
 #ifndef _BS_
 #define _BS_ 32
@@ -39,6 +39,7 @@ using Real = float;
 
 struct ScalarElement
 {
+  using RealType = Real;
   Real s = 0;
   inline void clear() { s = 0; }
   inline void set(const Real v) { s = v; }
@@ -49,6 +50,7 @@ struct ScalarElement
 
 struct VectorElement
 {
+  using RealType = Real;
   static constexpr int DIM = _DIM_;
   Real u[DIM];
 
@@ -66,14 +68,19 @@ struct VectorElement
   }
 };
 
-template <typename Element>
+template <typename TElement>
 struct GridBlock
 {
+  //these identifiers are required by cubism!
+  static constexpr int BS = _BS_;
   static constexpr int sizeX = _BS_;
   static constexpr int sizeY = _BS_;
   static constexpr int sizeZ = _DIM_ > 2 ? _BS_ : 1;
+  static constexpr std::array<int, 3> sizeArray = {sizeX, sizeY, sizeZ};
+  using ElementType = TElement;
+  using element_type = TElement;
+  using RealType = Real;
 
-  using ElementType = Element;
   ElementType data[sizeZ][sizeY][sizeX];
 
   inline void clear() {
@@ -84,7 +91,7 @@ struct GridBlock
       ElementType * const entry = &data[0][0][0];
       for(int i=0; i<sizeX*sizeY*sizeZ; ++i) entry[i].set(v);
   }
-  inline void copy(const GridBlock<Element>& c) {
+  inline void copy(const GridBlock<ElementType>& c) {
       ElementType * const entry = &data[0][0][0];
       const ElementType * const source = &c.data[0][0][0];
       for(int i=0; i<sizeX*sizeY*sizeZ; ++i) entry[i].copy(source[i]);
@@ -104,7 +111,7 @@ struct GridBlock
 
 template<typename BlockType,
          template<typename X> class allocator = std::allocator>
-class BlockLabOpen: public BlockLab<BlockType, allocator>
+class BlockLabOpen: public cubism::BlockLab<BlockType, allocator>
 {
  public:
   using ElementType = typename BlockType::ElementType;
@@ -141,7 +148,7 @@ class BlockLabOpen: public BlockLab<BlockType, allocator>
   }
 
   // Called by Cubism:
-  void _apply_bc(const BlockInfo& info, const Real t = 0)
+  void _apply_bc(const cubism::BlockInfo& info, const Real t = 0)
   {
     if( info.index[0]==0 )           this->template applyBCface<0,0>();
     if( info.index[0]==this->NX-1 )  this->template applyBCface<0,1>();
@@ -149,9 +156,13 @@ class BlockLabOpen: public BlockLab<BlockType, allocator>
     if( info.index[1]==this->NY-1 )  this->template applyBCface<1,1>();
   }
 
-  BlockLabOpen(): BlockLab<BlockType,allocator>(){}
+  BlockLabOpen(): cubism::BlockLab<BlockType,allocator>(){}
   BlockLabOpen(const BlockLabOpen&) = delete;
   BlockLabOpen& operator=(const BlockLabOpen&) = delete;
+
+  const ElementType& operator()(int ix, int iy=0, int iz=0) const {
+    return this->read(ix,iy,iz);
+  }
 };
 
 struct StreamerScalar
@@ -188,6 +199,7 @@ struct StreamerVector
 // lightweight container
 struct VelChiGlueBlock
 {
+  using RealType = Real;
   static constexpr int sizeX=_BS_, sizeY=_BS_, sizeZ=1; // read by streamer
   GridBlock<ScalarElement> * chiBlock;
   GridBlock<VectorElement> * velBlock;
@@ -225,8 +237,8 @@ struct StreamerGlue
 
 using ScalarBlock = GridBlock<ScalarElement>;
 using VectorBlock = GridBlock<VectorElement>;
-using VectorGrid = Grid<VectorBlock, std::allocator>;
-using ScalarGrid = Grid<ScalarBlock, std::allocator>;
-using DumpGrid = Grid<VelChiGlueBlock, std::allocator>;
+using VectorGrid = cubism::Grid<VectorBlock, std::allocator>;
+using ScalarGrid = cubism::Grid<ScalarBlock, std::allocator>;
+using DumpGrid = cubism::Grid<VelChiGlueBlock, std::allocator>;
 using VectorLab = BlockLabOpen<VectorBlock, std::allocator>;
 using ScalarLab = BlockLabOpen<ScalarBlock, std::allocator>;

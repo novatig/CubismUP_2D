@@ -106,8 +106,8 @@ public:
   #undef TOT_DOF_X
   #undef STRIDE
 
-  void solve(const std::vector<BlockInfo>& BSRC,
-             const std::vector<BlockInfo>& BDST) override
+  void solve(const std::vector<cubism::BlockInfo>& BSRC,
+             const std::vector<cubism::BlockInfo>& BDST) override
   {
     sim.startProfiler("FFTW_cub2fft");
     cub2rhs(BSRC);

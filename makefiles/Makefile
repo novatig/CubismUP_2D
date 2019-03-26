@@ -50,17 +50,15 @@ LD=$(MPICXX)
 
 bs ?= 32
 nthreads ?= 24
-CPPFLAGS+= -D_BS_=$(bs) -D_ALIGNBYTES_=32 -DNTHREADS=$(nthreads)
+CPPFLAGS+= -D_BS_=$(bs) -DCUBISM_ALIGNMENT=32 -DNTHREADS=$(nthreads)
 NVFLAGS+= -code=sm_60 -arch=compute_60
 
-CPPFLAGS += -I../source/ -I../Cubism/source/
-NVFLAGS += -I../Cubism/source/
-
 BUILDDIR = .
+CPPFLAGS += -I../source/ -I$(BUILDDIR)/../Cubism/include/
+NVFLAGS += -I$(BUILDDIR)/../Cubism/include/
 SRC_DIR = $(BUILDDIR)/../source/
 DIRS = $(sort $(dir $(wildcard ../source/*/)))
 
-CUBISM_DIR = $(BUILDDIR)/../Cubism/source/
 #OBJECTS = Simulation.o Definitions.o Shape.o ShapeLibrary.o ShapesSimple.o
 OBJECTS = \
 		Simulation.o SimulationData.o Shape.o ShapeLibrary.o ShapesSimple.o \
@@ -69,7 +67,7 @@ OBJECTS = \
 		advDiff.o advDiff_RK.o BufferedLogger.o Helpers.o BlowFish.o Fish.o \
 		FishLibrary.o StefanFish.o CarlingFish.o PressureVarRho.o \
 		Penalization.o advDiffGrav.o SmartCylinder.o Glider.o \
-		HYPREdirichletVarRho.o PressureVarRho_proper.o
+		HYPREdirichletVarRho.o PressureVarRho_proper.o ArgumentParser.o
 
 ifneq "$(gpu)" "false"
 LIBS += -lcufft
@@ -91,7 +89,7 @@ CPPFLAGS += -DHYPREFFT
 endif
 CPP_FILES = $(notdir $(OBJECTS:.o=.cpp))
 
-VPATH := $(DIRS) $(CUBISM_DIR)
+VPATH := $(DIRS) $(BUILDDIR)/../Cubism/src/
 #  vpath %.cpp $(DIRS)
 #  vpath %.h   $(DIRS)
 
@@ -108,7 +106,7 @@ endif
 
 ifneq "$(hdf5)" "false"
 LIBS+= -lhdf5
-CPPFLAGS+= -D_USE_HDF_
+CPPFLAGS+= -DCUBISM_USE_HDF
 endif
 
 all: simulation

@@ -9,6 +9,8 @@
 
 #include "FFTW_freespace.h"
 
+using namespace cubism;
+
 void FFTW_freespace::solve(const std::vector<BlockInfo>& BSRC,
                            const std::vector<BlockInfo>& BDST)
 {

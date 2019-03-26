@@ -31,8 +31,8 @@ class HYPREdirichletVarRho : public PoissonSolver
   void updateRHSandMAT(const double dt, const bool updateMat) const;
  public:
   bool bUpdateMat = true;
-  void solve(const std::vector<BlockInfo>& BSRC,
-             const std::vector<BlockInfo>& BDST) override;
+  void solve(const std::vector<cubism::BlockInfo>& BSRC,
+             const std::vector<cubism::BlockInfo>& BDST) override;
 
   HYPREdirichletVarRho(SimulationData& s);
 

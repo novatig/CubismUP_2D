@@ -10,6 +10,8 @@
 #include "UpdateObjects.h"
 #include "../Shape.h"
 
+using namespace cubism;
+
 using CHI_MAT = Real[VectorBlock::sizeY][VectorBlock::sizeX];
 using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];
 

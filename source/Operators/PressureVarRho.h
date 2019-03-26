@@ -16,12 +16,12 @@ class PoissonSolver;
 class PressureVarRho : public Operator
 {
   const Real rho0 = sim.minRho();
-  const std::vector<BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
-  const std::vector<BlockInfo>& presInfo  = sim.pres->getBlocksInfo();
-  const std::vector<BlockInfo>& pOldInfo  = sim.pOld->getBlocksInfo();
-  const std::vector<BlockInfo>& iRhoInfo  = sim.invRho->getBlocksInfo();
-  const std::vector<BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
-  const std::vector<BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& presInfo  = sim.pres->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& pOldInfo  = sim.pOld->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& iRhoInfo  = sim.invRho->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
 
   PoissonSolver * const pressureSolver;
 

@@ -9,6 +9,8 @@
 #include "Penalization.h"
 #include "../Shape.h"
 
+using namespace cubism;
+
 void Penalization::operator()(const double dt)
 {
   const Real lamdt = sim.lambda * dt;

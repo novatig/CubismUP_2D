@@ -15,11 +15,11 @@ class Shape;
 
 class PutObjectsOnGrid : public Operator
 {
-  const std::vector<BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
-  const std::vector<BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
-  const std::vector<BlockInfo>& invRhoInfo   = sim.invRho->getBlocksInfo();
-  const std::vector<BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
-  const std::vector<BlockInfo>& forceInfo = sim.force->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& invRhoInfo= sim.invRho->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& forceInfo = sim.force->getBlocksInfo();
 
   void putChiOnGrid(Shape * const shape) const;
   void putObjectVelOnGrid(Shape * const shape) const;

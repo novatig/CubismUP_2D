@@ -11,6 +11,7 @@
 //#include "OperatorComputeForces.h"
 #include "Utils/BufferedLogger.h"
 #include <gsl/gsl_linalg.h>
+using namespace cubism;
 
 Real Shape::getMinRhoS() const { return rhoS; }
 Real Shape::getCharMass() const { return 0; }

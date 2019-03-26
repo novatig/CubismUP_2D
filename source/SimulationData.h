@@ -10,15 +10,13 @@
 #pragma once
 
 #include "Definitions.h"
-#include "Profiler.h"
+#include "Cubism/Profiler.h"
 
 class Shape;
 
 struct SimulationData
 {
-  #ifndef SMARTIES_APP
-    Profiler * profiler = new Profiler();
-  #endif
+  cubism::Profiler * profiler = new cubism::Profiler();
 
   ScalarGrid * chi   = nullptr;
   VectorGrid * vel   = nullptr;

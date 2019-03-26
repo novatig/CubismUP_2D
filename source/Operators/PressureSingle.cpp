@@ -10,7 +10,7 @@
 #include "PressureSingle.h"
 #include "../Poisson/PoissonSolver.h"
 
-#define SOFT_PENL
+using namespace cubism;
 
 void PressureSingle::fadeoutBorder(const double dt) const
 {

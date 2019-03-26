@@ -52,7 +52,7 @@ class Glider : public Shape
 
   bool isOver();
 
-  Glider(SimulationData& s, ArgumentParser& p, double C[2] );
+  Glider(SimulationData& s, cubism::ArgumentParser& p, double C[2] );
 
   Real getCharLength() const override
   {
@@ -72,7 +72,7 @@ class Glider : public Shape
     Shape::outputSettings(outStream);
   }
 
-  void create(const std::vector<BlockInfo>& vInfo) override;
+  void create(const std::vector<cubism::BlockInfo>& vInfo) override;
   void updateVelocity(double dt) override;
   void computeForces() override;
 };

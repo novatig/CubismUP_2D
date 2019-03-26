@@ -9,6 +9,8 @@
 #include "FishLibrary.h"
 #include "FishUtilities.h"
 
+using namespace cubism;
+
 FishData::FishData(Real L, Real Tp, Real phi, Real _h, const Real A):
  length(L), Tperiod(Tp), phaseShift(phi), h(_h), amplitudeFactor(A),
  rS(_alloc(Nm)),rX(_alloc(Nm)),rY(_alloc(Nm)),vX(_alloc(Nm)),vY(_alloc(Nm)),

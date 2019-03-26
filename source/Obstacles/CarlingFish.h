@@ -14,7 +14,7 @@ class CarlingFish: public Fish
  public:
   double getPhase(const double t) const;
 
-  CarlingFish(SimulationData&s, ArgumentParser&p, double C[2]);
+  CarlingFish(SimulationData&s, cubism::ArgumentParser&p, double C[2]);
   void resetAll() override;
-  void create(const std::vector<BlockInfo>& vInfo) override;
+  void create(const std::vector<cubism::BlockInfo>& vInfo) override;
 };

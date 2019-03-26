@@ -18,8 +18,7 @@ class Simulation
  public:
   SimulationData sim;
  protected:
-  ArgumentParser parser;
-  Profiler * profiler = nullptr;
+  cubism::ArgumentParser parser;
   std::vector<Operator*> pipeline;
 
   void createShapes();

@@ -24,7 +24,7 @@ class SmartCylinder : public Shape
 
   double reward(const Real velScale);
 
-  SmartCylinder(SimulationData& s, ArgumentParser& p, double C[2] ) :
+  SmartCylinder(SimulationData& s, cubism::ArgumentParser& p, double C[2] ) :
   Shape(s,p,C), radius( p("-radius").asDouble(0.1) ) {
     printf("Created a SmartCylinder with: R:%f rho:%f\n",radius, rhoS);
   }
@@ -47,7 +47,7 @@ class SmartCylinder : public Shape
     Shape::outputSettings(outStream);
   }
 
-  void create(const std::vector<BlockInfo>& vInfo) override;
+  void create(const std::vector<cubism::BlockInfo>& vInfo) override;
   void updatePosition(double dt) override;
   void updateVelocity(double dt) override;
   void computeForces() override;

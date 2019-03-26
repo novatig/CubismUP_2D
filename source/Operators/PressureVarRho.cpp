@@ -10,6 +10,8 @@
 #include "PressureVarRho.h"
 #include "../Poisson/PoissonSolver.h"
 
+using namespace cubism;
+
 template<typename T>
 static inline T mean(const T A, const T B)
 {

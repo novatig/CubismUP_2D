@@ -17,6 +17,7 @@
 #include "Obstacles/SmartCylinder.h"
 
 #include "mpi.h"
+using namespace cubism;
 //
 // All these functions are defined here and not in object itself because
 // Many different tasks, each requiring different state/act/rew descriptors

@@ -16,7 +16,7 @@ class Disk : public Shape
   const double radius;
   const Real tAccel;
  public:
-  Disk(SimulationData& s, ArgumentParser& p, double C[2] ) :
+  Disk(SimulationData& s, cubism::ArgumentParser& p, double C[2] ) :
   Shape(s,p,C), radius( p("-radius").asDouble(0.1) ),
   tAccel( p("-tAccel").asDouble(-1) ) {
     printf("Created a Disk with: R:%f rho:%f tAccel:%f\n",radius,rhoS,tAccel);
@@ -36,7 +36,7 @@ class Disk : public Shape
     Shape::outputSettings(outStream);
   }
 
-  void create(const std::vector<BlockInfo>& vInfo) override;
+  void create(const std::vector<cubism::BlockInfo>& vInfo) override;
   void updateVelocity(double dt) override;
 };
 
@@ -47,7 +47,7 @@ class HalfDisk : public Shape
   const Real tAccel;
 
  public:
-  HalfDisk( SimulationData& s, ArgumentParser& p, double C[2] ) :
+  HalfDisk( SimulationData& s, cubism::ArgumentParser& p, double C[2] ) :
   Shape(s,p,C), radius( p("-radius").asDouble(0.1) ),
   tAccel( p("-tAccel").asDouble(-1) ) {
     printf("Created a half Disk with: R:%f rho:%f\n",radius,rhoS);
@@ -67,7 +67,7 @@ class HalfDisk : public Shape
     Shape::outputSettings(outStream);
   }
 
-  void create(const std::vector<BlockInfo>& vInfo) override;
+  void create(const std::vector<cubism::BlockInfo>& vInfo) override;
   void updateVelocity(double dt) override;
 };
 
@@ -87,7 +87,8 @@ class Ellipse : public Shape
   Real powerOutput = 0, old_powerOutput = 0;
 
  public:
-  Ellipse(SimulationData&s, ArgumentParser&p, double C[2]) : Shape(s,p,C),
+  Ellipse(SimulationData&s, cubism::ArgumentParser&p, double C[2]) :
+    Shape(s,p,C),
     semiAxis{ (Real) p("-semiAxisX").asDouble(.1),
               (Real) p("-semiAxisY").asDouble(.2) } {
     printf("Created ellipse semiAxis:[%f %f] rhoS:%f a:%f b:%f velscale:%f lengthscale:%f timescale:%f torquescale:%f\n", semiAxis[0], semiAxis[1], rhoS, majax, minax, velscale, lengthscale, timescale, torquescale); fflush(0);
@@ -108,7 +109,7 @@ class Ellipse : public Shape
     Shape::outputSettings(outStream);
   }
 
-  void create(const std::vector<BlockInfo>& vInfo) override;
+  void create(const std::vector<cubism::BlockInfo>& vInfo) override;
 };
 
 class DiskVarDensity : public Shape
@@ -119,7 +120,7 @@ class DiskVarDensity : public Shape
   const double rhoBot;
 
  public:
-  DiskVarDensity( SimulationData& s, ArgumentParser& p, double C[2] ) :
+  DiskVarDensity( SimulationData& s, cubism::ArgumentParser& p, double C[2] ) :
   Shape(s,p,C), radius( p("-radius").asDouble(0.1) ),
   rhoTop(p("-rhoTop").asDouble(rhoS) ), rhoBot(p("-rhoBot").asDouble(rhoS) ) {
     d_gm[0] = 0;
@@ -145,7 +146,7 @@ class DiskVarDensity : public Shape
     return bTop || bBot;
   }
 
-  void create(const std::vector<BlockInfo>& vInfo) override;
+  void create(const std::vector<cubism::BlockInfo>& vInfo) override;
 
   void outputSettings(std::ostream &outStream) const override
   {
@@ -167,7 +168,7 @@ class EllipseVarDensity : public Shape
    const double rhoBot;
 
   public:
-   EllipseVarDensity( SimulationData& s, ArgumentParser& p, double C[2] ) :
+   EllipseVarDensity(SimulationData&s, cubism::ArgumentParser&p, double C[2] ) :
    Shape(s,p,C),
    semiAxisX( p("-semiAxisX").asDouble(0.1) ),
    semiAxisY( p("-semiAxisY").asDouble(0.1) ),
@@ -194,7 +195,7 @@ class EllipseVarDensity : public Shape
      return bTop || bBot;
    }
 
-   void create(const std::vector<BlockInfo>& vInfo) override;
+   void create(const std::vector<cubism::BlockInfo>& vInfo) override;
 
    void outputSettings(std::ostream &outStream) const override
    {

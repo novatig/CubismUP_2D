@@ -13,17 +13,16 @@
 struct OperatorComputeForces
 {
   const int stencil_start[3] = {-1, -1, 0}, stencil_end[3] = {2, 2, 1};
-  StencilInfo stencil;
+  cubism::StencilInfo stencil = cubism::StencilInfo(-1,-1,0, 2,2,1, false, 2, 0,1);
   const Real NU, UINF[2], vel_unit[2];
   const double CM[2];
 
   OperatorComputeForces(SimulationData&s,const Real* vunit, const double*cm) :
    NU(s.nu), UINF{s.uinfx,s.uinfy}, vel_unit{vunit[0],vunit[1]}, CM{cm[0],cm[1]}
-  {
-    stencil = StencilInfo(-1,-1,0, 2,2,1, false, 2, 0,1);
-  }
+  { }
 
-  inline void operator()(Lab& l, const BlockInfo&info, FluidBlock&b, ObstacleBlock*const o) const
+  inline void operator()(Lab& l, const cubism::BlockInfo&info, FluidBlock&b,
+    ObstacleBlock*const o) const
   {
     const Real NUoH = NU / info.h_gridpoint; // 2 nu / 2 h
     assert(o->filled);

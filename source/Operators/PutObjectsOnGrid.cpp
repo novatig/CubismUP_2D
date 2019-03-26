@@ -10,6 +10,8 @@
 #include "PutObjectsOnGrid.h"
 #include "../Shape.h"
 
+using namespace cubism;
+
 static constexpr double EPS = std::numeric_limits<double>::epsilon();
 
 void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const

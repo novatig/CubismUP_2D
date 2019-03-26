@@ -8,7 +8,8 @@
 
 
 #include "HYPREdirichlet.h"
-//#define CONSISTENT
+
+using namespace cubism;
 #ifdef HYPREFFT
 
 void HYPREdirichlet::solve(const std::vector<BlockInfo>& BSRC,

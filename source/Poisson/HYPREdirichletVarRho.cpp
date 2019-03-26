@@ -9,6 +9,7 @@
 
 #include "HYPREdirichletVarRho.h"
 
+using namespace cubism;
 #ifdef HYPREFFT
 
 template<typename T>

@@ -11,6 +11,8 @@
 #include "ShapeLibrary.h"
 #include "../Utils/BufferedLogger.h"
 
+using namespace cubism;
+
 std::vector<double> Glider::state() const
 {
   const Real cosAng = std::cos(orientation), sinAng = std::sin(orientation);

@@ -13,8 +13,8 @@
 
 class advDiff : public Operator
 {
-  const std::vector<BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
-  const std::vector<BlockInfo>& pRHSInfo  = sim.pRHS->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& pRHSInfo  = sim.pRHS->getBlocksInfo();
 
  public:
   advDiff(SimulationData& s) : Operator(s) { }

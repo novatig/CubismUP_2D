@@ -11,6 +11,8 @@
 #include "ShapeLibrary.h"
 #include "../Utils/BufferedLogger.h"
 
+using namespace cubism;
+
 std::vector<double> SmartCylinder::state(const Real OX, const Real OY, const Real velScale) const
 {
   const std::vector<BlockInfo>& velInfo = sim.vel->getBlocksInfo();

@@ -9,6 +9,8 @@
 #include "ShapeLibrary.h"
 #include "ShapesSimple.h"
 
+using namespace cubism;
+
 void Disk::create(const std::vector<BlockInfo>& vInfo)
 {
   const Real h =  vInfo[0].h_gridpoint;

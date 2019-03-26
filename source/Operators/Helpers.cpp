@@ -9,6 +9,8 @@
 
 #include "Helpers.h"
 
+using namespace cubism;
+
 void IC::operator()(const double dt)
 {
   const std::vector<BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();

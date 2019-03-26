@@ -29,9 +29,9 @@ class StefanFish: public Fish
   double getPhase(const double t) const;
 
   void resetAll() override;
-  StefanFish(SimulationData&s, ArgumentParser&p, double C[2]);
-  void create(const std::vector<BlockInfo>& vInfo) override;
-  
+  StefanFish(SimulationData&s, cubism::ArgumentParser&p, double C[2]);
+  void create(const std::vector<cubism::BlockInfo>& vInfo) override;
+
 /* member functions for state/reward
   std::vector<double> state(const double OX, const double OY, const double t) const;
   double reward() const;

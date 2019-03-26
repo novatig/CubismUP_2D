@@ -10,6 +10,8 @@
 #include "Fish.h"
 #include "FishLibrary.h"
 
+using namespace cubism;
+
 //#define profile( arg ) do { profiler.arg; } while (0)
 #define profile( func ) do { } while (0)
 

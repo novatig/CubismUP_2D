@@ -17,6 +17,8 @@
 #include "../Poisson/CUDA_all.h"
 #endif
 
+using namespace cubism;
+
 PoissonSolver * PoissonSolver::makeSolver(SimulationData& sim)
 {
   #ifdef HYPREFFT

@@ -19,6 +19,7 @@
 #include "Obstacles/Glider.h"
 
 #include "mpi.h"
+using namespace cubism;
 
 inline void resetIC(Glider* const agent, Communicator*const c) {
   const Real A = 5*M_PI/180; // start between -5 and 5 degrees

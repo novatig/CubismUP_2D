@@ -9,7 +9,7 @@
 
 #include "Simulation.h"
 
-#include <HDF5Dumper.h>
+#include <Cubism/HDF5Dumper.h>
 //#include <ZBinDumper.h>
 
 #include "Operators/Helpers.h"
@@ -36,6 +36,7 @@
 #include <regex>
 #include <algorithm>
 #include <iterator>
+using namespace cubism;
 
 static inline std::vector<std::string> split(const std::string&s,const char dlm)
 {

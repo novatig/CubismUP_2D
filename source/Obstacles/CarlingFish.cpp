@@ -11,6 +11,8 @@
 #include "FishLibrary.h"
 #include "FishUtilities.h"
 
+using namespace cubism;
+
 class AmplitudeFish : public FishData
 {
  public:

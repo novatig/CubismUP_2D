@@ -15,7 +15,7 @@ class Shape;
 
 class UpdateObjects : public Operator
 {
-  const std::vector<BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
   //const std::vector<BlockInfo>& presInfo  = sim.pres->getBlocksInfo();
   //const std::vector<BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
   //const std::vector<BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();

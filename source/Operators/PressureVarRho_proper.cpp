@@ -10,6 +10,7 @@
 #include "PressureVarRho_proper.h"
 #include "../Poisson/HYPREdirichletVarRho.h"
 
+using namespace cubism;
 
 void PressureVarRho_proper::pressureCorrection(const double dt) const
 {

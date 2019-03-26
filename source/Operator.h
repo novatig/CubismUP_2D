@@ -15,7 +15,7 @@ class Operator
 {
 protected:
   SimulationData& sim;
-  const std::vector<BlockInfo>& velInfo = sim.vel->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& velInfo = sim.vel->getBlocksInfo();
   const size_t Nblocks = velInfo.size();
 
 public:

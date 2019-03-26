@@ -9,6 +9,7 @@
 #include "Simulation.h"
 
 #include "mpi.h"
+using namespace cubism;
 
 int main(int argc, char **argv)
 {

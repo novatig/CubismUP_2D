@@ -9,6 +9,8 @@
 
 #include "advDiff_RK.h"
 
+using namespace cubism;
+
 #define DIV_ADVECT
 static constexpr int sizeY = VectorBlock::sizeY;
 static constexpr int sizeX = VectorBlock::sizeX;

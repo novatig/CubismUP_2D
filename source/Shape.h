@@ -95,7 +95,7 @@ class Shape
   }
 */
  public:
-  Shape( SimulationData& s, ArgumentParser& p, double C[2] );
+  Shape( SimulationData& s, cubism::ArgumentParser& p, double C[2] );
 
   virtual ~Shape();
 
@@ -106,7 +106,7 @@ class Shape
   virtual Real getCharMass() const;
   virtual Real getMaxVel() const;
 
-  virtual void create(const std::vector<BlockInfo>& vInfo) = 0;
+  virtual void create(const std::vector<cubism::BlockInfo>& vInfo) = 0;
 
   virtual void updateVelocity(double dt);
   virtual void updatePosition(double dt);
@@ -174,9 +174,9 @@ class Shape
       x(c.x), y(c.y), m(c.m), j(c.j), u(c.u), v(c.v), a(c.a) {}
   };
 
-  Integrals integrateObstBlock(const std::vector<BlockInfo>& vInfo);
+  Integrals integrateObstBlock(const std::vector<cubism::BlockInfo>& vInfo);
 
-  void removeMoments(const std::vector<BlockInfo>& vInfo);
+  void removeMoments(const std::vector<cubism::BlockInfo>& vInfo);
 
   void updateLabVelocity( int mSum[2], double uSum[2] );
 

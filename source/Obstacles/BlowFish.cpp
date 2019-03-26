@@ -10,6 +10,8 @@
 #include "BlowFish.h"
 #include "ShapeLibrary.h"
 
+using namespace cubism;
+
 BlowFish::BlowFish(SimulationData&s, ArgumentParser&p, double C[2])
 : Shape(s,p,C), radius( p("-radius").asDouble(0.1) )
 {

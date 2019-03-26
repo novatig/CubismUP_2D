@@ -34,11 +34,11 @@ class BlowFish : public Shape
   const Real timescale = sqrt(3*M_PI*radius/deltaRho/fabs(sim.gravity[1])/8);
   const Real minRho = std::min(rhoTop,rhoBot), maxRho = std::max(rhoTop,rhoBot);
 
-  BlowFish(SimulationData&s, ArgumentParser&p, double C[2]);
+  BlowFish(SimulationData&s, cubism::ArgumentParser&p, double C[2]);
 
   void updatePosition(double dt) override;
 
-  void create(const std::vector<BlockInfo>& vInfo) override;
+  void create(const std::vector<cubism::BlockInfo>& vInfo) override;
 
   Real getCharLength() const  override
   {

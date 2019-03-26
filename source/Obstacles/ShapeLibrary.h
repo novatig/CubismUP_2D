@@ -22,7 +22,7 @@
 #include "../ObstacleBlock.h"
 
 inline bool _is_touching(
-  const BlockInfo& INFO, const Real BBOX[2][2], const Real safety )
+  const cubism::BlockInfo& INFO, const Real BBOX[2][2], const Real safety )
 {
   Real MINP[2], MAXP[2];
   INFO.pos(MINP, 0, 0);
@@ -49,11 +49,11 @@ struct FillBlocks_Cylinder
       return radius - std::sqrt(x*x+y*y); // pos inside, neg outside
   }
 
-  inline bool is_touching(const BlockInfo& INFO) const {
+  inline bool is_touching(const cubism::BlockInfo& INFO) const {
     return _is_touching(INFO, bbox, safety);
   }
 
-  void operator()(const BlockInfo& I, ScalarBlock& B, ObstacleBlock& O) const;
+  void operator()(const cubism::BlockInfo&, ScalarBlock&, ObstacleBlock&) const;
 };
 
 struct FillBlocks_HalfCylinder
@@ -76,11 +76,11 @@ struct FillBlocks_HalfCylinder
     else return radius - std::sqrt(x*x+y*y); // (pos inside, neg outside)
   }
 
-  inline bool is_touching(const BlockInfo& INFO) const {
+  inline bool is_touching(const cubism::BlockInfo& INFO) const {
     return _is_touching(INFO, bbox, safety);
   }
 
-  void operator()(const BlockInfo& I, ScalarBlock& B, ObstacleBlock& O) const;
+  void operator()(const cubism::BlockInfo&, ScalarBlock&, ObstacleBlock&) const;
 };
 
 struct FillBlocks_Ellipse
@@ -97,11 +97,11 @@ struct FillBlocks_Ellipse
     const double C[2], Real ang, Real rho): e0(_e0), e1(_e1), safety(2*h),
     pos{(Real)C[0], (Real)C[1]}, angle(ang), rhoS(rho) {}
 
-  inline bool is_touching(const BlockInfo& INFO) const {
+  inline bool is_touching(const cubism::BlockInfo& INFO) const {
     return _is_touching(INFO, bbox, safety);
   }
 
-  void operator()(const BlockInfo& I, ScalarBlock& B, ObstacleBlock& O) const;
+  void operator()(const cubism::BlockInfo&, ScalarBlock&, ObstacleBlock&) const;
 };
 
 struct FillBlocks_Plate
@@ -123,11 +123,11 @@ struct FillBlocks_Plate
     return std::min(std::min(X, LX - X), std::min(LY/2 + Y, LY/2 - Y));
   }
 
-  inline bool is_touching(const BlockInfo& INFO) const {
+  inline bool is_touching(const cubism::BlockInfo& INFO) const {
     return _is_touching(INFO, bbox, safety);
   }
 
-  void operator()(const BlockInfo& I, ScalarBlock& B, ObstacleBlock& O) const;
+  void operator()(const cubism::BlockInfo&, ScalarBlock&, ObstacleBlock&) const;
 };
 
 struct FillBlocks_VarRhoCylinder
@@ -147,10 +147,10 @@ struct FillBlocks_VarRhoCylinder
       return radius - std::sqrt(x*x+y*y); // pos inside, neg outside
   }
 
-  inline bool is_touching(const BlockInfo& INFO) const {
+  inline bool is_touching(const cubism::BlockInfo& INFO) const {
     return _is_touching(INFO, bbox, 2*h);
   }
-  void operator()(const BlockInfo& I, ScalarBlock& B, ObstacleBlock& O) const;
+  void operator()(const cubism::BlockInfo&, ScalarBlock&, ObstacleBlock&) const;
 };
 
 struct FillBlocks_VarRhoEllipse
@@ -167,9 +167,9 @@ struct FillBlocks_VarRhoEllipse
     Real ang, Real rhoT, Real rhoB): e0(_e0), e1(_e1), h(_h),
     pos{(Real)C[0], (Real)C[1]}, angle(ang), rhoTop(rhoT), rhoBot(rhoB) {}
 
-  inline bool is_touching(const BlockInfo& INFO) const {
+  inline bool is_touching(const cubism::BlockInfo& INFO) const {
     return _is_touching(INFO, bbox, 2*h);
   }
 
-  void operator()(const BlockInfo& I, ScalarBlock& B, ObstacleBlock& O) const;
+  void operator()(const cubism::BlockInfo&, ScalarBlock&, ObstacleBlock&) const;
 };

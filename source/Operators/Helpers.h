@@ -14,7 +14,7 @@
 class findMaxU
 {
   SimulationData& sim;
-  const std::vector<BlockInfo> & velInfo = sim.vel->getBlocksInfo();
+  const std::vector<cubism::BlockInfo> & velInfo = sim.vel->getBlocksInfo();
   const size_t Nblocks = velInfo.size();
  public:
   findMaxU(SimulationData& s) : sim(s) { }
@@ -29,7 +29,7 @@ class findMaxU
 class Checker
 {
   SimulationData& sim;
-  const std::vector<BlockInfo> & velInfo = sim.vel->getBlocksInfo();
+  const std::vector<cubism::BlockInfo> & velInfo = sim.vel->getBlocksInfo();
   const size_t Nblocks = velInfo.size();
  public:
   Checker(SimulationData& s) : sim(s) { }

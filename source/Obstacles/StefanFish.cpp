@@ -12,6 +12,8 @@
 #include "FishUtilities.h"
 #include <sstream>
 
+using namespace cubism;
+
 class CurvatureFish : public FishData
 {
  protected:

@@ -13,9 +13,9 @@
 
 class advDiffGrav : public Operator
 {
-  const std::vector<BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
-  const std::vector<BlockInfo>& pRHSInfo  = sim.pRHS->getBlocksInfo();
-  const std::vector<BlockInfo>& rhoInfo   = sim.invRho->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& pRHSInfo  = sim.pRHS->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& rhoInfo   = sim.invRho->getBlocksInfo();
  public:
   advDiffGrav(SimulationData& s) : Operator(s) { }
 

@@ -15,8 +15,8 @@
 
 class presRHS_step1 : public Operator
 {
-  const std::vector<BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
-  const std::vector<BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
 
  public:
   presRHS_step1(SimulationData& s) : Operator(s) { }
