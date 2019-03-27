@@ -35,7 +35,7 @@ void IC::operator()(const double dt)
     ScalarBlock& TMP = *(ScalarBlock*)  tmpInfo[i].ptrBlock;  TMP.clear();
     ScalarBlock& PRHS= *(ScalarBlock*) pRHSInfo[i].ptrBlock; PRHS.clear();
     VectorBlock& TMPV= *(VectorBlock*) tmpVInfo[i].ptrBlock; TMPV.clear();
-    VectorBlock& IRHO= *(ScalarBlock*) iRhoInfo[i].ptrBlock; IRHO.set(1);
+    ScalarBlock& IRHO= *(ScalarBlock*) iRhoInfo[i].ptrBlock; IRHO.set(1);
     assert(velInfo[i].blockID ==  uDefInfo[i].blockID);
     assert(velInfo[i].blockID ==   chiInfo[i].blockID);
     assert(velInfo[i].blockID ==  presInfo[i].blockID);
