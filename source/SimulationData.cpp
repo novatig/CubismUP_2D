@@ -18,16 +18,16 @@ void SimulationData::allocateGrid()
 {
   chi   = new ScalarGrid(bpdx, bpdy, 1);
   vel   = new VectorGrid(bpdx, bpdy, 1);
-  uDef  = new VectorGrid(bpdx, bpdy, 1);
   pres  = new ScalarGrid(bpdx, bpdy, 1);
+  pOld  = new ScalarGrid(bpdx, bpdy, 1);
 
   pRHS  = new ScalarGrid(bpdx, bpdy, 1);
-  tmpV  = new VectorGrid(bpdx, bpdy, 1);
-  tmp   = new ScalarGrid(bpdx, bpdy, 1);
-  vFluid= new VectorGrid(bpdx, bpdy, 1);
-
   invRho= new ScalarGrid(bpdx, bpdy, 1);
-  pOld  = new ScalarGrid(bpdx, bpdy, 1);
+
+  tmpV  = new VectorGrid(bpdx, bpdy, 1);
+  vFluid= new VectorGrid(bpdx, bpdy, 1);
+  tmp   = new ScalarGrid(bpdx, bpdy, 1);
+  uDef  = new VectorGrid(bpdx, bpdy, 1);
 
   dump  = new DumpGrid(bpdx, bpdy, 1);
 }
