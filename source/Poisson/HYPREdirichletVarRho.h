@@ -8,10 +8,10 @@
 
 
 #pragma once
+#include "PoissonSolver.h"
 #ifdef HYPREFFT
 
 #include "HYPRE_struct_ls.h"
-#include "PoissonSolver.h"
 
 class HYPREdirichletVarRho : public PoissonSolver
 {

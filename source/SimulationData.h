@@ -20,15 +20,17 @@ struct SimulationData
 
   ScalarGrid * chi   = nullptr;
   VectorGrid * vel   = nullptr;
-  VectorGrid * uDef  = nullptr;
-  ScalarGrid * pres  = nullptr;
 
+  ScalarGrid * pres  = nullptr;
+  ScalarGrid * pOld  = nullptr;
   ScalarGrid * pRHS  = nullptr;
+  ScalarGrid * invRho= nullptr;
+
   VectorGrid * tmpV  = nullptr;
   VectorGrid * vFluid= nullptr;
   ScalarGrid * tmp   = nullptr;
-  ScalarGrid * invRho= nullptr;
-  ScalarGrid * pOld  = nullptr;
+  VectorGrid * uDef  = nullptr;
+
   DumpGrid   * dump  = nullptr;
 
   void allocateGrid();

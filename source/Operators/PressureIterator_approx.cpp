@@ -253,12 +253,21 @@ Real PressureVarRho_approx::penalize(const double dt) const
       const Real Xlamdt = lamdt * X[iy][ix];
       const Real US = u_s - omega_s * p[1] + UDEF[iy][ix][0];
       const Real VS = v_s + omega_s * p[0] + UDEF[iy][ix][1];
-      const Real dUpres = UF(ix,iy).u[0] - TMPV(ix,iy).u[0];
-      const Real dVpres = UF(ix,iy).u[1] - TMPV(ix,iy).u[1];
-      const Real DPX = Xlamdt * (US - V(ix,iy).u[0] - dUpres) / (1 + Xlamdt);
-      const Real DPY = Xlamdt * (VS - V(ix,iy).u[1] - dVpres) / (1 + Xlamdt);
-      V(ix,iy).u[0] += DPX;
-      V(ix,iy).u[1] += DPY;
+      #if 1
+        const Real DFX = Xlamdt * ( US - UF(ix,iy).u[0] ) / (1 + Xlamdt);
+        const Real DFY = Xlamdt * ( VS - UF(ix,iy).u[1] ) / (1 + Xlamdt);
+        const Real DPX = TMPV(ix,iy).u[0]+DFX - V(ix,iy).u[0];
+        const Real DPY = TMPV(ix,iy).u[1]+DFY - V(ix,iy).u[1];
+        V(ix,iy).u[0]  = TMPV(ix,iy).u[0]+DFX;
+        V(ix,iy).u[1]  = TMPV(ix,iy).u[1]+DFY;
+      #else
+        const Real dUpres = UF(ix,iy).u[0] - TMPV(ix,iy).u[0];
+        const Real dVpres = UF(ix,iy).u[1] - TMPV(ix,iy).u[1];
+        const Real DPX = Xlamdt * (US - V(ix,iy).u[0] - dUpres) / (1 + Xlamdt);
+        const Real DPY = Xlamdt * (VS - V(ix,iy).u[1] - dVpres) / (1 + Xlamdt);
+        V(ix,iy).u[0] += DPX;
+        V(ix,iy).u[1] += DPY;
+      #endif
       MX += std::pow(V(ix,iy).u[0], 2); DMX += std::pow(DPX, 2);
       MY += std::pow(V(ix,iy).u[1], 2); DMY += std::pow(DPY, 2);
     }
@@ -352,7 +361,7 @@ void PressureVarRho_approx::operator()(const double dt)
     sim.stopProfiler();
 
     printf("iter:%02d - max relative error: %f\n", iter, relDF);
-    const bool bDone = iter>1 && relDF < 0.001; // do at least 3 iterations
+    const bool bDone = iter>1 && relDF < 0.04 * sim.CFL; // do at least 3 iterations
 
     // finalize vel with pres proj before shifting pressure fields
     if(bDone) finalizePressure(dt);
