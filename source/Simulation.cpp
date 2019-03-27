@@ -100,9 +100,7 @@ void Simulation::parseRuntime()
 
 void Simulation::createShapes()
 {
-  parser.set_strict_mode();
   const Real ext = std::max(sim.bpdx, sim.bpdy);
-  parser.unset_strict_mode();
   const std::string shapeArg = parser("-shapes").asString("");
   std::stringstream descriptors( shapeArg );
   std::string lines;

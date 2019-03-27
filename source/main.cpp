@@ -7,6 +7,7 @@
 //
 
 #include "Simulation.h"
+#include "Cubism/ArgumentParser.h"
 
 #include "mpi.h"
 using namespace cubism;
@@ -24,11 +25,12 @@ int main(int argc, char **argv)
   std::cout
   <<"=======================================================================\n";
 
-  #pragma omp parallel
-  {
+  //#pragma omp parallel
+  //{
     //int cpu_num=sched_getcpu();
     //printf("Thread %3d  is running on CPU %3d\n", omp_get_thread_num(), cpu_num);
-  }
+  //}
+
   ArgumentParser parser(argc,argv);
   parser.set_strict_mode();
 
