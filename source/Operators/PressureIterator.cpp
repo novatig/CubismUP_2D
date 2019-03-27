@@ -21,10 +21,10 @@ static constexpr double EPS = std::numeric_limits<double>::epsilon();
 void PressureVarRho_iterator::pressureCorrection(const double dt) const
 {
   const Real h = sim.getH(), pFac = -0.5*dt/h;
-  const std::vector<BlockInfo>& iRhoInfo = sim.invRho->getBlocksInfo();
-  const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
-  const std::vector<BlockInfo>& tmpVInfo = sim.tmpV->getBlocksInfo();
-  const std::vector<BlockInfo>&  DdFInfo = sim.DdF->getBlocksInfo();
+  const std::vector<BlockInfo>& iRhoInfo  = sim.invRho->getBlocksInfo();
+  const std::vector<BlockInfo>& presInfo  = sim.pres->getBlocksInfo();
+  const std::vector<BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
+  const std::vector<BlockInfo>& vPresInfo = sim.vFluid->getBlocksInfo();
 
   #pragma omp parallel
   {
@@ -36,17 +36,17 @@ void PressureVarRho_iterator::pressureCorrection(const double dt) const
     {
       presLab.load(presInfo[i],0);
       const ScalarLab  &__restrict__   P = presLab;
-      const VectorBlock&__restrict__   V = *(VectorBlock*) DdFInfo[i].ptrBlock;
-      const ScalarBlock&__restrict__ IRHO= *(ScalarBlock*)iRhoInfo[i].ptrBlock;
-            VectorBlock&__restrict__ TMPV= *(VectorBlock*)tmpVInfo[i].ptrBlock;
+            VectorBlock&__restrict__   V = *(VectorBlock*)vPresInfo[i].ptrBlock;
+      const ScalarBlock&__restrict__ IRHO= *(ScalarBlock*) iRhoInfo[i].ptrBlock;
+      const VectorBlock&__restrict__ TMPV= *(VectorBlock*) tmpVInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
         // update vel field after most recent force and pressure response:
         const Real dUpx = pFac*IRHO(ix,iy).s * ( P(ix+1,iy).s - P(ix-1,iy).s );
         const Real dUpy = pFac*IRHO(ix,iy).s * ( P(ix,iy+1).s - P(ix,iy-1).s );
-        TMPV(ix,iy).u[0] = V(ix,iy).u[0] + dUpx;
-        TMPV(ix,iy).u[1] = V(ix,iy).u[1] + dUpy;
+        V(ix,iy).u[0] = TMPV(ix,iy).u[0] + dUpx;
+        V(ix,iy).u[1] = TMPV(ix,iy).u[1] + dUpy;
       }
     }
   }
@@ -55,7 +55,8 @@ void PressureVarRho_iterator::pressureCorrection(const double dt) const
 void PressureVarRho_iterator::integrateMomenta(Shape * const shape) const
 {
   const std::vector<ObstacleBlock*> & OBLOCK = shape->obstacleBlocks;
-  const std::vector<BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
+  const std::vector<BlockInfo>& vFluidInfo = sim.vFluid->getBlocksInfo();
+
   const Real Cx = shape->centerOfMass[0], Cy = shape->centerOfMass[1];
   const Real lambdt = sim.lambda * sim.dt;
   const double hsq = std::pow(velInfo[0].h_gridpoint, 2);
@@ -64,22 +65,22 @@ void PressureVarRho_iterator::integrateMomenta(Shape * const shape) const
   #pragma omp parallel for schedule(dynamic,1) reduction(+:PM,PJ,PX,PY,UM,VM,AM)
   for(size_t i=0; i<Nblocks; i++)
   {
-    const VectorBlock&__restrict__ VEL = *(VectorBlock*)tmpVInfo[i].ptrBlock;
+    const VectorBlock&__restrict__ V = *(VectorBlock*) vFluidInfo[i].ptrBlock;
 
-    if(OBLOCK[velInfo[i].blockID] == nullptr) continue;
-    const CHI_MAT & __restrict__ rho = OBLOCK[velInfo[i].blockID]->rho;
-    const CHI_MAT & __restrict__ chi = OBLOCK[velInfo[i].blockID]->chi;
-    const UDEFMAT & __restrict__ udef = OBLOCK[velInfo[i].blockID]->udef;
+    if(OBLOCK[vFluidInfo[i].blockID] == nullptr) continue;
+    const CHI_MAT & __restrict__ rho = OBLOCK[ vFluidInfo[i].blockID ]->rho;
+    const CHI_MAT & __restrict__ chi = OBLOCK[ vFluidInfo[i].blockID ]->chi;
+    const UDEFMAT & __restrict__ udef = OBLOCK[ vFluidInfo[i].blockID ]->udef;
     for(int iy=0; iy<VectorBlock::sizeY; ++iy)
     for(int ix=0; ix<VectorBlock::sizeX; ++ix)
     {
       if (chi[iy][ix] <= 0) continue;
       const Real Xlamdt = chi[iy][ix] * lambdt;
       const Real F = hsq * rho[iy][ix] * Xlamdt / (1 + Xlamdt);
-      double p[2]; velInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;
+      double p[2]; vFluidInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;
       const Real udiff[2] = {
-        VEL(ix,iy).u[0] - udef[iy][ix][0],
-        VEL(ix,iy).u[1] - udef[iy][ix][1]
+        V(ix,iy).u[0] - udef[iy][ix][0],
+        V(ix,iy).u[1] - udef[iy][ix][1]
       };
       PM += F;
       PJ += F * (p[0]*p[0] + p[1]*p[1]);
@@ -102,7 +103,9 @@ void PressureVarRho_iterator::integrateMomenta(Shape * const shape) const
 
 Real PressureVarRho_iterator::penalize(const double dt) const
 {
-  const std::vector<BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
+  const std::vector<BlockInfo>& chiInfo = sim.chi->getBlocksInfo();
+  const std::vector<BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
+  const std::vector<BlockInfo>& vFluidInfo = sim.vFluid->getBlocksInfo();
   const Real lamdt = sim.lambda * dt;
   Real MX = 0, MY = 0, DMX = 0, DMY = 0;
   #pragma omp parallel for schedule(dynamic, 1) reduction(+ : MX, MY, DMX, DMY)
@@ -118,8 +121,10 @@ Real PressureVarRho_iterator::penalize(const double dt) const
 
     const CHI_MAT & __restrict__ X = o->chi;
     const UDEFMAT & __restrict__ UDEF = o->udef;
-    const ScalarBlock& __restrict__ CHI = *(ScalarBlock*)chiInfo[i].ptrBlock;
-          VectorBlock& __restrict__   V = *(VectorBlock*)velInfo[i].ptrBlock;
+    const VectorBlock&__restrict__ TMPV = *(VectorBlock*)  tmpVInfo[i].ptrBlock;
+    const ScalarBlock& __restrict__ CHI = *(ScalarBlock*)   chiInfo[i].ptrBlock;
+    const VectorBlock& __restrict__  UF = *(VectorBlock*)vFluidInfo[i].ptrBlock;
+          VectorBlock& __restrict__   V = *(VectorBlock*)   velInfo[i].ptrBlock;
 
     for(int iy=0; iy<VectorBlock::sizeY; ++iy)
     for(int ix=0; ix<VectorBlock::sizeX; ++ix)
@@ -133,8 +138,10 @@ Real PressureVarRho_iterator::penalize(const double dt) const
       const Real Xlamdt = lamdt * X[iy][ix];
       const Real US = u_s - omega_s * p[1] + UDEF[iy][ix][0];
       const Real VS = v_s + omega_s * p[0] + UDEF[iy][ix][1];
-      const Real DPX = Xlamdt * (US - V(ix,iy).u[0]) / (1 + Xlamdt);
-      const Real DPY = Xlamdt * (VS - V(ix,iy).u[1]) / (1 + Xlamdt);
+      const Real dUpres = UF(ix,iy).u[0] - TMPV(ix,iy).u[0];
+      const Real dVpres = UF(ix,iy).u[1] - TMPV(ix,iy).u[1];
+      const Real DPX = Xlamdt * (US - V(ix,iy).u[0] - dUpres) / (1 + Xlamdt);
+      const Real DPY = Xlamdt * (VS - V(ix,iy).u[1] - dVpres) / (1 + Xlamdt);
       V(ix,iy).u[0] += DPX;
       V(ix,iy).u[1] += DPY;
       MX += std::pow(V(ix,iy).u[0], 2); DMX += std::pow(DPX, 2);
@@ -177,16 +184,16 @@ void PressureVarRho_iterator::finalizePressure(const double dt) const
 void PressureVarRho_iterator::operator()(const double dt)
 {
   // first copy velocity before either Pres or Penal onto DdFInfo
-  const std::vector<BlockInfo>& DdFInfo = sim.DdF->getBlocksInfo();
+  const std::vector<BlockInfo>& tmpVInfo = sim.tmpV->getBlocksInfo();
   #pragma omp parallel for schedule(static)
   for (size_t i=0; i < Nblocks; i++) {
-          VectorBlock & __restrict__ UF = *(VectorBlock*) DdFInfo[i].ptrBlock;
-    const VectorBlock & __restrict__  V = *(VectorBlock*) velInfo[i].ptrBlock;
+          VectorBlock & __restrict__ UF = *(VectorBlock*) tmpVInfo[i].ptrBlock;
+    const VectorBlock & __restrict__  V = *(VectorBlock*)  velInfo[i].ptrBlock;
     UF.copy(V);
   }
 
   int iter=0; Real relDF = 1e3;
-  for(iter = 0; iter < 100; iter++)
+  for(iter = 0; iter < 1000; iter++)
   {
     // pressure solver is going to use as RHS = div VEL - \chi div UDEF
     #ifdef HYPREFFT

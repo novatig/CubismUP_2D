@@ -60,14 +60,16 @@ SRC_DIR = $(BUILDDIR)/../source/
 DIRS = $(sort $(dir $(wildcard ../source/*/)))
 
 #OBJECTS = Simulation.o Definitions.o Shape.o ShapeLibrary.o ShapesSimple.o
+#advDiff_RK.o
 OBJECTS = \
 		Simulation.o SimulationData.o Shape.o ShapeLibrary.o ShapesSimple.o \
 		PressureSingle.o PressureIterator.o presRHS_step1.o PoissonSolver.o \
 		HYPREdirichlet.o FFTW_freespace.o PutObjectsOnGrid.o UpdateObjects.o \
-		advDiff.o advDiff_RK.o BufferedLogger.o Helpers.o BlowFish.o Fish.o \
-		FishLibrary.o StefanFish.o CarlingFish.o PressureVarRho.o \
-		Penalization.o advDiffGrav.o SmartCylinder.o Glider.o \
-		HYPREdirichletVarRho.o PressureVarRho_proper.o ArgumentParser.o
+		advDiff.o BufferedLogger.o Helpers.o BlowFish.o Fish.o SmartCylinder.o \
+		FishLibrary.o StefanFish.o CarlingFish.o PressureVarRho.o Penalization.o \
+		advDiffGrav.o Glider.o PressureIterator_approx.o ArgumentParser.o \
+		HYPREdirichletVarRho.o PressureVarRho_proper.o
+
 
 ifneq "$(gpu)" "false"
 LIBS += -lcufft

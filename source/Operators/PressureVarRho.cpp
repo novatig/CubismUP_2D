@@ -13,10 +13,7 @@
 using namespace cubism;
 
 template<typename T>
-static inline T mean(const T A, const T B)
-{
-  return 0.5*(A+B);
-}
+static inline T mean(const T A, const T B) { return 0.5*(A+B); }
 
 void PressureVarRho::fadeoutBorder(const double dt) const
 {

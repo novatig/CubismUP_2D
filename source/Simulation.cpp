@@ -18,11 +18,13 @@
 #include "Operators/PressureVarRho.h"
 #include "Operators/PressureVarRho_proper.h"
 #include "Operators/Penalization.h"
+#include "Operators/PressureIterator_approx.h"
 #include "Operators/PutObjectsOnGrid.h"
 #include "Operators/UpdateObjects.h"
 #include "Operators/advDiffGrav.h"
-#include "Operators/advDiff_RK.h"
+//#include "Operators/advDiff_RK.h"
 #include "Operators/advDiff.h"
+
 #include "Operators/presRHS_step1.h"
 #include "Utils/FactoryFileLineParser.h"
 
@@ -182,7 +184,10 @@ void Simulation::init()
   {
     pipeline.push_back( new PutObjectsOnGrid(sim) );
     pipeline.push_back( new advDiffGrav(sim) );
-    pipeline.push_back( new PressureVarRho_iterator(sim) );
+    if(sim.CFL <= 0.02)
+      pipeline.push_back( new PressureVarRho_approx(sim) );
+    else
+      pipeline.push_back( new PressureVarRho_iterator(sim) );
   }
   else
   {

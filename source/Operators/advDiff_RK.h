@@ -14,7 +14,6 @@ class advDiff_RK : public Operator
   const std::vector<cubism::BlockInfo>& presInfo  = sim.pres->getBlocksInfo();
   const std::vector<cubism::BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
   const std::vector<cubism::BlockInfo>& pRHSInfo  = sim.pRHS->getBlocksInfo();
-  const std::vector<cubism::BlockInfo>& forceInfo = sim.force->getBlocksInfo();
 
   void step1(const double dt);
   void step2(const double dt);

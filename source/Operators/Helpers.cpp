@@ -16,7 +16,7 @@ void IC::operator()(const double dt)
   const std::vector<BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
   const std::vector<BlockInfo>& presInfo  = sim.pres->getBlocksInfo();
   const std::vector<BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
-  const std::vector<BlockInfo>& forceInfo = sim.force->getBlocksInfo();
+  //const std::vector<BlockInfo>& forceInfo = sim.force->getBlocksInfo();
 
   const std::vector<BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
   const std::vector<BlockInfo>& pRHSInfo  = sim.pRHS->getBlocksInfo();
@@ -30,7 +30,7 @@ void IC::operator()(const double dt)
     VectorBlock& UDEF= *(VectorBlock*) uDefInfo[i].ptrBlock; UDEF.clear();
     ScalarBlock& CHI = *(ScalarBlock*)  chiInfo[i].ptrBlock;  CHI.clear();
     ScalarBlock& PRES= *(ScalarBlock*) presInfo[i].ptrBlock; PRES.clear();
-    VectorBlock&    F= *(VectorBlock*)forceInfo[i].ptrBlock;    F.clear();
+    //VectorBlock&    F= *(VectorBlock*)forceInfo[i].ptrBlock;    F.clear();
 
     ScalarBlock& TMP = *(ScalarBlock*)  tmpInfo[i].ptrBlock;  TMP.clear();
     ScalarBlock& PRHS= *(ScalarBlock*) pRHSInfo[i].ptrBlock; PRHS.clear();
@@ -39,7 +39,7 @@ void IC::operator()(const double dt)
     assert(velInfo[i].blockID ==  uDefInfo[i].blockID);
     assert(velInfo[i].blockID ==   chiInfo[i].blockID);
     assert(velInfo[i].blockID ==  presInfo[i].blockID);
-    assert(velInfo[i].blockID == forceInfo[i].blockID);
+    //assert(velInfo[i].blockID == forceInfo[i].blockID);
     assert(velInfo[i].blockID ==   tmpInfo[i].blockID);
     assert(velInfo[i].blockID ==  pRHSInfo[i].blockID);
     assert(velInfo[i].blockID ==  tmpVInfo[i].blockID);
@@ -71,7 +71,7 @@ void Checker::run(std::string when) const
   const std::vector<BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
   const std::vector<BlockInfo>& presInfo  = sim.pres->getBlocksInfo();
   const std::vector<BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
-  const std::vector<BlockInfo>& forceInfo = sim.force->getBlocksInfo();
+  //const std::vector<BlockInfo>& forceInfo = sim.force->getBlocksInfo();
 
   const std::vector<BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
   const std::vector<BlockInfo>& pRHSInfo  = sim.pRHS->getBlocksInfo();
@@ -84,7 +84,7 @@ void Checker::run(std::string when) const
     VectorBlock& UDEF= *(VectorBlock*) uDefInfo[i].ptrBlock;
     ScalarBlock& CHI = *(ScalarBlock*)  chiInfo[i].ptrBlock;
     ScalarBlock& PRES= *(ScalarBlock*) presInfo[i].ptrBlock;
-    VectorBlock&    F= *(VectorBlock*)forceInfo[i].ptrBlock;
+    //VectorBlock&    F= *(VectorBlock*)forceInfo[i].ptrBlock;
 
     ScalarBlock& TMP = *(ScalarBlock*)  tmpInfo[i].ptrBlock;
     ScalarBlock& PRHS= *(ScalarBlock*) pRHSInfo[i].ptrBlock;
@@ -109,14 +109,6 @@ void Checker::run(std::string when) const
         printf("isinf(UDEF(ix,iy).u[0]) %s\n", when.c_str());
         fflush(0); abort();
       }
-      if(std::isnan(   F(ix,iy).u[0])) {
-        printf("isnan(   F(ix,iy).u[0]) %s\n", when.c_str());
-        fflush(0); abort();
-      }
-      if(std::isinf(   F(ix,iy).u[0])) {
-        printf("isinf(   F(ix,iy).u[0]) %s\n", when.c_str());
-        fflush(0); abort();
-      }
       if(std::isnan(TMPV(ix,iy).u[0])) {
         printf("isnan(TMPV(ix,iy).u[0]) %s\n", when.c_str());
         fflush(0); abort();
@@ -125,7 +117,6 @@ void Checker::run(std::string when) const
         printf("isinf(TMPV(ix,iy).u[0]) %s\n", when.c_str());
         fflush(0); abort();
       }
-
       if(std::isnan( VEL(ix,iy).u[1])) {
         printf("isnan( VEL(ix,iy).u[1]) %s\n", when.c_str());
         fflush(0); abort();
@@ -140,14 +131,6 @@ void Checker::run(std::string when) const
       }
       if(std::isinf(UDEF(ix,iy).u[1])) {
         printf("isinf(UDEF(ix,iy).u[1]) %s\n", when.c_str());
-        fflush(0); abort();
-      }
-      if(std::isnan(   F(ix,iy).u[1])) {
-        printf("isnan(   F(ix,iy).u[1]) %s\n", when.c_str());
-        fflush(0); abort();
-      }
-      if(std::isinf(   F(ix,iy).u[1])) {
-        printf("isinf(   F(ix,iy).u[1]) %s\n", when.c_str());
         fflush(0); abort();
       }
       if(std::isnan(TMPV(ix,iy).u[1])) {

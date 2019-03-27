@@ -20,12 +20,11 @@ void SimulationData::allocateGrid()
   vel   = new VectorGrid(bpdx, bpdy, 1);
   uDef  = new VectorGrid(bpdx, bpdy, 1);
   pres  = new ScalarGrid(bpdx, bpdy, 1);
-  force = new VectorGrid(bpdx, bpdy, 1);
 
   pRHS  = new ScalarGrid(bpdx, bpdy, 1);
   tmpV  = new VectorGrid(bpdx, bpdy, 1);
   tmp   = new ScalarGrid(bpdx, bpdy, 1);
-  DdF   = new VectorGrid(bpdx, bpdy, 1);
+  vFluid= new VectorGrid(bpdx, bpdy, 1);
 
   invRho= new ScalarGrid(bpdx, bpdy, 1);
   pOld  = new ScalarGrid(bpdx, bpdy, 1);
@@ -67,11 +66,6 @@ void SimulationData::dumpUobj(std::string name) {
   std::stringstream ss; ss<<name<<std::setfill('0')<<std::setw(7)<<step;
   DumpHDF5<StreamerVector, float, VectorGrid>(*(uDef), step, time,
     "uobj_" + ss.str(), path4serialization);
-}
-void SimulationData::dumpForce(std::string name) {
-  std::stringstream ss; ss<<name<<std::setfill('0')<<std::setw(7)<<step;
-  DumpHDF5<StreamerVector, float, VectorGrid>(*(force), step, time,
-    "force_" + ss.str(), path4serialization);
 }
 void SimulationData::dumpTmpV(std::string name) {
   std::stringstream ss; ss<<name<<std::setfill('0')<<std::setw(7)<<step;
@@ -144,7 +138,7 @@ SimulationData::~SimulationData()
   if(chi not_eq nullptr) delete chi;
   if(uDef not_eq nullptr) delete uDef;
   if(pres not_eq nullptr) delete pres;
-  if(force not_eq nullptr) delete force;
+  if(vFluid not_eq nullptr) delete vFluid;
   if(pRHS not_eq nullptr) delete pRHS;
   if(tmpV not_eq nullptr) delete tmpV;
   if(invRho not_eq nullptr) delete invRho;

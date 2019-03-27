@@ -19,7 +19,6 @@ class PutObjectsOnGrid : public Operator
   const std::vector<cubism::BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
   const std::vector<cubism::BlockInfo>& invRhoInfo= sim.invRho->getBlocksInfo();
   const std::vector<cubism::BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
-  const std::vector<cubism::BlockInfo>& forceInfo = sim.force->getBlocksInfo();
 
   void putChiOnGrid(Shape * const shape) const;
   void putObjectVelOnGrid(Shape * const shape) const;
