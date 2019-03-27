@@ -3,7 +3,7 @@
 # term vel \approx sqrt(pi * R * (\rho*-1) g )
 # Rho_s = 1.01 * Rho_f
 VISC=0.0001
-OPTIONS="-bpdx 16 -bpdy 32 -tdump 1 -nu ${VISC} -tend 200 -poissonType cosine -lambda 1e6"
+OPTIONS=" -CFL 0.01 -bpdx 16 -bpdy 32 -tdump 1 -nu ${VISC} -tend 200 -poissonType cosine -lambda 1e6"
 OBJECTS='disk radius=0.0625 ypos=0.25 bFixed=1 rhoS=1.01
 '
 
