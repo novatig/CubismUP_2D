@@ -5,11 +5,9 @@ compiler ?= intel
 endif
 ifeq "$(compiler)" "intel"
 CXX ?= icpc
-LD = $(CXX)
 include make.icc.flags
 else
 CXX ?= g++
-LD = $(CXX)
 include make.gcc.flags
 endif
 
@@ -133,7 +131,7 @@ simulation: main.o $(OBJECTS)
 	$(CXX) $(CPPFLAGS) -c $< -o $@
 
 %.d: %.cpp
-	$(CC) $(CPPFLAGS) -c -MD $<
+	$(CXX) $(CPPFLAGS) -c -MD $<
 
 CUDA_all.o: CUDA_all.cu
 	nvcc $(NVFLAGS) -c $< -o $@

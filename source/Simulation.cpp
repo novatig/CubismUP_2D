@@ -35,7 +35,7 @@
 #include "Obstacles/SmartCylinder.h"
 #include "Obstacles/Glider.h"
 
-#include <regex>
+//#include <regex>
 #include <algorithm>
 #include <iterator>
 using namespace cubism;
