@@ -35,9 +35,8 @@ inline void resetIC(StefanFish* const a, Shape*const p, Communicator*const c) {
   const double SX = c->isTraining()? disX(c->getPRNG()) : 0.25;
   const double SY = c->isTraining()? disY(c->getPRNG()) : 0.00;
   const double SA = c->isTraining()? disA(c->getPRNG()) : 0.00;
-  double C[2] = { p->center[0] + p->getCharLength() + SX*a->length,
-                  p->center[1]                      + SY*a->length };  
-  std::cout << "Placed follower in at x= " << C[0] << ", y=" << C[1] << std::endl;
+  double C[2] = { p->center[0] + (1+SX)*a->length,
+                  p->center[1]     + SY*a->length };  
   p->centerOfMass[1] = p->center[1] - ( C[1] - p->center[1] );
   p->center[1] = p->center[1] - ( C[1] - p->center[1] );
   a->setCenterOfMass(C);
