@@ -30,17 +30,13 @@ using namespace cubism;
 // range of angles in initial conditions
 
 inline void resetIC(StefanFish* const a, Shape*const p, Communicator*const c) {
-  // constraint such that there is enough space behind follower for vortices to interact
-  const double Xmax = (0.7-1.5*p->getCharLength());
-  assert(Xmax > 0); // if this is violated your leading fish is too big
   std::uniform_real_distribution<double> disA(-20./180.*M_PI, 20./180.*M_PI);
-  std::uniform_real_distribution<double> disX(0, Xmax),  disY(-0.25, 0.25);
+  std::uniform_real_distribution<double> disX(0, 0.5),  disY(-0.25, 0.25);
   const double SX = c->isTraining()? disX(c->getPRNG()) : 0.25;
   const double SY = c->isTraining()? disY(c->getPRNG()) : 0.00;
   const double SA = c->isTraining()? disA(c->getPRNG()) : 0.00;
-  double C[2] = { 1.5*p->getCharLength() + SX,
-                  p->center[1]           + SY*a->length };  
-  std::cout << "Placed follower in at x= " << C[0] << ", y=" << C[1] << std::endl;
+  double C[2] = { p->center[0] + (1+SX)*a->length,
+                  p->center[1]     + SY*a->length };  
   p->centerOfMass[1] = p->center[1] - ( C[1] - p->center[1] );
   p->center[1] = p->center[1] - ( C[1] - p->center[1] );
   a->setCenterOfMass(C);
