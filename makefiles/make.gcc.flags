@@ -15,8 +15,8 @@ CPPFLAGS+= -fsanitize=address
 LIBS+= -fsanitize=address
 endif
 ifeq "$(config)" "nans"
-#CPPFLAGS+= -fsanitize=undefined
-#LIBS+= -fsanitize=undefined
+CPPFLAGS+= -fsanitize=undefined
+LIBS+= -fsanitize=undefined
 endif
 
 else
