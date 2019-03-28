@@ -38,12 +38,12 @@ void UpdateObjects::integrateMomenta(Shape * const shape) const
       if (chi[iy][ix] <= 0) continue;
       #ifdef OLD_INTEGRATE_MOM
         const Real F = hsq * rho[iy][ix] * chi[iy][ix];
-        const Real udiff[2] = { V(ix,iy).u[0], V(ix,iy).u[1] };
+        const Real udiff[2] = { VEL(ix,iy).u[0], VEL(ix,iy).u[1] };
       #else
         const Real Xlamdt = chi[iy][ix] * lambdt;
         const Real F = hsq * rho[iy][ix] * Xlamdt / (1 + Xlamdt);
         const Real udiff[2] = {
-          V(ix,iy).u[0] - udef[iy][ix][0], V(ix,iy).u[1] - udef[iy][ix][1]
+          VEL(ix,iy).u[0] - udef[iy][ix][0], VEL(ix,iy).u[1] - udef[iy][ix][1]
         };
       #endif
       double p[2]; velInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;

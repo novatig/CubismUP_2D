@@ -31,9 +31,6 @@ int main(int argc, char **argv)
     //printf("Thread %3d  is running on CPU %3d\n", omp_get_thread_num(), cpu_num);
   //}
 
-  ArgumentParser parser(argc,argv);
-  parser.set_strict_mode();
-
   Simulation* sim = new Simulation(argc, argv);
   sim->init();
   sim->simulate();

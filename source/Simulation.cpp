@@ -52,6 +52,7 @@ Simulation::Simulation(int argc, char ** argv) : parser(argc,argv)
  std::cout<<"===============================================================\n";
  std::cout<<"                  Flow past a falling obstacle                 \n";
  std::cout<<"===============================================================\n";
+ parser.print_args();
 }
 
 Simulation::~Simulation()
