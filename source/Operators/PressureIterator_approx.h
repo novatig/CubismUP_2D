@@ -14,6 +14,7 @@ class PoissonSolver;
 
 class PressureVarRho_approx : public Operator
 {
+  int oldNsteps = 10000;
   const Real rho0 = sim.minRho();
   PoissonSolver * const pressureSolver;
 

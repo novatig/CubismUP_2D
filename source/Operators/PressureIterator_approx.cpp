@@ -13,6 +13,8 @@
 #include "Utils/BufferedLogger.h"
 
 using namespace cubism;
+#define ETA  -0.2
+#define ALPHA 0.8
 
 template<typename T>
 static inline T mean(const T A, const T B) { return 0.5*(A+B); }
@@ -94,11 +96,11 @@ void PressureVarRho_approx::updatePressureRHS(const double dt) const
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
-        const Real pNextN = 1.5*P(ix+1, iy  ).s - 0.5*pOld(ix+1, iy  ).s;
-        const Real pNextS = 1.5*P(ix-1, iy  ).s - 0.5*pOld(ix-1, iy  ).s;
-        const Real pNextE = 1.5*P(ix  , iy+1).s - 0.5*pOld(ix  , iy+1).s;
-        const Real pNextW = 1.5*P(ix  , iy-1).s - 0.5*pOld(ix  , iy-1).s;
-        const Real pNextC = 1.5*P(ix  , iy  ).s - 0.5*pOld(ix  , iy  ).s;
+        const Real pNextN = P(ix+1,iy).s + ETA*(P(ix+1,iy).s-pOld(ix+1,iy).s);
+        const Real pNextS = P(ix-1,iy).s + ETA*(P(ix-1,iy).s-pOld(ix-1,iy).s);
+        const Real pNextE = P(ix,iy+1).s + ETA*(P(ix,iy+1).s-pOld(ix,iy+1).s);
+        const Real pNextW = P(ix,iy-1).s + ETA*(P(ix,iy-1).s-pOld(ix,iy-1).s);
+        const Real pNextC = P(ix,iy).s   + ETA*(P(ix,iy).s - pOld(ix,iy).s  );
         const Real rN = (1 -rho0 * mean(IRHO(ix+1,iy).s, IRHO(ix,iy).s));
         const Real rS = (1 -rho0 * mean(IRHO(ix-1,iy).s, IRHO(ix,iy).s));
         const Real rE = (1 -rho0 * mean(IRHO(ix,iy+1).s, IRHO(ix,iy).s));
@@ -142,8 +144,8 @@ void PressureVarRho_approx::pressureCorrection(const double dt) const
     for (size_t i=0; i < Nblocks; i++)
     {
        tmpLab.load( tmpInfo[i],0); const ScalarLab&__restrict__ Pcur =  tmpLab;
-      presLab.load(presInfo[i],0); const ScalarLab&__restrict__ Pold = presLab;
-      pOldLab.load(pOldInfo[i],0); const ScalarLab&__restrict__ Podr = pOldLab;
+      presLab.load(presInfo[i],0); const ScalarLab&__restrict__ P    = presLab;
+      pOldLab.load(pOldInfo[i],0); const ScalarLab&__restrict__ pOld = pOldLab;
             VectorBlock&__restrict__   V = *(VectorBlock*)vPresInfo[i].ptrBlock;
       const ScalarBlock&__restrict__ IRHO= *(ScalarBlock*) iRhoInfo[i].ptrBlock;
       const VectorBlock&__restrict__ TMPV= *(VectorBlock*) tmpVInfo[i].ptrBlock;
@@ -151,10 +153,10 @@ void PressureVarRho_approx::pressureCorrection(const double dt) const
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
-        const Real pNextN = 1.5*Pold(ix+1,iy).s - 0.5*Podr(ix+1,iy).s;
-        const Real pNextS = 1.5*Pold(ix-1,iy).s - 0.5*Podr(ix-1,iy).s;
-        const Real pNextE = 1.5*Pold(ix,iy+1).s - 0.5*Podr(ix,iy+1).s;
-        const Real pNextW = 1.5*Pold(ix,iy-1).s - 0.5*Podr(ix,iy-1).s;
+        const Real pNextN = P(ix+1,iy).s + ETA*(P(ix+1,iy).s-pOld(ix+1,iy).s);
+        const Real pNextS = P(ix-1,iy).s + ETA*(P(ix-1,iy).s-pOld(ix-1,iy).s);
+        const Real pNextE = P(ix,iy+1).s + ETA*(P(ix,iy+1).s-pOld(ix,iy+1).s);
+        const Real pNextW = P(ix,iy-1).s + ETA*(P(ix,iy-1).s-pOld(ix,iy-1).s);
         // update vel field after most recent force and pressure response:
         const Real dUpre = pFac * (Pcur(ix+1,iy).s - Pcur(ix-1,iy).s) * invRho0;
         const Real dVpre = pFac * (Pcur(ix,iy+1).s - Pcur(ix,iy-1).s) * invRho0;
@@ -254,10 +256,17 @@ Real PressureVarRho_approx::penalize(const double dt) const
       if(X[iy][ix] <= 0) continue; // no need to do anything
 
       Real p[2]; velInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;
-      const Real Xlamdt = lamdt * X[iy][ix];
       const Real US = u_s - omega_s * p[1] + UDEF[iy][ix][0];
       const Real VS = v_s + omega_s * p[0] + UDEF[iy][ix][1];
       #if 1
+        const Real DFX = X[iy][ix] * ( US - UF(ix,iy).u[0] );
+        const Real DFY = X[iy][ix] * ( VS - UF(ix,iy).u[1] );
+        const Real DPX = TMPV(ix,iy).u[0]+DFX - V(ix,iy).u[0];
+        const Real DPY = TMPV(ix,iy).u[1]+DFY - V(ix,iy).u[1];
+        V(ix,iy).u[0] += ALPHA * DPX; // 0.8 * Unew + 0.2 * Uold
+        V(ix,iy).u[1] += ALPHA * DPY; // 0.8 * Vnew + 0.2 * Vold
+      #elif 1
+        const Real Xlamdt = lamdt * X[iy][ix];
         const Real DFX = Xlamdt * ( US - UF(ix,iy).u[0] ) / (1 + Xlamdt);
         const Real DFY = Xlamdt * ( VS - UF(ix,iy).u[1] ) / (1 + Xlamdt);
         const Real DPX = TMPV(ix,iy).u[0]+DFX - V(ix,iy).u[0];
@@ -265,6 +274,7 @@ Real PressureVarRho_approx::penalize(const double dt) const
         V(ix,iy).u[0]  = TMPV(ix,iy).u[0]+DFX;
         V(ix,iy).u[1]  = TMPV(ix,iy).u[1]+DFY;
       #else
+        const Real Xlamdt = lamdt * X[iy][ix];
         const Real dUpres = UF(ix,iy).u[0] - TMPV(ix,iy).u[0];
         const Real dVpres = UF(ix,iy).u[1] - TMPV(ix,iy).u[1];
         const Real DPX = Xlamdt * (US - V(ix,iy).u[0] - dUpres) / (1 + Xlamdt);
@@ -299,18 +309,18 @@ void PressureVarRho_approx::finalizePressure(const double dt) const
     for (size_t i=0; i < Nblocks; i++)
     {
        tmpLab.load( tmpInfo[i],0); const ScalarLab&__restrict__ Pcur =  tmpLab;
-      presLab.load(presInfo[i],0); const ScalarLab&__restrict__ Pold = presLab;
-      pOldLab.load(pOldInfo[i],0); const ScalarLab&__restrict__ Podr = pOldLab;
+      presLab.load(presInfo[i],0); const ScalarLab&__restrict__ P    = presLab;
+      pOldLab.load(pOldInfo[i],0); const ScalarLab&__restrict__ pOld = pOldLab;
             VectorBlock&__restrict__   V = *(VectorBlock*)  velInfo[i].ptrBlock;
       const ScalarBlock&__restrict__ IRHO= *(ScalarBlock*) iRhoInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
-        const Real pNextN = 1.5*Pold(ix+1,iy).s - 0.5*Podr(ix+1,iy).s;
-        const Real pNextS = 1.5*Pold(ix-1,iy).s - 0.5*Podr(ix-1,iy).s;
-        const Real pNextE = 1.5*Pold(ix,iy+1).s - 0.5*Podr(ix,iy+1).s;
-        const Real pNextW = 1.5*Pold(ix,iy-1).s - 0.5*Podr(ix,iy-1).s;
+        const Real pNextN = P(ix+1,iy).s + ETA*(P(ix+1,iy).s-pOld(ix+1,iy).s);
+        const Real pNextS = P(ix-1,iy).s + ETA*(P(ix-1,iy).s-pOld(ix-1,iy).s);
+        const Real pNextE = P(ix,iy+1).s + ETA*(P(ix,iy+1).s-pOld(ix,iy+1).s);
+        const Real pNextW = P(ix,iy-1).s + ETA*(P(ix,iy-1).s-pOld(ix,iy-1).s);
         // update vel field after most recent force and pressure response:
         const Real dUpre = pFac * (Pcur(ix+1,iy).s - Pcur(ix-1,iy).s) * invRho0;
         const Real dVpre = pFac * (Pcur(ix,iy+1).s - Pcur(ix,iy-1).s) * invRho0;
@@ -338,7 +348,7 @@ void PressureVarRho_approx::operator()(const double dt)
   }
 
   int iter=0; Real relDF = 1e3;
-  for(iter = 0; iter < 1000; iter++)
+  for(iter = 0; iter < 100; iter++)
   {
     // pressure solver is going to use as RHS = div VEL - \chi div UDEF
     sim.startProfiler("Prhs");
@@ -365,7 +375,7 @@ void PressureVarRho_approx::operator()(const double dt)
     sim.stopProfiler();
 
     printf("iter:%02d - max relative error: %f\n", iter, relDF);
-    const bool bDone = iter>1 && relDF < 0.04 * sim.CFL; // do at least 3 iterations
+    const bool bDone = (iter>1 && relDF<0.05*sim.CFL) || iter>2*oldNsteps;
 
     // finalize vel with pres proj before shifting pressure fields
     if(bDone) finalizePressure(dt);
@@ -382,6 +392,8 @@ void PressureVarRho_approx::operator()(const double dt)
 
     if(bDone) break;
   }
+
+  oldNsteps = iter;
 
   if(not sim.muteAll)
   {
