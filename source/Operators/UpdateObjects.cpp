@@ -36,13 +36,17 @@ void UpdateObjects::integrateMomenta(Shape * const shape) const
     for(int ix=0; ix<VectorBlock::sizeX; ++ix)
     {
       if (chi[iy][ix] <= 0) continue;
-      const Real Xlamdt = chi[iy][ix] * lambdt;
-      const Real F = hsq * rho[iy][ix] * Xlamdt / (1 + Xlamdt);
+      #ifdef OLD_INTEGRATE_MOM
+        const Real F = hsq * rho[iy][ix] * chi[iy][ix];
+        const Real udiff[2] = { V(ix,iy).u[0], V(ix,iy).u[1] };
+      #else
+        const Real Xlamdt = chi[iy][ix] * lambdt;
+        const Real F = hsq * rho[iy][ix] * Xlamdt / (1 + Xlamdt);
+        const Real udiff[2] = {
+          V(ix,iy).u[0] - udef[iy][ix][0], V(ix,iy).u[1] - udef[iy][ix][1]
+        };
+      #endif
       double p[2]; velInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;
-      const Real udiff[2] = {
-        VEL(ix,iy).u[0] - udef[iy][ix][0],
-        VEL(ix,iy).u[1] - udef[iy][ix][1]
-      };
       PM += F;
       PJ += F * (p[0]*p[0] + p[1]*p[1]);
       PX += F * p[0];
