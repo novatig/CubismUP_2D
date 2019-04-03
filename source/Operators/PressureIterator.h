@@ -24,7 +24,7 @@ class PressureVarRho_iterator : public Operator
   Real penalize(const double dt) const;
   void integrateMomenta(Shape * const shape) const;
   void pressureCorrection(const double dt) const;
-
+  int oldNsteps = 1000;
  public:
   void operator()(const double dt);
 

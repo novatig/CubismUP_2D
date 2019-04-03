@@ -15,7 +15,7 @@
 #include <vector>
 #include <omp.h>
 
-#define OLD_INTEGRATE_MOM
+//#define OLD_INTEGRATE_MOM
 
 #ifndef _FLOAT_PRECISION_
 using Real = double;

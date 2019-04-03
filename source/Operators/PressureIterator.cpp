@@ -142,7 +142,7 @@ Real PressureVarRho_iterator::penalize(const double dt) const
       const Real Xlamdt = lamdt * X[iy][ix];
       const Real US = u_s - omega_s * p[1] + UDEF[iy][ix][0];
       const Real VS = v_s + omega_s * p[0] + UDEF[iy][ix][1];
-      #if 1
+      #ifndef OLD_INTEGRATE_MOM
         const Real DFX = Xlamdt * ( US - UF(ix,iy).u[0] ) / (1 + Xlamdt);
         const Real DFY = Xlamdt * ( VS - UF(ix,iy).u[1] ) / (1 + Xlamdt);
         const Real DPX = TMPV(ix,iy).u[0]+DFX - V(ix,iy).u[0];
@@ -150,12 +150,7 @@ Real PressureVarRho_iterator::penalize(const double dt) const
         V(ix,iy).u[0]  = TMPV(ix,iy).u[0]+DFX;
         V(ix,iy).u[1]  = TMPV(ix,iy).u[1]+DFY;
       #else
-        const Real dUpres = UF(ix,iy).u[0] - TMPV(ix,iy).u[0];
-        const Real dVpres = UF(ix,iy).u[1] - TMPV(ix,iy).u[1];
-        const Real DPX = Xlamdt * (US - V(ix,iy).u[0] - dUpres) / (1 + Xlamdt);
-        const Real DPY = Xlamdt * (VS - V(ix,iy).u[1] - dVpres) / (1 + Xlamdt);
-        V(ix,iy).u[0] += DPX;
-        V(ix,iy).u[1] += DPY;
+        abort(); // TODO
       #endif
       MX += std::pow(V(ix,iy).u[0], 2); DMX += std::pow(DPX, 2);
       MY += std::pow(V(ix,iy).u[1], 2); DMY += std::pow(DPY, 2);
@@ -206,7 +201,8 @@ void PressureVarRho_iterator::operator()(const double dt)
   }
 
   int iter=0; Real relDF = 1e3;
-  for(iter = 0; iter < 1000; iter++)
+  bool bDone = false;
+  for(iter = 0; iter < 100; iter++)
   {
     // pressure solver is going to use as RHS = div VEL - \chi div UDEF
     #ifdef HYPREFFT
@@ -218,28 +214,38 @@ void PressureVarRho_iterator::operator()(const double dt)
       fflush(0); abort();
     #endif
 
-    // compute velocity after pressure projection (PP) but without Penal
-    sim.startProfiler("PCorrect");
-    pressureCorrection(dt);
-    sim.stopProfiler();
-
-    sim.startProfiler("Obj_force");
-    for(Shape * const shape : sim.shapes)
+    if(bDone)
     {
-      // integrate vel in velocity after PP
-      integrateMomenta(shape);
-      shape->updateVelocity(dt);
+      sim.startProfiler("PCorrect");
+      finalizePressure(dt);
+      sim.stopProfiler();
+      break;
     }
+    else
+    {
+      // compute velocity after pressure projection (PP) but without Penal
+      sim.startProfiler("PCorrect");
+      pressureCorrection(dt);
+      sim.stopProfiler();
 
-     // finally update vel with penalization but without pressure
-    relDF = penalize(dt);
-    sim.stopProfiler();
+      sim.startProfiler("Obj_force");
+      for(Shape * const shape : sim.shapes)
+      {
+        // integrate vel in velocity after PP
+        integrateMomenta(shape);
+        shape->updateVelocity(dt);
+      }
 
-    printf("iter:%02d - max relative error: %f\n", iter, relDF);
-    if(iter && relDF < 0.001) break; // do at least 2 iterations
+       // finally update vel with penalization but without pressure
+      relDF = penalize(dt);
+      sim.stopProfiler();
+
+      printf("iter:%02d - max relative error: %f\n", iter, relDF);
+      bDone = (iter && relDF<0.001) || iter>2*oldNsteps;
+    }
   }
 
-  finalizePressure(dt);
+  oldNsteps = iter;
 
   if(not sim.muteAll)
   {
