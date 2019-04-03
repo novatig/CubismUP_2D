@@ -108,10 +108,10 @@ void HYPREdirichletVarRho::updateRHSandMAT(const double dt, const bool updateMat
         for(int ix=0; ix<VectorBlock::sizeX; ++ix)
         {
           const size_t idx = blockStart + ix + stride*iy;
-          const Real coefN = mean(IRHO(ix+1,iy).s, IRHO(ix,iy).s);
-          const Real coefS = mean(IRHO(ix-1,iy).s, IRHO(ix,iy).s);
-          const Real coefE = mean(IRHO(ix,iy+1).s, IRHO(ix,iy).s);
-          const Real coefW = mean(IRHO(ix,iy-1).s, IRHO(ix,iy).s);
+          const Real coefE = mean(IRHO(ix+1,iy).s, IRHO(ix,iy).s);
+          const Real coefW = mean(IRHO(ix-1,iy).s, IRHO(ix,iy).s);
+          const Real coefN = mean(IRHO(ix,iy+1).s, IRHO(ix,iy).s);
+          const Real coefS = mean(IRHO(ix,iy-1).s, IRHO(ix,iy).s);
           mat[idx][0] = coefN + coefS + coefE + coefW;
           mat[idx][1] = - coefW;
           mat[idx][2] = - coefE;
