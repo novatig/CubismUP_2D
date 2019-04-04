@@ -13,8 +13,9 @@
 #include "Utils/BufferedLogger.h"
 
 using namespace cubism;
-#define ETA  -0.2
+#define ETA   0
 #define ALPHA 0.8
+#define DECOUPLE
 
 template<typename T>
 static inline T mean(const T A, const T B) { return 0.5*(A+B); }
@@ -153,17 +154,24 @@ void PressureVarRho_approx::pressureCorrection(const double dt) const
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
+        #ifndef DECOUPLE
         const Real pNextE = P(ix+1,iy).s + ETA*(P(ix+1,iy).s-pOld(ix+1,iy).s);
         const Real pNextW = P(ix-1,iy).s + ETA*(P(ix-1,iy).s-pOld(ix-1,iy).s);
         const Real pNextN = P(ix,iy+1).s + ETA*(P(ix,iy+1).s-pOld(ix,iy+1).s);
         const Real pNextS = P(ix,iy-1).s + ETA*(P(ix,iy-1).s-pOld(ix,iy-1).s);
         // update vel field after most recent force and pressure response:
-        const Real dUpre = pFac * (Pcur(ix+1,iy).s - Pcur(ix-1,iy).s) * invRho0;
-        const Real dVpre = pFac * (Pcur(ix,iy+1).s - Pcur(ix,iy-1).s) * invRho0;
         const Real dUdiv = pFac * (pNextE-pNextW) * (IRHO(ix,iy).s - invRho0);
         const Real dVdiv = pFac * (pNextN-pNextS) * (IRHO(ix,iy).s - invRho0);
+        const Real dUpre = pFac * (Pcur(ix+1,iy).s - Pcur(ix-1,iy).s) * invRho0;
+        const Real dVpre = pFac * (Pcur(ix,iy+1).s - Pcur(ix,iy-1).s) * invRho0;
         V(ix,iy).u[0] = TMPV(ix,iy).u[0] + dUpre + dUdiv;
         V(ix,iy).u[1] = TMPV(ix,iy).u[1] + dVpre + dVdiv;
+        #else
+        const Real dUpre = (Pcur(ix+1,iy).s - Pcur(ix-1,iy).s) * IRHO(ix,iy).s;
+        const Real dVpre = (Pcur(ix,iy+1).s - Pcur(ix,iy-1).s) * IRHO(ix,iy).s;
+        V(ix,iy).u[0] = TMPV(ix,iy).u[0] + pFac * dUpre;
+        V(ix,iy).u[1] = TMPV(ix,iy).u[1] + pFac * dVpre;
+        #endif
       }
     }
   }
@@ -314,6 +322,7 @@ void PressureVarRho_approx::finalizePressure(const double dt) const
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
+        #ifndef DECOUPLE
         const Real pNextE = P(ix+1,iy).s + ETA*(P(ix+1,iy).s-pOld(ix+1,iy).s);
         const Real pNextW = P(ix-1,iy).s + ETA*(P(ix-1,iy).s-pOld(ix-1,iy).s);
         const Real pNextN = P(ix,iy+1).s + ETA*(P(ix,iy+1).s-pOld(ix,iy+1).s);
@@ -325,6 +334,12 @@ void PressureVarRho_approx::finalizePressure(const double dt) const
         const Real dVdiv = pFac * (pNextN-pNextS) * (IRHO(ix,iy).s - invRho0);
         V(ix,iy).u[0] += dUpre + dUdiv;
         V(ix,iy).u[1] += dVpre + dVdiv;
+        #else
+        const Real dUpre = (Pcur(ix+1,iy).s - Pcur(ix-1,iy).s) * IRHO(ix,iy).s;
+        const Real dVpre = (Pcur(ix,iy+1).s - Pcur(ix,iy-1).s) * IRHO(ix,iy).s;
+        V(ix,iy).u[0] += pFac * dUpre;
+        V(ix,iy).u[1] += pFac * dVpre;
+        #endif
       }
     }
   }
@@ -344,7 +359,8 @@ void PressureVarRho_approx::operator()(const double dt)
     UF.copy(V);
   }
 
-  int iter=0; Real relDF = 1e3;
+  int  iter  = 0;
+  Real relDF = 1e3;
   bool bDone = false;
   for(iter = 0; iter < 100; iter++)
   {
