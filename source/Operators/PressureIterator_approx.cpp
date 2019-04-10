@@ -16,7 +16,7 @@ using namespace cubism;
 #define ETA   0
 #define ALPHA 1
 // #define DECOUPLE
-#define OLD_INTEGRATE_MOM
+#define EXPL_INTEGRATE_MOM
 
 template<typename T>
 static inline T mean(const T A, const T B) { return 0.5*(A+B); }
@@ -184,7 +184,6 @@ void PressureVarRho_approx::integrateMomenta(Shape * const shape) const
   const std::vector<BlockInfo>& vFluidInfo = sim.vFluid->getBlocksInfo();
 
   const Real Cx = shape->centerOfMass[0], Cy = shape->centerOfMass[1];
-  const Real lambdt = sim.lambda * sim.dt;
   const double hsq = std::pow(velInfo[0].h_gridpoint, 2);
   double PM=0, PJ=0, PX=0, PY=0, UM=0, VM=0, AM=0; //linear momenta
 
@@ -196,12 +195,16 @@ void PressureVarRho_approx::integrateMomenta(Shape * const shape) const
     if(OBLOCK[vFluidInfo[i].blockID] == nullptr) continue;
     const CHI_MAT & __restrict__ rho = OBLOCK[ vFluidInfo[i].blockID ]->rho;
     const CHI_MAT & __restrict__ chi = OBLOCK[ vFluidInfo[i].blockID ]->chi;
+    #ifndef EXPL_INTEGRATE_MOM
+    const Real lambdt = sim.lambda * sim.dt;
     const UDEFMAT & __restrict__ udef = OBLOCK[ vFluidInfo[i].blockID ]->udef;
+    #endif
+
     for(int iy=0; iy<VectorBlock::sizeY; ++iy)
     for(int ix=0; ix<VectorBlock::sizeX; ++ix)
     {
       if (chi[iy][ix] <= 0) continue;
-      #ifdef OLD_INTEGRATE_MOM
+      #ifdef EXPL_INTEGRATE_MOM
         const Real F = hsq * rho[iy][ix] * chi[iy][ix];
         const Real udiff[2] = { V(ix,iy).u[0], V(ix,iy).u[1] };
       #else
@@ -236,7 +239,10 @@ Real PressureVarRho_approx::penalize(const double dt) const
   const std::vector<BlockInfo>& chiInfo = sim.chi->getBlocksInfo();
   const std::vector<BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
   const std::vector<BlockInfo>& vFluidInfo = sim.vFluid->getBlocksInfo();
+  #ifndef EXPL_INTEGRATE_MOM
   const Real lamdt = sim.lambda * dt;
+  #endif
+
   Real MX = 0, MY = 0, DMX = 0, DMY = 0;
   #pragma omp parallel for schedule(dynamic, 1) reduction(+ : MX, MY, DMX, DMY)
   for (size_t i=0; i < Nblocks; i++)
@@ -267,7 +273,7 @@ Real PressureVarRho_approx::penalize(const double dt) const
       Real p[2]; velInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;
       const Real US = u_s - omega_s * p[1] + UDEF[iy][ix][0];
       const Real VS = v_s + omega_s * p[0] + UDEF[iy][ix][1];
-      #ifdef OLD_INTEGRATE_MOM
+      #ifdef EXPL_INTEGRATE_MOM
         const Real penalFac = X[iy][ix];
       #else
         const Real penalFac = lamdt*X[iy][ix]/(1 +lamdt*X[iy][ix]);
@@ -350,9 +356,9 @@ void PressureVarRho_approx::operator()(const double dt)
     UF.copy(V);
   }
 
-  int  iter  = 0;
+  int iter = 0;
   Real relDF = 1e3;
-  bool bDone = false;
+  bool bConverged = false;
   for(iter = 0; iter < 100; iter++)
   {
     // pressure solver is going to use as RHS = div VEL - \chi div UDEF
@@ -362,34 +368,32 @@ void PressureVarRho_approx::operator()(const double dt)
     sim.stopProfiler();
 
     pressureSolver->solve(tmpInfo, tmpInfo);
-    // if penalization force is stable compute pressure one more time
-    // and then, without modifying penal term, apply pressure correction
-    sim.startProfiler("PCorrect");
-    pressureCorrection(dt);
-    sim.stopProfiler();
 
-    sim.startProfiler("Obj_force");
-    for(Shape * const shape : sim.shapes)
-    {
-      // integrate vel in velocity after PP
-      integrateMomenta(shape);
-      shape->updateVelocity(dt);
-    }
-
-     // finally update vel with penalization but without pressure
-    relDF = penalize(dt);
-    sim.stopProfiler();
-
-    printf("iter:%02d - max relative error: %f %e\n", iter, relDF, rho0);
-    bDone = (iter && relDF<0.05*sim.CFL) || iter>2*oldNsteps;
-
-    if(bDone)
+    if(bConverged)
     {
       sim.startProfiler("PCorrect");
       finalizePressure(dt);
       sim.stopProfiler();
     }
-    // finalize vel with pres proj before shifting pressure fields
+    else
+    {
+      sim.startProfiler("PCorrect");
+      pressureCorrection(dt);
+      sim.stopProfiler();
+
+      sim.startProfiler("Obj_force");
+      for(Shape * const shape : sim.shapes)
+      {
+        // integrate vel in velocity after PP
+        integrateMomenta(shape);
+        shape->updateVelocity(dt);
+      }
+
+       // finally update vel with penalization but without pressure
+      relDF = penalize(dt);
+      sim.stopProfiler();
+      printf("iter:%02d - max relative error: %f\n", iter, relDF);
+    }
 
     #pragma omp parallel for schedule(static)
     for (size_t i=0; i < Nblocks; i++)
@@ -401,7 +405,9 @@ void PressureVarRho_approx::operator()(const double dt)
       Pc.copy(Pn);
     }
 
-    if(bDone) break;
+    if(bConverged) break;
+    else bConverged = relDF<0.0005 || iter>2*oldNsteps;
+    // if penalization force converged, do one more Poisson solve
   }
 
   oldNsteps = iter;

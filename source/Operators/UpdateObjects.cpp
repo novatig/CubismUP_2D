@@ -15,6 +15,8 @@ using namespace cubism;
 using CHI_MAT = Real[VectorBlock::sizeY][VectorBlock::sizeX];
 using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];
 
+//#define EXPL_INTEGRATE_MOM
+
 void UpdateObjects::integrateMomenta(Shape * const shape) const
 {
   const std::vector<ObstacleBlock*> & OBLOCK = shape->obstacleBlocks;
@@ -36,7 +38,7 @@ void UpdateObjects::integrateMomenta(Shape * const shape) const
     for(int ix=0; ix<VectorBlock::sizeX; ++ix)
     {
       if (chi[iy][ix] <= 0) continue;
-      #ifdef OLD_INTEGRATE_MOM
+      #ifdef EXPL_INTEGRATE_MOM
         const Real F = hsq * rho[iy][ix] * chi[iy][ix];
         const Real udiff[2] = { VEL(ix,iy).u[0], VEL(ix,iy).u[1] };
       #else
