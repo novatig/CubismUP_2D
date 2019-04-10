@@ -8,7 +8,7 @@ cd ${FOLDERNAME}
 cat <<EOF >daint_sbatch
 #!/bin/bash -l
 
-#SBATCH --account=s658
+#SBATCH --account=s929
 #SBATCH --job-name="${RUNNAME}"
 #SBATCH --output=${RUNNAME}_out_%j.txt
 #SBATCH --error=${RUNNAME}_err_%j.txt
