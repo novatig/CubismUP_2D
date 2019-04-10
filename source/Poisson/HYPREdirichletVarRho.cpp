@@ -317,8 +317,8 @@ HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
   else {
     printf("Using PCG solver\n");
     HYPRE_StructPCGCreate(COMM, &hypre_solver);
-    HYPRE_StructPCGSetMaxIter(hypre_solver, 100);
-    HYPRE_StructPCGSetTol(hypre_solver, 0.001);
+    HYPRE_StructPCGSetMaxIter(hypre_solver, 1000);
+    HYPRE_StructPCGSetTol(hypre_solver, 0.0001);
     HYPRE_StructPCGSetPrintLevel(hypre_solver, 0);
     if(0) { // Use SMG preconditioner: BAD
       HYPRE_StructSMGCreate(COMM, &hypre_precond);

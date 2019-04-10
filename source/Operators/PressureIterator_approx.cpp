@@ -14,8 +14,9 @@
 
 using namespace cubism;
 #define ETA   0
-#define ALPHA 0.8
-#define DECOUPLE
+#define ALPHA 1
+// #define DECOUPLE
+#define OLD_INTEGRATE_MOM
 
 template<typename T>
 static inline T mean(const T A, const T B) { return 0.5*(A+B); }
@@ -167,10 +168,10 @@ void PressureVarRho_approx::pressureCorrection(const double dt) const
         V(ix,iy).u[0] = TMPV(ix,iy).u[0] + dUpre + dUdiv;
         V(ix,iy).u[1] = TMPV(ix,iy).u[1] + dVpre + dVdiv;
         #else
-        const Real dUpre = (Pcur(ix+1,iy).s - Pcur(ix-1,iy).s) * IRHO(ix,iy).s;
-        const Real dVpre = (Pcur(ix,iy+1).s - Pcur(ix,iy-1).s) * IRHO(ix,iy).s;
-        V(ix,iy).u[0] = TMPV(ix,iy).u[0] + pFac * dUpre;
-        V(ix,iy).u[1] = TMPV(ix,iy).u[1] + pFac * dVpre;
+          const Real pNextE = Pcur(ix+1,iy).s, pNextW = Pcur(ix-1,iy).s;
+          const Real pNextN = Pcur(ix,iy+1).s, pNextS = Pcur(ix,iy-1).s;
+          V(ix,iy).u[0] = TMPV(ix,iy).u[0] +pFac*(pNextE-pNextW) *IRHO(ix,iy).s;
+          V(ix,iy).u[1] = TMPV(ix,iy).u[1] +pFac*(pNextN-pNextS) *IRHO(ix,iy).s;
         #endif
       }
     }
@@ -266,27 +267,17 @@ Real PressureVarRho_approx::penalize(const double dt) const
       Real p[2]; velInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;
       const Real US = u_s - omega_s * p[1] + UDEF[iy][ix][0];
       const Real VS = v_s + omega_s * p[0] + UDEF[iy][ix][1];
-      #if 0
-        const Real DFX = X[iy][ix] * ( US - UF(ix,iy).u[0] );
-        const Real DFY = X[iy][ix] * ( VS - UF(ix,iy).u[1] );
-        const Real DPX = TMPV(ix,iy).u[0]+DFX - V(ix,iy).u[0];
-        const Real DPY = TMPV(ix,iy).u[1]+DFY - V(ix,iy).u[1];
-        V(ix,iy).u[0] += ALPHA * DPX; // 0.8 * Unew + 0.2 * Uold
-        V(ix,iy).u[1] += ALPHA * DPY; // 0.8 * Vnew + 0.2 * Vold
+      #ifdef OLD_INTEGRATE_MOM
+        const Real penalFac = X[iy][ix];
       #else
-        // unext = (u^t + penal) + (u^t + presproj) - u^t
-        //const Real dUnxt = V(ix,iy).u[0] + UF(ix,iy).u[0]-TMPV(ix,iy).u[0];
-        //const Real dVnxt = V(ix,iy).u[1] + UF(ix,iy).u[1]-TMPV(ix,iy).u[1];
-        //const Real DFX = lamdt*X[iy][ix]* (US - dUnxt);
-        //const Real DFY = lamdt*X[iy][ix]* (VS - dVnxt);
         const Real penalFac = lamdt*X[iy][ix]/(1 +lamdt*X[iy][ix]);
-        const Real DFX = penalFac * (US - UF(ix,iy).u[0]);
-        const Real DFY = penalFac * (VS - UF(ix,iy).u[1]);
-        const Real DPX = TMPV(ix,iy).u[0]+DFX - V(ix,iy).u[0];
-        const Real DPY = TMPV(ix,iy).u[1]+DFY - V(ix,iy).u[1];
-        V(ix,iy).u[0] += DPX; // in V store u^t plus penalization force
-        V(ix,iy).u[1] += DPY; // without pressure projection (for P rhs)
       #endif
+      const Real DFX = penalFac * (US - UF(ix,iy).u[0]);
+      const Real DFY = penalFac * (VS - UF(ix,iy).u[1]);
+      const Real DPX = TMPV(ix,iy).u[0]+DFX - V(ix,iy).u[0];
+      const Real DPY = TMPV(ix,iy).u[1]+DFY - V(ix,iy).u[1];
+      V(ix,iy).u[0] += DPX; // in V store u^t plus penalization force
+      V(ix,iy).u[1] += DPY; // without pressure projection (for P rhs)
       MX += std::pow(V(ix,iy).u[0], 2); DMX += std::pow(DPX, 2);
       MY += std::pow(V(ix,iy).u[1], 2); DMY += std::pow(DPY, 2);
     }
@@ -335,10 +326,10 @@ void PressureVarRho_approx::finalizePressure(const double dt) const
         V(ix,iy).u[0] += dUpre + dUdiv;
         V(ix,iy).u[1] += dVpre + dVdiv;
         #else
-        const Real dUpre = (Pcur(ix+1,iy).s - Pcur(ix-1,iy).s) * IRHO(ix,iy).s;
-        const Real dVpre = (Pcur(ix,iy+1).s - Pcur(ix,iy-1).s) * IRHO(ix,iy).s;
-        V(ix,iy).u[0] += pFac * dUpre;
-        V(ix,iy).u[1] += pFac * dVpre;
+          const Real pNextE = Pcur(ix+1,iy).s, pNextW = Pcur(ix-1,iy).s;
+          const Real pNextN = Pcur(ix,iy+1).s, pNextS = Pcur(ix,iy-1).s;
+          V(ix,iy).u[0] += pFac * (pNextE - pNextW) * IRHO(ix,iy).s;
+          V(ix,iy).u[1] += pFac * (pNextN - pNextS) * IRHO(ix,iy).s;
         #endif
       }
     }
@@ -373,32 +364,30 @@ void PressureVarRho_approx::operator()(const double dt)
     pressureSolver->solve(tmpInfo, tmpInfo);
     // if penalization force is stable compute pressure one more time
     // and then, without modifying penal term, apply pressure correction
+    sim.startProfiler("PCorrect");
+    pressureCorrection(dt);
+    sim.stopProfiler();
+
+    sim.startProfiler("Obj_force");
+    for(Shape * const shape : sim.shapes)
+    {
+      // integrate vel in velocity after PP
+      integrateMomenta(shape);
+      shape->updateVelocity(dt);
+    }
+
+     // finally update vel with penalization but without pressure
+    relDF = penalize(dt);
+    sim.stopProfiler();
+
+    printf("iter:%02d - max relative error: %f %e\n", iter, relDF, rho0);
+    bDone = (iter && relDF<0.05*sim.CFL) || iter>2*oldNsteps;
+
     if(bDone)
     {
       sim.startProfiler("PCorrect");
       finalizePressure(dt);
       sim.stopProfiler();
-    }
-    else
-    {
-      sim.startProfiler("PCorrect");
-      pressureCorrection(dt);
-      sim.stopProfiler();
-
-      sim.startProfiler("Obj_force");
-      for(Shape * const shape : sim.shapes)
-      {
-        // integrate vel in velocity after PP
-        integrateMomenta(shape);
-        shape->updateVelocity(dt);
-      }
-
-       // finally update vel with penalization but without pressure
-      relDF = penalize(dt);
-      sim.stopProfiler();
-
-      printf("iter:%02d - max relative error: %f\n", iter, relDF);
-      bDone = (iter && relDF<0.05*sim.CFL) || iter>2*oldNsteps;
     }
     // finalize vel with pres proj before shifting pressure fields
 

@@ -214,34 +214,32 @@ void PressureVarRho_iterator::operator()(const double dt)
       fflush(0); abort();
     #endif
 
+    // compute velocity after pressure projection (PP) but without Penal
+    sim.startProfiler("PCorrect");
+    pressureCorrection(dt);
+    sim.stopProfiler();
+
+    sim.startProfiler("Obj_force");
+    for(Shape * const shape : sim.shapes)
+    {
+      // integrate vel in velocity after PP
+      integrateMomenta(shape);
+      shape->updateVelocity(dt);
+    }
+
+     // finally update vel with penalization but without pressure
+    relDF = penalize(dt);
+    sim.stopProfiler();
+
+    printf("iter:%02d - max relative error: %f\n", iter, relDF);
+    bDone = (iter && relDF<0.001) || iter>2*oldNsteps;
+
     if(bDone)
     {
       sim.startProfiler("PCorrect");
       finalizePressure(dt);
       sim.stopProfiler();
       break;
-    }
-    else
-    {
-      // compute velocity after pressure projection (PP) but without Penal
-      sim.startProfiler("PCorrect");
-      pressureCorrection(dt);
-      sim.stopProfiler();
-
-      sim.startProfiler("Obj_force");
-      for(Shape * const shape : sim.shapes)
-      {
-        // integrate vel in velocity after PP
-        integrateMomenta(shape);
-        shape->updateVelocity(dt);
-      }
-
-       // finally update vel with penalization but without pressure
-      relDF = penalize(dt);
-      sim.stopProfiler();
-
-      printf("iter:%02d - max relative error: %f\n", iter, relDF);
-      bDone = (iter && relDF<0.001) || iter>2*oldNsteps;
     }
   }
 
