@@ -18,6 +18,7 @@
 #include "Operators/PressureVarRho.h"
 #include "Operators/PressureVarRho_proper.h"
 #include "Operators/Penalization.h"
+#include "Operators/PressureIterator_unif.h"
 #include "Operators/PressureIterator_approx.h"
 #include "Operators/PutObjectsOnGrid.h"
 #include "Operators/UpdateObjects.h"
@@ -94,7 +95,11 @@ void Simulation::parseRuntime()
   sim.dlm = parser("-dlm").asDouble(0);
   sim.nu = parser("-nu").asDouble(1e-2);
 
+  sim.fadeLenX = parser("-fadeLen").asDouble(0);
+  sim.fadeLenY = parser("-fadeLen").asDouble(0);
+
   sim.verbose = parser("-verbose").asInt(1);
+  sim.iterativePenalization = parser("-iterativePenalization").asInt(1);
   sim.muteAll = parser("-muteAll").asInt(0);//stronger silence, not even files
   if(sim.muteAll) sim.verbose = 0;
 }
@@ -183,7 +188,7 @@ void Simulation::init()
   {
     pipeline.push_back( new PutObjectsOnGrid(sim) );
     pipeline.push_back( new advDiffGrav(sim) );
-    if(sim.CFL <= 0.02)
+    if(sim.iterativePenalization)
       pipeline.push_back( new PressureVarRho_approx(sim) );
     else
       pipeline.push_back( new PressureVarRho_iterator(sim) );
@@ -194,8 +199,12 @@ void Simulation::init()
     pipeline.push_back( new advDiff(sim) );
     //pipeline.push_back( new PressureVarRho(sim) );
     //pipeline.push_back( new PressureVarRho_proper(sim) );
-    pipeline.push_back( new PressureSingle(sim) );
-    pipeline.push_back( new UpdateObjects(sim) );
+    if(sim.iterativePenalization)
+      pipeline.push_back( new PressureIterator_unif(sim) );
+    else {
+      pipeline.push_back( new PressureSingle(sim) );
+      pipeline.push_back( new UpdateObjects(sim) );
+    }
   }
 
   std::cout << "Operator ordering:\n";

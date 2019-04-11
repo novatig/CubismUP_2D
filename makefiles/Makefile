@@ -66,7 +66,7 @@ OBJECTS = \
 		advDiff.o BufferedLogger.o Helpers.o BlowFish.o Fish.o SmartCylinder.o \
 		FishLibrary.o StefanFish.o CarlingFish.o PressureVarRho.o Penalization.o \
 		advDiffGrav.o Glider.o PressureIterator_approx.o ArgumentParser.o \
-		HYPREdirichletVarRho.o PressureVarRho_proper.o
+		HYPREdirichletVarRho.o PressureVarRho_proper.o PressureIterator_unif.o
 
 
 ifneq "$(gpu)" "false"

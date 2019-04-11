@@ -49,6 +49,7 @@ struct SimulationData
   double lambda = 0;
   double nu = 0;
   double dlm = 1;
+  Real fadeLenX = 0, fadeLenY = 0;
 
   std::array<Real,2> gravity = { (Real) 0.0, (Real) -9.80665 };
   // nsteps==0 means that this stopping criteria is not active
@@ -63,6 +64,7 @@ struct SimulationData
   bool muteAll = false;
   std::string poissonType = "hypre";
   bool bVariableDensity = false;
+  bool iterativePenalization = false;
   // output
   // dumpFreq==0 means that this dumping frequency (in #steps) is not active
   int dumpFreq = 0;

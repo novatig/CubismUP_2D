@@ -14,21 +14,22 @@ using namespace cubism;
 
 template<typename T>
 static inline T mean(const T A, const T B) { return 0.5*(A+B); }
+static constexpr double EPS = std::numeric_limits<double>::epsilon();
 
 void PressureVarRho::fadeoutBorder(const double dt) const
 {
-  static constexpr int Z = 8, buffer = 8;
-  const Real h = sim.getH(), iWidth = 1/(buffer*h);
+  const Real fadeLenX = sim.fadeLenX, fadeLenY = sim.fadeLenY;
+  const Real invFadeX = 1/(fadeLenX+EPS), invFadeY = 1/(fadeLenY+EPS);
   const Real extent[2] = {sim.bpdx/ (Real) std::max(sim.bpdx, sim.bpdy),
                           sim.bpdy/ (Real) std::max(sim.bpdx, sim.bpdy)};
   const auto _is_touching = [&] (const BlockInfo& i) {
     Real min_pos[2], max_pos[2];
     i.pos(max_pos, VectorBlock::sizeX-1, VectorBlock::sizeY-1);
     i.pos(min_pos, 0, 0);
-    const bool touchN = (Z+buffer)*h >= extent[1] - max_pos[1];
-    const bool touchE = (Z+buffer)*h >= extent[0] - max_pos[0];
-    const bool touchS = (Z+buffer)*h >= min_pos[1];
-    const bool touchW = (Z+buffer)*h >= min_pos[0];
+    const bool touchW = fadeLenX >= min_pos[0];
+    const bool touchE = fadeLenX >= extent[0] - max_pos[0];
+    const bool touchS = fadeLenY >= min_pos[1];
+    const bool touchN = fadeLenY >= extent[1] - max_pos[1];
     return touchN || touchE || touchS || touchW;
   };
 
@@ -40,15 +41,12 @@ void PressureVarRho::fadeoutBorder(const double dt) const
     for(int iy=0; iy<VectorBlock::sizeY; ++iy)
     for(int ix=0; ix<VectorBlock::sizeX; ++ix)
     {
-      Real p[2];
-      tmpInfo[i].pos(p, ix, iy);
-      const Real arg1= std::max((Real)0, (Z+buffer)*h -(extent[0]-p[0]) );
-      const Real arg2= std::max((Real)0, (Z+buffer)*h -(extent[1]-p[1]) );
-      const Real arg3= std::max((Real)0, (Z+buffer)*h -p[0] );
-      const Real arg4= std::max((Real)0, (Z+buffer)*h -p[1] );
-      const Real dist= std::min(std::max({arg1, arg2, arg3, arg4}), buffer*h);
-      //RHS(ix, iy).s = std::max(1-factor, 1 - factor*std::pow(dist*iWidth, 2));
-      RHS(ix, iy).s *= 1 - std::pow(dist*iWidth, 2);
+      Real p[2]; tmpInfo[i].pos(p, ix, iy);
+      const Real yt = invFadeY*std::max(Real(0), fadeLenY - extent[1] + p[1] );
+      const Real yb = invFadeY*std::max(Real(0), fadeLenY - p[1] );
+      const Real xt = invFadeX*std::max(Real(0), fadeLenX - extent[0] + p[0] );
+      const Real xb = invFadeX*std::max(Real(0), fadeLenX - p[0] );
+      RHS(ix,iy).s *= 1-std::pow(std::min(std::max({yt,yb,xt,xb}), (Real)1), 2);
     }
   }
 };
