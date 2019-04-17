@@ -16,20 +16,20 @@ using namespace cubism;
 
 void SimulationData::allocateGrid()
 {
-  chi   = new ScalarGrid(bpdx, bpdy, 1);
-  vel   = new VectorGrid(bpdx, bpdy, 1);
-  pres  = new ScalarGrid(bpdx, bpdy, 1);
-  pOld  = new ScalarGrid(bpdx, bpdy, 1);
+  chi   = new ScalarGrid(bpdx, bpdy, extent);
+  vel   = new VectorGrid(bpdx, bpdy, extent);
+  pres  = new ScalarGrid(bpdx, bpdy, extent);
+  pOld  = new ScalarGrid(bpdx, bpdy, extent);
 
-  pRHS  = new ScalarGrid(bpdx, bpdy, 1);
-  invRho= new ScalarGrid(bpdx, bpdy, 1);
+  pRHS  = new ScalarGrid(bpdx, bpdy, extent);
+  invRho= new ScalarGrid(bpdx, bpdy, extent);
 
-  tmpV  = new VectorGrid(bpdx, bpdy, 1);
-  vFluid= new VectorGrid(bpdx, bpdy, 1);
-  tmp   = new ScalarGrid(bpdx, bpdy, 1);
-  uDef  = new VectorGrid(bpdx, bpdy, 1);
+  tmpV  = new VectorGrid(bpdx, bpdy, extent);
+  vFluid= new VectorGrid(bpdx, bpdy, extent);
+  tmp   = new ScalarGrid(bpdx, bpdy, extent);
+  uDef  = new VectorGrid(bpdx, bpdy, extent);
 
-  dump  = new DumpGrid(bpdx, bpdy, 1);
+  dump  = new DumpGrid(bpdx, bpdy, extent);
 }
 
 void SimulationData::dumpGlue(std::string name) {

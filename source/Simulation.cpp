@@ -80,6 +80,7 @@ void Simulation::parseRuntime()
   parser.unset_strict_mode();
   sim.nsteps = parser("-nsteps").asInt(0);
   sim.endTime = parser("-tend").asDouble(0);
+  sim.extent = parser("-extent").asDouble(1);
 
   // output parameters
   sim.dumpFreq = parser("-fdump").asInt(0);
