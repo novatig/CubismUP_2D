@@ -30,6 +30,10 @@ void SimulationData::allocateGrid()
   uDef  = new VectorGrid(bpdx, bpdy, extent);
 
   dump  = new DumpGrid(bpdx, bpdy, extent);
+
+  extents[0] = bpdx * vel->getH() * VectorBlock::sizeX;
+  extents[1] = bpdy * vel->getH() * VectorBlock::sizeY;
+  printf("Extents %e %e\n", extents[0], extents[1]);
 }
 
 void SimulationData::dumpGlue(std::string name) {
@@ -88,6 +92,7 @@ void SimulationData::resetAll()
   nextDumpTime = 0;
   _bDump = false;
   bPing = false;
+  printf("Extents %e %e\n", extents[0], extents[1]);
 }
 
 void SimulationData::registerDump()

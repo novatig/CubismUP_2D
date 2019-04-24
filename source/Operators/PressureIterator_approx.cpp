@@ -30,8 +30,7 @@ void PressureVarRho_approx::fadeoutBorder(const double dt) const
   const std::vector<BlockInfo>&  tmpInfo = sim.tmp->getBlocksInfo();
   const Real fadeLenX = sim.fadeLenX, fadeLenY = sim.fadeLenY;
   const Real invFadeX = 1/(fadeLenX+EPS), invFadeY = 1/(fadeLenY+EPS);
-  const Real extent[2] = {sim.bpdx/ (Real) std::max(sim.bpdx, sim.bpdy),
-                          sim.bpdy/ (Real) std::max(sim.bpdx, sim.bpdy)};
+  const auto& extent = sim.extents;
   const auto _is_touching = [&] (const BlockInfo& i) {
     Real min_pos[2], max_pos[2];
     i.pos(max_pos, VectorBlock::sizeX-1, VectorBlock::sizeY-1);

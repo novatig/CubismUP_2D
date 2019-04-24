@@ -26,6 +26,18 @@ class findMaxU
   }
 };
 
+class FadeOut : public Operator
+{
+ public:
+  FadeOut(SimulationData& s) : Operator(s) { }
+
+  void operator()(const double dt);
+
+  std::string getName() {
+    return "FadeOut";
+  }
+};
+
 class Checker
 {
   SimulationData& sim;

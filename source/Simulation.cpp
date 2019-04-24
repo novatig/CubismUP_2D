@@ -193,6 +193,7 @@ void Simulation::init()
       pipeline.push_back( new PressureVarRho_approx(sim) );
     else
       pipeline.push_back( new PressureVarRho_iterator(sim) );
+    pipeline.push_back( new FadeOut(sim) );
   }
   else
   {
@@ -206,6 +207,7 @@ void Simulation::init()
       pipeline.push_back( new PressureSingle(sim) );
       pipeline.push_back( new UpdateObjects(sim) );
     }
+    pipeline.push_back( new FadeOut(sim) );
   }
 
   std::cout << "Operator ordering:\n";

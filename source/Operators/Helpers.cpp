@@ -46,6 +46,47 @@ void IC::operator()(const double dt)
   }
 }
 
+void FadeOut::operator()(const double dt)
+{
+  static constexpr double EPS = std::numeric_limits<Real>::epsilon();
+  const auto& extent = sim.extents;
+  const Real fadeLenX = std::max(sim.fadeLenX, 2*sim.vel->getH());
+  const Real fadeLenY = std::max(sim.fadeLenY, 2*sim.vel->getH());
+  const Real invFadeX = 1/(fadeLenX+EPS), invFadeY = 1/(fadeLenY+EPS);
+
+  const auto _is_touching = [&] (const BlockInfo& i)
+  {
+    Real min_pos[2], max_pos[2];
+    i.pos(max_pos, VectorBlock::sizeX-1, VectorBlock::sizeY-1);
+    i.pos(min_pos, 0, 0);
+    const bool touchW = fadeLenX >= min_pos[0];
+    const bool touchE = fadeLenX >= extent[0] - max_pos[0];
+    const bool touchS = fadeLenY >= min_pos[1];
+    const bool touchN = fadeLenY >= extent[1] - max_pos[1];
+    return touchN || touchE || touchS || touchW;
+  };
+
+  #pragma omp parallel for schedule(dynamic)
+  for (size_t i=0; i < Nblocks; i++)
+  {
+    if( not _is_touching(velInfo[i]) ) continue;
+    VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;
+    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+    for(int ix=0; ix<VectorBlock::sizeX; ++ix)
+    {
+      Real p[2]; velInfo[i].pos(p, ix, iy);
+      const Real yt = invFadeY*std::max(Real(0), fadeLenY - extent[1] + p[1] );
+      const Real yb = invFadeY*std::max(Real(0), fadeLenY - p[1] );
+      const Real xt = invFadeX*std::max(Real(0), fadeLenX - extent[0] + p[0] );
+      const Real xb = invFadeX*std::max(Real(0), fadeLenX - p[0] );
+      const Real killWidth = std::min( std::max({yt, yb, xt, xb}), (Real) 1);
+      const Real killFactor = 1 - std::pow(killWidth, 2);
+      VEL(ix,iy).u[0] *= killFactor;
+      VEL(ix,iy).u[1] *= killFactor;
+    }
+  }
+}
+
 Real findMaxU::run() const
 {
   const Real UINF = sim.uinfx, VINF = sim.uinfy;
