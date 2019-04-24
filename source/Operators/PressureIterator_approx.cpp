@@ -16,7 +16,7 @@ using namespace cubism;
 #define ETA   0
 #define ALPHA 1
 // #define DECOUPLE
-#define EXPL_INTEGRATE_MOM
+//#define EXPL_INTEGRATE_MOM
 
 template<typename T>
 static inline T mean(const T A, const T B) { return 0.5*(A+B); }
