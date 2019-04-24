@@ -355,7 +355,7 @@ void PressureVarRho_approx::operator()(const double dt)
   int iter = 0;
   Real relDF = 1e3;
   bool bConverged = false;
-  for(iter = 0; iter < 100; iter++)
+  for(iter = 0; iter < 1000; iter++)
   {
     // pressure solver is going to use as RHS = div VEL - \chi div UDEF
     sim.startProfiler("Prhs");
@@ -402,11 +402,11 @@ void PressureVarRho_approx::operator()(const double dt)
     }
 
     if(bConverged) break;
-    else bConverged = relDF<0.0005 || iter>2*oldNsteps;
+    else bConverged = ( iter>1 && relDF<0.0005 ) || iter>2*oldNsteps;
     // if penalization force converged, do one more Poisson solve
   }
 
-  oldNsteps = iter;
+  oldNsteps = iter+1;
 
   if(not sim.muteAll)
   {

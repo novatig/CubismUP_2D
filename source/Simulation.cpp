@@ -189,6 +189,7 @@ void Simulation::init()
   {
     pipeline.push_back( new PutObjectsOnGrid(sim) );
     pipeline.push_back( new advDiffGrav(sim) );
+    pipeline.push_back( new FadeOut(sim) );
     if(sim.iterativePenalization)
       pipeline.push_back( new PressureVarRho_approx(sim) );
     else
@@ -199,6 +200,7 @@ void Simulation::init()
   {
     pipeline.push_back( new PutObjectsOnGrid(sim) );
     pipeline.push_back( new advDiff(sim) );
+    pipeline.push_back( new FadeOut(sim) );
     //pipeline.push_back( new PressureVarRho(sim) );
     //pipeline.push_back( new PressureVarRho_proper(sim) );
     if(sim.iterativePenalization)

@@ -92,7 +92,6 @@ void SimulationData::resetAll()
   nextDumpTime = 0;
   _bDump = false;
   bPing = false;
-  printf("Extents %e %e\n", extents[0], extents[1]);
 }
 
 void SimulationData::registerDump()

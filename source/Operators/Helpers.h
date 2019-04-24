@@ -28,6 +28,8 @@ class findMaxU
 
 class FadeOut : public Operator
 {
+  std::array<double, 4> solveMatrix(const double W, const double E,
+                                    const double S, const double N) const;
  public:
   FadeOut(SimulationData& s) : Operator(s) { }
 
