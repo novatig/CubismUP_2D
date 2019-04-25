@@ -191,8 +191,11 @@ void Simulation::init()
     pipeline.push_back( new advDiffGrav(sim) );
     if(sim.iterativePenalization)
       pipeline.push_back( new PressureVarRho_approx(sim) );
-    else
-      pipeline.push_back( new PressureVarRho_iterator(sim) );
+    else {
+      pipeline.push_back( new PressureVarRho_proper(sim) );
+      pipeline.push_back( new UpdateObjects(sim) );
+    }
+     // pipeline.push_back( new PressureVarRho_iterator(sim) );
   }
   else
   {
