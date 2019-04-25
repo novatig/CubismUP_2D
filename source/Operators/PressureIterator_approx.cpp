@@ -13,7 +13,7 @@
 #include "Utils/BufferedLogger.h"
 
 using namespace cubism;
-#define ETA   0
+#define ETA   0.2
 #define ALPHA 1
 // #define DECOUPLE
 //#define EXPL_INTEGRATE_MOM
@@ -155,12 +155,14 @@ void PressureVarRho_approx::pressureCorrectionInit(const double dt) const
 
 void PressureVarRho_approx::pressureCorrection(const double dt) const
 {
-  const Real h = sim.getH(), pFac = -0.5*dt/h, invRho0 = 1 / rho0;
+  const Real h = sim.getH(), pFac = -0.5*dt/h;
   const std::vector<BlockInfo>& iRhoInfo = sim.invRho->getBlocksInfo();
   const std::vector<BlockInfo>&  tmpInfo = sim.tmp->getBlocksInfo();
-  const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
-  const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
-
+  #ifndef DECOUPLE
+    const Real invRho0 = 1 / rho0;
+    const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
+    const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
+  #endif
   const std::vector<BlockInfo>& tmpVInfo = sim.tmpV->getBlocksInfo();
   const std::vector<BlockInfo>& vPresInfo= sim.vFluid->getBlocksInfo();
 
@@ -175,8 +177,10 @@ void PressureVarRho_approx::pressureCorrection(const double dt) const
     for (size_t i=0; i < Nblocks; i++)
     {
        tmpLab.load( tmpInfo[i],0); const ScalarLab&__restrict__ Pcur =  tmpLab;
+      #ifndef DECOUPLE
       presLab.load(presInfo[i],0); const ScalarLab&__restrict__ P    = presLab;
       pOldLab.load(pOldInfo[i],0); const ScalarLab&__restrict__ pOld = pOldLab;
+      #endif
             VectorBlock&__restrict__   V = *(VectorBlock*)vPresInfo[i].ptrBlock;
       const ScalarBlock&__restrict__ IRHO= *(ScalarBlock*) iRhoInfo[i].ptrBlock;
       const VectorBlock&__restrict__ TMPV= *(VectorBlock*) tmpVInfo[i].ptrBlock;
@@ -323,11 +327,14 @@ Real PressureVarRho_approx::penalize(const double dt) const
 
 void PressureVarRho_approx::finalizePressure(const double dt) const
 {
-  const Real h = sim.getH(), pFac = -0.5*dt/h, invRho0 = 1 / rho0;
+  const Real h = sim.getH(), pFac = -0.5*dt/h;
+  #ifndef DECOUPLE
+    const Real invRho0 = 1 / rho0;
+     const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
+     const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
+  #endif
   const std::vector<BlockInfo>& iRhoInfo = sim.invRho->getBlocksInfo();
   const std::vector<BlockInfo>&  tmpInfo = sim.tmp->getBlocksInfo();
-  const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
-  const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
 
   #pragma omp parallel
   {
@@ -340,8 +347,10 @@ void PressureVarRho_approx::finalizePressure(const double dt) const
     for (size_t i=0; i < Nblocks; i++)
     {
        tmpLab.load( tmpInfo[i],0); const ScalarLab&__restrict__ Pcur =  tmpLab;
+      #ifndef DECOUPLE
       presLab.load(presInfo[i],0); const ScalarLab&__restrict__ P    = presLab;
       pOldLab.load(pOldInfo[i],0); const ScalarLab&__restrict__ pOld = pOldLab;
+      #endif
             VectorBlock&__restrict__   V = *(VectorBlock*)  velInfo[i].ptrBlock;
       const ScalarBlock&__restrict__ IRHO= *(ScalarBlock*) iRhoInfo[i].ptrBlock;
 
@@ -380,8 +389,8 @@ void PressureVarRho_approx::operator()(const double dt)
   const std::vector<BlockInfo>&  tmpInfo = sim.tmp->getBlocksInfo();
   #pragma omp parallel for schedule(static)
   for (size_t i=0; i < Nblocks; i++) {
-          VectorBlock & __restrict__ UT = *(VectorBlock*)   tmpVInfo[i].ptrBlock;
-    const VectorBlock & __restrict__  V = *(VectorBlock*)    velInfo[i].ptrBlock;
+          VectorBlock & __restrict__ UT = *(VectorBlock*) tmpVInfo[i].ptrBlock;
+    const VectorBlock & __restrict__  V = *(VectorBlock*)  velInfo[i].ptrBlock;
     UT.copy(V);
   }
 
@@ -424,7 +433,6 @@ void PressureVarRho_approx::operator()(const double dt)
       sim.startProfiler("PCorrect");
       pressureCorrection(dt);
       sim.stopProfiler();
-
     }
 
     #pragma omp parallel for schedule(static)
@@ -438,7 +446,7 @@ void PressureVarRho_approx::operator()(const double dt)
     }
 
     if(bConverged) break;
-    bConverged = relDF<0.0005 || iter>2*oldNsteps;
+    bConverged = (relDF<0.0005 && iter>0) || iter>2*oldNsteps;
     if(iter == 0) bConverged = false;
     // if penalization force converged, do one more Poisson solve
   }
@@ -447,10 +455,10 @@ void PressureVarRho_approx::operator()(const double dt)
 
   if(not sim.muteAll)
   {
-  std::stringstream ssF; ssF<<sim.path2file<<"/pressureIterStats.dat";
-  std::ofstream pfile(ssF.str().c_str(), std::ofstream::app);
-  if(sim.step==0) pfile<<"step time dt iter relDF"<<std::endl;
-  pfile<<sim.step<<" "<<sim.time<<" "<<sim.dt<<" "<<iter<<" "<<relDF<<std::endl;
+    std::stringstream ssF; ssF<<sim.path2file<<"/pressureIterStats.dat";
+    std::ofstream pfile(ssF.str().c_str(), std::ofstream::app);
+    if(sim.step==0) pfile<<"step time dt iter relDF"<<"\n";
+    pfile<<sim.step<<" "<<sim.time<<" "<<sim.dt<<" "<<iter<<" "<<relDF<<"\n";
   }
 }
 

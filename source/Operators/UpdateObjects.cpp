@@ -21,7 +21,6 @@ void UpdateObjects::integrateMomenta(Shape * const shape) const
 {
   const std::vector<ObstacleBlock*> & OBLOCK = shape->obstacleBlocks;
   const Real Cx = shape->centerOfMass[0], Cy = shape->centerOfMass[1];
-  const Real lambdt = sim.lambda * sim.dt;
   const double hsq = std::pow(velInfo[0].h_gridpoint, 2);
   double PM=0, PJ=0, PX=0, PY=0, UM=0, VM=0, AM=0; //linear momenta
 
@@ -33,7 +32,11 @@ void UpdateObjects::integrateMomenta(Shape * const shape) const
     if(OBLOCK[velInfo[i].blockID] == nullptr) continue;
     const CHI_MAT & __restrict__ rho = OBLOCK[velInfo[i].blockID]->rho;
     const CHI_MAT & __restrict__ chi = OBLOCK[velInfo[i].blockID]->chi;
-    const UDEFMAT & __restrict__ udef = OBLOCK[velInfo[i].blockID]->udef;
+    #ifndef EXPL_INTEGRATE_MOM
+      const Real lambdt = sim.lambda * sim.dt;
+      const UDEFMAT & __restrict__ udef = OBLOCK[velInfo[i].blockID]->udef;
+    #endif
+
     for(int iy=0; iy<VectorBlock::sizeY; ++iy)
     for(int ix=0; ix<VectorBlock::sizeX; ++ix)
     {

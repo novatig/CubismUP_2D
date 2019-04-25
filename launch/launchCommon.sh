@@ -19,7 +19,7 @@ mkdir -p ${FOLDERNAME}
 cp ../makefiles/simulation ${FOLDERNAME}
 cd ${FOLDERNAME}
 
-./simulation ${OPTIONS} -shapes "${OBJECTS}"
+./simulation ${OPTIONS} -shapes "${OBJECTS}" | tee out.log
 
 ###################################################################################################
 elif [ ${HOST:0:5} == 'daint' ] ; then
@@ -36,7 +36,7 @@ if [[ "$?" -gt "0" ]] ; then
 source launchSbatch.sh
 else
 cd ${FOLDERNAME}
-srun -n 1 simulation ${OPTIONS} -shapes "${OBJECTS}"
+srun -n 1 simulation ${OPTIONS} -shapes "${OBJECTS}" | tee out.log
 fi
 
 ###################################################################################################
@@ -52,7 +52,7 @@ mkdir -p ${FOLDERNAME}
 cp ../makefiles/simulation ${FOLDERNAME}
 cd ${FOLDERNAME}
 if [ "${RUNLOCAL}" == "true" ] ; then
-mpirun -n 1 ./simulation ${OPTIONS} -shapes "${OBJECTS}"
+mpirun -n 1 ./simulation ${OPTIONS} -shapes "${OBJECTS}" | tee out.log
 else
 bsub -n ${OMP_NUM_THREADS} -J ${RUNNAME} -W 24:00 -R "select[model==XeonGold_6150] span[ptile=${OMP_NUM_THREADS}]" mpirun -n 1 ./simulation ${OPTIONS} -shapes "${OBJECTS}"
 fi
@@ -69,7 +69,7 @@ mkdir -p ${FOLDERNAME}
 cp ../makefiles/simulation ${FOLDERNAME}
 cd ${FOLDERNAME}
 
-mpirun -n 1 ./simulation ${OPTIONS} -shapes "${OBJECTS}"
+mpirun -n 1 ./simulation ${OPTIONS} -shapes "${OBJECTS}" | tee out.log
 
 fi
 
