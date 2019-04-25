@@ -82,9 +82,9 @@ void IC::operator()(const double dt)
 
 void FadeOut::operator()(const double dt)
 {
-  //static constexpr double EPS = std::numeric_limits<Real>::epsilon();
+  static constexpr double EPS = std::numeric_limits<Real>::epsilon();
   static constexpr int BSX = VectorBlock::sizeX, BSY = VectorBlock::sizeY;
-  static constexpr int endX = BSX-1, endY = BSY-1;
+  static constexpr int BX=0, EX=BSX-1, BY=0, EY=BSY-1;
   //const auto& extent = sim.extents; const Real H = sim.vel->getH();
   const auto isW = [&](const BlockInfo& info) {
     return info.index[0] == 0;
@@ -98,8 +98,13 @@ void FadeOut::operator()(const double dt)
   const auto isN = [&](const BlockInfo& info) {
     return info.index[1] == sim.bpdy-1;
   };
+  const Real uinfx = sim.uinfx, uinfy = sim.uinfy;
+  const Real normU = std::max( std::sqrt(uinfx*uinfx + uinfy*uinfy), EPS );
+  const Real coefW = std::max( uinfx, (Real)0 ) / normU;
+  const Real coefE = std::max(-uinfx, (Real)0 ) / normU;
+  const Real coefS = std::max( uinfy, (Real)0 ) / normU;
+  const Real coefN = std::max(-uinfy, (Real)0 ) / normU;
 
-  {
   Real Uw=0, Vw=0, Ue=0, Ve=0, Us=0, Vs=0, Un=0, Vn=0;
   #pragma omp parallel for schedule(dynamic) reduction(+:Uw,Vw,Ue,Ve,Us,Vs,Un,Vn)
   for (size_t i=0; i < Nblocks; i++)
@@ -107,119 +112,57 @@ void FadeOut::operator()(const double dt)
     VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;
     if( isW(velInfo[i]) ) // west
       for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
-        if(sim.uinfx>0) VEL(   0,   iy).u[0] = 0;
-        Uw += VEL(   0,   iy).u[0];
-        Vw += VEL(   0,   iy).u[1]; }
+        VEL(BX, iy).u[0] -= coefW * VEL(BX, iy).u[0];
+        Uw += VEL(BX, iy).u[0];
+        Vw += VEL(BX, iy).u[1];
+      }
     if( isE(velInfo[i]) ) // east
       for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
-        if(sim.uinfx<0) VEL(endX,   iy).u[0] = 0;
-        Ue += VEL(endX,   iy).u[0];
-        Ve += VEL(endX,   iy).u[1]; }
+        VEL(EX, iy).u[0] -= coefE * VEL(EX, iy).u[0];
+        Ue += VEL(EX, iy).u[0];
+        Ve += VEL(EX, iy).u[1];
+      }
     if( isS(velInfo[i]) ) // south
       for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-        if(sim.uinfy>0) VEL(  ix,    0).u[1] = 0;
-        Us += VEL(  ix,    0).u[0];
-        Vs += VEL(  ix,    0).u[1]; }
+        VEL(ix, BY).u[1] -= coefS * VEL(ix, BY).u[1];
+        Us += VEL(ix, BY).u[0];
+        Vs += VEL(ix, BY).u[1];
+      }
     if( isN(velInfo[i]) ) // north
       for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-        if(sim.uinfy<0) VEL(  ix, endY).u[1] = 0;
-        Un += VEL(  ix, endY).u[0];
-        Vn += VEL(  ix, endY).u[1]; }
+        VEL(ix, EY).u[1] -= coefN * VEL(ix, EY).u[1];
+        Un += VEL(ix, EY).u[0];
+        Vn += VEL(ix, EY).u[1];
+      }
   }
   //printf("correction w:[%e %e] e:[%e %e] s:[%e %e] n:[%e %e]\n", Uw,Vw,Ue,Ve,Us,Vs,Un,Vn);
-
-  #if 1
   const auto NX = sim.bpdx * BSX, NY = sim.bpdy * BSY;
-  const Real corrUw = (NX*NY*Uw - 2*Uw + 2*Ue - NY*Un - NY*Us)/(NY*(NX*NY - 4));
-  const Real corrUe = (NX*NY*Ue - 2*Ue + 2*Uw - NY*Un - NY*Us)/(NY*(NX*NY - 4));
-  const Real corrUs = (NX*NY*Us - 2*Us + 2*Un - NX*Ue - NX*Uw)/(NX*(NX*NY - 4));
-  const Real corrUn = (NX*NY*Un - 2*Un + 2*Us - NX*Ue - NX*Uw)/(NX*(NX*NY - 4));
-  const Real corrVw = (NX*NY*Vw - 2*Vw + 2*Ve - NY*Vn - NY*Vs)/(NY*(NX*NY - 4));
-  const Real corrVe = (NX*NY*Ve - 2*Ve + 2*Vw - NY*Vn - NY*Vs)/(NY*(NX*NY - 4));
-  const Real corrVs = (NX*NY*Vs - 2*Vs + 2*Vn - NX*Ve - NX*Vw)/(NX*(NX*NY - 4));
-  const Real corrVn = (NX*NY*Vn - 2*Vn + 2*Vs - NX*Ve - NX*Vw)/(NX*(NX*NY - 4));
-  #else
-  const auto CU = solveMatrix(Uw, Ue, Us, Un);
-  const auto CV = solveMatrix(Vw, Ve, Vs, Vn);
-  const Real corrUw = CU[0], corrUe = CU[1], corrUs = CU[2], corrUn = CU[3];
-  const Real corrVw = CV[0], corrVe = CV[1], corrVs = CV[2], corrVn = CV[3];
-  #endif
-
+  const Real corrVw = Vw/NY, corrVe = Ve/NY, corrUs = Us/NX, corrUn = Un/NX;
   #pragma omp parallel for schedule(dynamic)
   for (size_t i=0; i < Nblocks; i++)
   {
     VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;
     if( isW(velInfo[i]) ) // west
       for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
-        VEL(   0,   iy).u[0] -= corrUw; VEL(   0,   iy).u[1] -= corrVw; }
+        // VEL(BX, iy).u[0] -= corrUw;
+        VEL(BX, iy).u[1] -= coefW * corrVw;
+      }
     if( isE(velInfo[i]) ) // east
       for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
-        VEL(endX,   iy).u[0] -= corrUe; VEL(endX,   iy).u[1] -= corrVe; }
+        // VEL(EX, iy).u[0] -= corrUe;
+        VEL(EX, iy).u[1] -= coefE * corrVe;
+      }
     if( isS(velInfo[i]) ) // south
       for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-        VEL(  ix,    0).u[0] -= corrUs; VEL(  ix,    0).u[1] -= corrVs; }
+        VEL(ix, BY).u[0] -= coefS * corrUs;
+        // VEL(ix, BY).u[1] -= corrVs;
+      }
     if( isN(velInfo[i]) ) // north
       for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-        VEL(  ix, endY).u[0] -= corrUn; VEL(  ix, endY).u[1] -= corrVn; }
+        VEL(ix, EY).u[0] -= coefN * corrUn;
+        // VEL(ix, EY).u[1] -= corrVn;
+      }
   }
-  }
-  if(0)
-  {
-    Real Uw=0, Vw=0, Ue=0, Ve=0, Us=0, Vs=0, Un=0, Vn=0;
-    #pragma omp parallel for schedule(dynamic) reduction(+:Uw,Vw,Ue,Ve,Us,Vs,Un,Vn)
-    for (size_t i=0; i < Nblocks; i++)
-    {
-      const VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;
-      if( isW(velInfo[i]) ) // west
-        for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
-          Uw += VEL(   0,   iy).u[0]; Vw += VEL(   0,   iy).u[1]; }
-      if( isE(velInfo[i]) ) // east
-        for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
-          Ue += VEL(endX,   iy).u[0]; Ve += VEL(endX,   iy).u[1]; }
-      if( isS(velInfo[i]) ) // south
-        for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-          Us += VEL(  ix,    0).u[0]; Vs += VEL(  ix,    0).u[1]; }
-      if( isN(velInfo[i]) ) // north
-        for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-          Un += VEL(  ix, endY).u[0]; Vn += VEL(  ix, endY).u[1]; }
-    }
-    printf("after correction w:[%e %e] e:[%e %e] s:[%e %e] n:[%e %e]\n", Uw,Vw,Ue,Ve,Us,Vs,Un,Vn);
-  }
-  /*
-  const Real fadeLenX = sim.fadeLenX, fadeLenY = sim.fadeLenY;
-  const Real invFadeX = 1/(fadeLenX+EPS), invFadeY = 1/(fadeLenY+EPS);
-  const auto _is_touching = [&] (const BlockInfo& i)
-  {
-    Real min_pos[2], max_pos[2];
-    i.pos(max_pos, VectorBlock::sizeX-1, VectorBlock::sizeY-1);
-    i.pos(min_pos, 0, 0);
-    const bool touchW = fadeLenX >= min_pos[0];
-    const bool touchE = fadeLenX >= extent[0] - max_pos[0];
-    const bool touchS = fadeLenY >= min_pos[1];
-    const bool touchN = fadeLenY >= extent[1] - max_pos[1];
-    return touchN || touchE || touchS || touchW;
-  };
-
-  #pragma omp parallel for schedule(dynamic)
-  for (size_t i=0; i < Nblocks; i++)
-  {
-    if( not _is_touching(velInfo[i]) ) continue;
-    VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;
-    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-    for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-    {
-      Real p[2]; velInfo[i].pos(p, ix, iy);
-      const Real yt = invFadeY*std::max(Real(0), fadeLenY - extent[1] + p[1] );
-      const Real yb = invFadeY*std::max(Real(0), fadeLenY - p[1] );
-      const Real xt = invFadeX*std::max(Real(0), fadeLenX - extent[0] + p[0] );
-      const Real xb = invFadeX*std::max(Real(0), fadeLenX - p[0] );
-      const Real killWidth = std::min( std::max({yt, yb, xt, xb}), (Real) 1);
-      const Real killFactor = 1 - std::pow(killWidth, 2);
-      VEL(ix,iy).u[0] *= killFactor;
-      VEL(ix,iy).u[1] *= killFactor;
-    }
-  }
-  */
 }
 
 Real findMaxU::run() const
