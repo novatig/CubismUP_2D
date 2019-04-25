@@ -120,6 +120,39 @@ void PressureVarRho_approx::updatePressureRHS(const double dt) const
   }
 }
 
+void PressureVarRho_approx::pressureCorrectionInit(const double dt) const
+{
+  const Real h = sim.getH(), pFac = -0.5*dt/h;
+  const std::vector<BlockInfo>& iRhoInfo = sim.invRho->getBlocksInfo();
+  const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
+  const std::vector<BlockInfo>& tmpVInfo = sim.tmpV->getBlocksInfo();
+  const std::vector<BlockInfo>& vPresInfo= sim.vFluid->getBlocksInfo();
+
+  #pragma omp parallel
+  {
+    static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 2, 2, 1};
+    ScalarLab presLab; presLab.prepare(*(sim.pres), stenBeg, stenEnd, 0);
+
+    #pragma omp for schedule(static)
+    for (size_t i=0; i < Nblocks; i++)
+    {
+      presLab.load(presInfo[i],0); const ScalarLab&__restrict__ P    = presLab;
+            VectorBlock&__restrict__   V = *(VectorBlock*)vPresInfo[i].ptrBlock;
+      const ScalarBlock&__restrict__ IRHO= *(ScalarBlock*) iRhoInfo[i].ptrBlock;
+      const VectorBlock&__restrict__ TMPV= *(VectorBlock*) tmpVInfo[i].ptrBlock;
+
+      for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix)
+      {
+          const Real pNextE = P(ix+1,iy).s, pNextW = P(ix-1,iy).s;
+          const Real pNextN = P(ix,iy+1).s, pNextS = P(ix,iy-1).s;
+          V(ix,iy).u[0] = TMPV(ix,iy).u[0] +pFac*(pNextE-pNextW) *IRHO(ix,iy).s;
+          V(ix,iy).u[1] = TMPV(ix,iy).u[1] +pFac*(pNextN-pNextS) *IRHO(ix,iy).s;
+      }
+    }
+  }
+}
+
 void PressureVarRho_approx::pressureCorrection(const double dt) const
 {
   const Real h = sim.getH(), pFac = -0.5*dt/h, invRho0 = 1 / rho0;
@@ -347,16 +380,31 @@ void PressureVarRho_approx::operator()(const double dt)
   const std::vector<BlockInfo>&  tmpInfo = sim.tmp->getBlocksInfo();
   #pragma omp parallel for schedule(static)
   for (size_t i=0; i < Nblocks; i++) {
-          VectorBlock & __restrict__ UF = *(VectorBlock*) tmpVInfo[i].ptrBlock;
-    const VectorBlock & __restrict__  V = *(VectorBlock*)  velInfo[i].ptrBlock;
-    UF.copy(V);
+          VectorBlock & __restrict__ UT = *(VectorBlock*)   tmpVInfo[i].ptrBlock;
+    const VectorBlock & __restrict__  V = *(VectorBlock*)    velInfo[i].ptrBlock;
+    UT.copy(V);
   }
+
+  pressureCorrectionInit(dt);
 
   int iter = 0;
   Real relDF = 1e3;
   bool bConverged = false;
   for(iter = 0; iter < 1000; iter++)
   {
+    sim.startProfiler("Obj_force");
+    for(Shape * const shape : sim.shapes)
+    {
+      // integrate vel in velocity after PP
+      integrateMomenta(shape);
+      shape->updateVelocity(dt);
+    }
+
+     // finally update vel with penalization but without pressure
+    relDF = penalize(dt);
+    sim.stopProfiler();
+    printf("iter:%02d - max relative error: %f\n", iter, relDF);
+
     // pressure solver is going to use as RHS = div VEL - \chi div UDEF
     sim.startProfiler("Prhs");
     updatePressureRHS(dt);
@@ -377,18 +425,6 @@ void PressureVarRho_approx::operator()(const double dt)
       pressureCorrection(dt);
       sim.stopProfiler();
 
-      sim.startProfiler("Obj_force");
-      for(Shape * const shape : sim.shapes)
-      {
-        // integrate vel in velocity after PP
-        integrateMomenta(shape);
-        shape->updateVelocity(dt);
-      }
-
-       // finally update vel with penalization but without pressure
-      relDF = penalize(dt);
-      sim.stopProfiler();
-      printf("iter:%02d - max relative error: %f\n", iter, relDF);
     }
 
     #pragma omp parallel for schedule(static)
@@ -402,7 +438,8 @@ void PressureVarRho_approx::operator()(const double dt)
     }
 
     if(bConverged) break;
-    else bConverged = ( iter>1 && relDF<0.0005 ) || iter>2*oldNsteps;
+    bConverged = relDF<0.0005 || iter>2*oldNsteps;
+    if(iter == 0) bConverged = false;
     // if penalization force converged, do one more Poisson solve
   }
 

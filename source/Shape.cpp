@@ -167,9 +167,9 @@ Shape::Integrals Shape::integrateObstBlock(const std::vector<BlockInfo>& vInfo)
   _y /= _m;
   // Parallel axis theorem:
   const double dC[2] = { _x - centerOfMass[0], _y - centerOfMass[1] };
-  assert( std::fabs(dC[0]) < 1000*std::numeric_limits<Real>::epsilon() );
-  assert( std::fabs(dC[1]) < 1000*std::numeric_limits<Real>::epsilon() );
-  assert( std::fabs(M - _m) <  10*std::numeric_limits<Real>::epsilon() );
+  //assert( std::fabs(dC[0]) < 1000*std::numeric_limits<Real>::epsilon() );
+  //assert( std::fabs(dC[1]) < 1000*std::numeric_limits<Real>::epsilon() );
+  //assert( std::fabs(M - _m) <  10*std::numeric_limits<Real>::epsilon() );
 
   // I_arbitrary_axis = I_CM + m * dist_CM_axis ^ 2 . Now _j is J around old CM
   _j = _j - _m*(dC[0]*dC[0] + dC[1]*dC[1]);
@@ -198,7 +198,7 @@ void Shape::removeMoments(const std::vector<BlockInfo>& vInfo)
   d_gm[0] =  dCx*std::cos(orientation) +dCy*std::sin(orientation);
   d_gm[1] = -dCx*std::sin(orientation) +dCy*std::cos(orientation);
 
-  #ifndef NDEBUG
+  #if 0 //ndef NDEBUG
     Real Cxtest = center[0] -std::cos(orientation)*d_gm[0] + std::sin(orientation)*d_gm[1];
     Real Cytest = center[1] -std::sin(orientation)*d_gm[0] - std::cos(orientation)*d_gm[1];
     if(std::fabs(Cxtest-centerOfMass[0])>EPS ||
@@ -224,7 +224,7 @@ void Shape::removeMoments(const std::vector<BlockInfo>& vInfo)
     }
   }
 
-  #ifndef NDEBUG
+  #if 0 //ndef NDEBUG
    Shape::Integrals Itest = integrateObstBlock(vInfo);
    if( std::fabs(Itest.u)>1000*EPS || std::fabs(Itest.v)>1000*EPS ||
        std::fabs(Itest.x-centerOfMass[0])>1000*EPS ||
