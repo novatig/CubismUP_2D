@@ -87,16 +87,16 @@ void FadeOut::operator()(const double dt)
   static constexpr int endX = BSX-1, endY = BSY-1;
   //const auto& extent = sim.extents; const Real H = sim.vel->getH();
   const auto isW = [&](const BlockInfo& info) {
-    return /*sim.uinfx>0 &&*/ info.index[0] == 0;
+    return info.index[0] == 0;
   };
   const auto isE = [&](const BlockInfo& info) {
-    return /*sim.uinfx<0 &&*/ info.index[0] == sim.bpdx-1;
+    return info.index[0] == sim.bpdx-1;
   };
   const auto isS = [&](const BlockInfo& info) {
-    return /*sim.uinfy>0 &&*/ info.index[1] == 0;
+    return info.index[1] == 0;
   };
   const auto isN = [&](const BlockInfo& info) {
-    return /*sim.uinfy<0 &&*/ info.index[1] == sim.bpdy-1;
+    return info.index[1] == sim.bpdy-1;
   };
 
   {
@@ -104,19 +104,27 @@ void FadeOut::operator()(const double dt)
   #pragma omp parallel for schedule(dynamic) reduction(+:Uw,Vw,Ue,Ve,Us,Vs,Un,Vn)
   for (size_t i=0; i < Nblocks; i++)
   {
-    const VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;
+    VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;
     if( isW(velInfo[i]) ) // west
       for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
-        Uw += VEL(   0,   iy).u[0]; Vw += VEL(   0,   iy).u[1]; }
+        if(sim.uinfx>0) VEL(   0,   iy).u[0] = 0;
+        Uw += VEL(   0,   iy).u[0];
+        Vw += VEL(   0,   iy).u[1]; }
     if( isE(velInfo[i]) ) // east
       for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
-        Ue += VEL(endX,   iy).u[0]; Ve += VEL(endX,   iy).u[1]; }
+        if(sim.uinfx<0) VEL(endX,   iy).u[0] = 0;
+        Ue += VEL(endX,   iy).u[0];
+        Ve += VEL(endX,   iy).u[1]; }
     if( isS(velInfo[i]) ) // south
       for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-        Us += VEL(  ix,    0).u[0]; Vs += VEL(  ix,    0).u[1]; }
+        if(sim.uinfy>0) VEL(  ix,    0).u[1] = 0;
+        Us += VEL(  ix,    0).u[0];
+        Vs += VEL(  ix,    0).u[1]; }
     if( isN(velInfo[i]) ) // north
       for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-        Un += VEL(  ix, endY).u[0]; Vn += VEL(  ix, endY).u[1]; }
+        if(sim.uinfy<0) VEL(  ix, endY).u[1] = 0;
+        Un += VEL(  ix, endY).u[0];
+        Vn += VEL(  ix, endY).u[1]; }
   }
   //printf("correction w:[%e %e] e:[%e %e] s:[%e %e] n:[%e %e]\n", Uw,Vw,Ue,Ve,Us,Vs,Un,Vn);
 

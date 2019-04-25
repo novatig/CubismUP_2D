@@ -74,13 +74,13 @@ void Simulation::parseRuntime()
   parser.set_strict_mode();
   sim.bpdx = parser("-bpdx").asInt();
   sim.bpdy = parser("-bpdy").asInt();
+  sim.extent = parser("-extent").asDouble(1);
   sim.allocateGrid();
 
   // simulation ending parameters
   parser.unset_strict_mode();
   sim.nsteps = parser("-nsteps").asInt(0);
   sim.endTime = parser("-tend").asDouble(0);
-  sim.extent = parser("-extent").asDouble(1);
 
   // output parameters
   sim.dumpFreq = parser("-fdump").asInt(0);
@@ -107,7 +107,6 @@ void Simulation::parseRuntime()
 
 void Simulation::createShapes()
 {
-  const Real ext = std::max(sim.bpdx, sim.bpdy);
   const std::string shapeArg = parser("-shapes").asString("");
   std::stringstream descriptors( shapeArg );
   std::string lines;
@@ -133,8 +132,8 @@ void Simulation::createShapes()
       if(objectName.empty() or objectName[0]=='#') continue;
       FactoryFileLineParser ffparser(line_stream);
       double center[2] = {
-        ffparser("-xpos").asDouble(.5*sim.bpdx/ext),
-        ffparser("-ypos").asDouble(.5*sim.bpdy/ext)
+        ffparser("-xpos").asDouble(.5*sim.extents[0]),
+        ffparser("-ypos").asDouble(.5*sim.extents[1])
       };
       //ffparser.print_args();
       Shape* shape = nullptr;

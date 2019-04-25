@@ -6,8 +6,8 @@ CPPFLAGS+=-I/home/novatig/hypre/build/include/
 
 else
 
-CPPFLAGS += -I${HDF5_INCLUDE}
-LIBS += -L${HDF5_LIB}
+#CPPFLAGS += -I${HDF5_INCLUDE}
+#LIBS += -L${HDF5_LIB}
 
 LIBS+= -L/home/novatig/hypre/build_intel/lib/
 CPPFLAGS+=-I/home/novatig/hypre/build_intel/include/

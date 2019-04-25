@@ -16,24 +16,24 @@ using namespace cubism;
 
 void SimulationData::allocateGrid()
 {
-  chi   = new ScalarGrid(bpdx, bpdy, extent);
-  vel   = new VectorGrid(bpdx, bpdy, extent);
-  pres  = new ScalarGrid(bpdx, bpdy, extent);
-  pOld  = new ScalarGrid(bpdx, bpdy, extent);
+  chi   = new ScalarGrid(bpdx, bpdy, 1, extent);
+  vel   = new VectorGrid(bpdx, bpdy, 1, extent);
+  pres  = new ScalarGrid(bpdx, bpdy, 1, extent);
+  pOld  = new ScalarGrid(bpdx, bpdy, 1, extent);
 
-  pRHS  = new ScalarGrid(bpdx, bpdy, extent);
-  invRho= new ScalarGrid(bpdx, bpdy, extent);
+  pRHS  = new ScalarGrid(bpdx, bpdy, 1, extent);
+  invRho= new ScalarGrid(bpdx, bpdy, 1, extent);
 
-  tmpV  = new VectorGrid(bpdx, bpdy, extent);
-  vFluid= new VectorGrid(bpdx, bpdy, extent);
-  tmp   = new ScalarGrid(bpdx, bpdy, extent);
-  uDef  = new VectorGrid(bpdx, bpdy, extent);
+  tmpV  = new VectorGrid(bpdx, bpdy, 1, extent);
+  vFluid= new VectorGrid(bpdx, bpdy, 1, extent);
+  tmp   = new ScalarGrid(bpdx, bpdy, 1, extent);
+  uDef  = new VectorGrid(bpdx, bpdy, 1, extent);
 
-  dump  = new DumpGrid(bpdx, bpdy, extent);
+  dump  = new DumpGrid(bpdx, bpdy, 1, extent);
 
   extents[0] = bpdx * vel->getH() * VectorBlock::sizeX;
   extents[1] = bpdy * vel->getH() * VectorBlock::sizeY;
-  printf("Extents %e %e\n", extents[0], extents[1]);
+  printf("Extents %e %e (%e)\n", extents[0], extents[1], extent);
 }
 
 void SimulationData::dumpGlue(std::string name) {

@@ -45,7 +45,7 @@ class FFTW_periodic : public PoissonSolver
         const Real inv_denom = denom == 0 ? 0 : 1 / denom;
         const Real fatfactor = 12 * norm_factor * inv_denom;
       #elif 0 // based on the 3 point stencil in 1D (h^2 error)
-        const Real X = waveFactX*i, Y = waveFactY * j;
+        const Real X = waveFactX * i, Y = waveFactY * j;
         const Real denom =  2*(std::cos(X) + std::cos(Y)) - 4;
         const Real inv_denom = denom == 0 ? 0 : 1 / denom;
         const Real fatfactor = norm_factor * inv_denom;
