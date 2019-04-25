@@ -8,8 +8,42 @@
 
 
 #include "Helpers.h"
+#include <gsl/gsl_linalg.h>
 
 using namespace cubism;
+
+
+std::array<double, 4> FadeOut::solveMatrix(const double W, const double E,
+                                           const double S, const double N) const
+{
+  static constexpr int BSX = VectorBlock::sizeX, BSY = VectorBlock::sizeY;
+  const double NX = sim.bpdx * BSX, NY = sim.bpdy * BSY;
+  double A[4][4] = {
+      {  NY, 0.0, 1.0, 1.0},
+      { 0.0,  NY, 1.0, 1.0},
+      { 1.0, 1.0,  NX, 0.0},
+      { 1.0, 1.0, 0.0,  NX}
+  };
+
+  double b[4] = { W, E, S, N };
+
+  gsl_matrix_view Agsl = gsl_matrix_view_array (&A[0][0], 4, 4);
+  gsl_vector_view bgsl = gsl_vector_view_array (b, 4);
+  gsl_vector *xgsl = gsl_vector_alloc (4);
+  int sgsl;
+  gsl_permutation * permgsl = gsl_permutation_alloc (4);
+  gsl_linalg_LU_decomp (& Agsl.matrix, permgsl, & sgsl);
+  gsl_linalg_LU_solve ( & Agsl.matrix, permgsl, & bgsl.vector, xgsl);
+
+  std::array<double, 4> ret = {gsl_vector_get(xgsl, 0),
+                               gsl_vector_get(xgsl, 1),
+                               gsl_vector_get(xgsl, 2),
+                               gsl_vector_get(xgsl, 3)};
+  gsl_permutation_free (permgsl);
+  gsl_vector_free (xgsl);
+  return ret;
+}
+
 
 void IC::operator()(const double dt)
 {
@@ -44,6 +78,140 @@ void IC::operator()(const double dt)
     assert(velInfo[i].blockID ==  pRHSInfo[i].blockID);
     assert(velInfo[i].blockID ==  tmpVInfo[i].blockID);
   }
+}
+
+void FadeOut::operator()(const double dt)
+{
+  //static constexpr double EPS = std::numeric_limits<Real>::epsilon();
+  static constexpr int BSX = VectorBlock::sizeX, BSY = VectorBlock::sizeY;
+  static constexpr int endX = BSX-1, endY = BSY-1;
+  //const auto& extent = sim.extents; const Real H = sim.vel->getH();
+  const auto isW = [&](const BlockInfo& info) {
+    return /*sim.uinfx>0 &&*/ info.index[0] == 0;
+  };
+  const auto isE = [&](const BlockInfo& info) {
+    return /*sim.uinfx<0 &&*/ info.index[0] == sim.bpdx-1;
+  };
+  const auto isS = [&](const BlockInfo& info) {
+    return /*sim.uinfy>0 &&*/ info.index[1] == 0;
+  };
+  const auto isN = [&](const BlockInfo& info) {
+    return /*sim.uinfy<0 &&*/ info.index[1] == sim.bpdy-1;
+  };
+
+  {
+  Real Uw=0, Vw=0, Ue=0, Ve=0, Us=0, Vs=0, Un=0, Vn=0;
+  #pragma omp parallel for schedule(dynamic) reduction(+:Uw,Vw,Ue,Ve,Us,Vs,Un,Vn)
+  for (size_t i=0; i < Nblocks; i++)
+  {
+    const VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;
+    if( isW(velInfo[i]) ) // west
+      for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
+        Uw += VEL(   0,   iy).u[0]; Vw += VEL(   0,   iy).u[1]; }
+    if( isE(velInfo[i]) ) // east
+      for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
+        Ue += VEL(endX,   iy).u[0]; Ve += VEL(endX,   iy).u[1]; }
+    if( isS(velInfo[i]) ) // south
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
+        Us += VEL(  ix,    0).u[0]; Vs += VEL(  ix,    0).u[1]; }
+    if( isN(velInfo[i]) ) // north
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
+        Un += VEL(  ix, endY).u[0]; Vn += VEL(  ix, endY).u[1]; }
+  }
+  //printf("correction w:[%e %e] e:[%e %e] s:[%e %e] n:[%e %e]\n", Uw,Vw,Ue,Ve,Us,Vs,Un,Vn);
+
+  #if 1
+  const auto NX = sim.bpdx * BSX, NY = sim.bpdy * BSY;
+  const Real corrUw = (NX*NY*Uw - 2*Uw + 2*Ue - NY*Un - NY*Us)/(NY*(NX*NY - 4));
+  const Real corrUe = (NX*NY*Ue - 2*Ue + 2*Uw - NY*Un - NY*Us)/(NY*(NX*NY - 4));
+  const Real corrUs = (NX*NY*Us - 2*Us + 2*Un - NX*Ue - NX*Uw)/(NX*(NX*NY - 4));
+  const Real corrUn = (NX*NY*Un - 2*Un + 2*Us - NX*Ue - NX*Uw)/(NX*(NX*NY - 4));
+  const Real corrVw = (NX*NY*Vw - 2*Vw + 2*Ve - NY*Vn - NY*Vs)/(NY*(NX*NY - 4));
+  const Real corrVe = (NX*NY*Ve - 2*Ve + 2*Vw - NY*Vn - NY*Vs)/(NY*(NX*NY - 4));
+  const Real corrVs = (NX*NY*Vs - 2*Vs + 2*Vn - NX*Ve - NX*Vw)/(NX*(NX*NY - 4));
+  const Real corrVn = (NX*NY*Vn - 2*Vn + 2*Vs - NX*Ve - NX*Vw)/(NX*(NX*NY - 4));
+  #else
+  const auto CU = solveMatrix(Uw, Ue, Us, Un);
+  const auto CV = solveMatrix(Vw, Ve, Vs, Vn);
+  const Real corrUw = CU[0], corrUe = CU[1], corrUs = CU[2], corrUn = CU[3];
+  const Real corrVw = CV[0], corrVe = CV[1], corrVs = CV[2], corrVn = CV[3];
+  #endif
+
+  #pragma omp parallel for schedule(dynamic)
+  for (size_t i=0; i < Nblocks; i++)
+  {
+    VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;
+    if( isW(velInfo[i]) ) // west
+      for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
+        VEL(   0,   iy).u[0] -= corrUw; VEL(   0,   iy).u[1] -= corrVw; }
+    if( isE(velInfo[i]) ) // east
+      for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
+        VEL(endX,   iy).u[0] -= corrUe; VEL(endX,   iy).u[1] -= corrVe; }
+    if( isS(velInfo[i]) ) // south
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
+        VEL(  ix,    0).u[0] -= corrUs; VEL(  ix,    0).u[1] -= corrVs; }
+    if( isN(velInfo[i]) ) // north
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
+        VEL(  ix, endY).u[0] -= corrUn; VEL(  ix, endY).u[1] -= corrVn; }
+  }
+  }
+  if(0)
+  {
+    Real Uw=0, Vw=0, Ue=0, Ve=0, Us=0, Vs=0, Un=0, Vn=0;
+    #pragma omp parallel for schedule(dynamic) reduction(+:Uw,Vw,Ue,Ve,Us,Vs,Un,Vn)
+    for (size_t i=0; i < Nblocks; i++)
+    {
+      const VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;
+      if( isW(velInfo[i]) ) // west
+        for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
+          Uw += VEL(   0,   iy).u[0]; Vw += VEL(   0,   iy).u[1]; }
+      if( isE(velInfo[i]) ) // east
+        for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
+          Ue += VEL(endX,   iy).u[0]; Ve += VEL(endX,   iy).u[1]; }
+      if( isS(velInfo[i]) ) // south
+        for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
+          Us += VEL(  ix,    0).u[0]; Vs += VEL(  ix,    0).u[1]; }
+      if( isN(velInfo[i]) ) // north
+        for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
+          Un += VEL(  ix, endY).u[0]; Vn += VEL(  ix, endY).u[1]; }
+    }
+    printf("after correction w:[%e %e] e:[%e %e] s:[%e %e] n:[%e %e]\n", Uw,Vw,Ue,Ve,Us,Vs,Un,Vn);
+  }
+  /*
+  const Real fadeLenX = sim.fadeLenX, fadeLenY = sim.fadeLenY;
+  const Real invFadeX = 1/(fadeLenX+EPS), invFadeY = 1/(fadeLenY+EPS);
+  const auto _is_touching = [&] (const BlockInfo& i)
+  {
+    Real min_pos[2], max_pos[2];
+    i.pos(max_pos, VectorBlock::sizeX-1, VectorBlock::sizeY-1);
+    i.pos(min_pos, 0, 0);
+    const bool touchW = fadeLenX >= min_pos[0];
+    const bool touchE = fadeLenX >= extent[0] - max_pos[0];
+    const bool touchS = fadeLenY >= min_pos[1];
+    const bool touchN = fadeLenY >= extent[1] - max_pos[1];
+    return touchN || touchE || touchS || touchW;
+  };
+
+  #pragma omp parallel for schedule(dynamic)
+  for (size_t i=0; i < Nblocks; i++)
+  {
+    if( not _is_touching(velInfo[i]) ) continue;
+    VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;
+    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+    for(int ix=0; ix<VectorBlock::sizeX; ++ix)
+    {
+      Real p[2]; velInfo[i].pos(p, ix, iy);
+      const Real yt = invFadeY*std::max(Real(0), fadeLenY - extent[1] + p[1] );
+      const Real yb = invFadeY*std::max(Real(0), fadeLenY - p[1] );
+      const Real xt = invFadeX*std::max(Real(0), fadeLenX - extent[0] + p[0] );
+      const Real xb = invFadeX*std::max(Real(0), fadeLenX - p[0] );
+      const Real killWidth = std::min( std::max({yt, yb, xt, xb}), (Real) 1);
+      const Real killFactor = 1 - std::pow(killWidth, 2);
+      VEL(ix,iy).u[0] *= killFactor;
+      VEL(ix,iy).u[1] *= killFactor;
+    }
+  }
+  */
 }
 
 Real findMaxU::run() const

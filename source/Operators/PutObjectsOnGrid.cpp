@@ -163,10 +163,10 @@ void PutObjectsOnGrid::operator()(const double dt)
     shape->updatePosition(dt);
     double p[2] = {0,0};
     shape->getCentroid(p);
-    const Real maxExtent = std::max(sim.bpdx, sim.bpdy);
-    double simExtent[2] = {sim.bpdx/maxExtent, sim.bpdy/maxExtent};
-    if (p[0]<0 || p[0]>simExtent[0] || p[1]<0 || p[1]>simExtent[1]) {
-      std::cout << "Body out of domain: " << p[0] << " " << p[1] << std::endl;
+    const auto& extent = sim.extents;
+    if (p[0]<0 || p[0]>extent[0] || p[1]<0 || p[1]>extent[1]) {
+      printf("Body out of domain [0,%f]x[0,%f] CM:[%e,%e]\n",
+        extent[0], extent[1], p[0], p[1]);
       exit(0);
     }
   }

@@ -50,9 +50,10 @@ struct SimulationData
   double nu = 0;
   double dlm = 1;
   double extent = 1;
+  std::array<Real,2> extents = { (Real) 1, (Real) 1 };
   Real fadeLenX = 0, fadeLenY = 0;
 
-  std::array<Real,2> gravity = { (Real) 0.0, (Real) -9.80665 };
+  std::array<Real,2> gravity = { (Real) 0.0, (Real) -9.8 };
   // nsteps==0 means that this stopping criteria is not active
   int nsteps = 0;
   // endTime==0  means that this stopping criteria is not active
