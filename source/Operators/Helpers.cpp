@@ -105,8 +105,7 @@ void FadeOut::operator()(const double dt)
   const Real coefS = std::max( uinfy, (Real)0 ) / normU;
   const Real coefN = std::max(-uinfy, (Real)0 ) / normU;
 
-  Real Uw=0, Vw=0, Ue=0, Ve=0, Us=0, Vs=0, Un=0, Vn=0;
-  #pragma omp parallel for schedule(dynamic) reduction(+:Uw,Vw,Ue,Ve,Us,Vs,Un,Vn)
+  #pragma omp parallel for schedule(dynamic)
   for (size_t i=0; i < Nblocks; i++)
   {
     VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;
@@ -114,57 +113,21 @@ void FadeOut::operator()(const double dt)
       for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
         VEL(BX, iy).u[0] -= coefW * VEL(BX, iy).u[0];
         VEL(BX, iy).u[1] -= coefW * VEL(BX, iy).u[1];
-        Uw += VEL(BX, iy).u[0];
-        Vw += VEL(BX, iy).u[1];
       }
     if( isE(velInfo[i]) ) // east
       for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
         VEL(EX, iy).u[0] -= coefE * VEL(EX, iy).u[0];
         VEL(EX, iy).u[1] -= coefE * VEL(EX, iy).u[1];
-        Ue += VEL(EX, iy).u[0];
-        Ve += VEL(EX, iy).u[1];
       }
     if( isS(velInfo[i]) ) // south
       for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
         VEL(ix, BY).u[0] -= coefS * VEL(ix, BY).u[0];
         VEL(ix, BY).u[1] -= coefS * VEL(ix, BY).u[1];
-        Us += VEL(ix, BY).u[0];
-        Vs += VEL(ix, BY).u[1];
       }
     if( isN(velInfo[i]) ) // north
       for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
         VEL(ix, EY).u[0] -= coefN * VEL(ix, EY).u[0];
         VEL(ix, EY).u[1] -= coefN * VEL(ix, EY).u[1];
-        Un += VEL(ix, EY).u[0];
-        Vn += VEL(ix, EY).u[1];
-      }
-  }
-  //printf("correction w:[%e %e] e:[%e %e] s:[%e %e] n:[%e %e]\n", Uw,Vw,Ue,Ve,Us,Vs,Un,Vn);
-  const auto NX = sim.bpdx * BSX, NY = sim.bpdy * BSY;
-  const Real corrVw = Vw/NY, corrVe = Ve/NY, corrUs = Us/NX, corrUn = Un/NX;
-  #pragma omp parallel for schedule(dynamic)
-  for (size_t i=0; i < Nblocks; i++)
-  {
-    VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;
-    if( isW(velInfo[i]) ) // west
-      for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
-        // VEL(BX, iy).u[0] -= corrUw;
-        VEL(BX, iy).u[1] -= coefW * corrVw;
-      }
-    if( isE(velInfo[i]) ) // east
-      for(int iy=0; iy<VectorBlock::sizeY; ++iy) {
-        // VEL(EX, iy).u[0] -= corrUe;
-        VEL(EX, iy).u[1] -= coefE * corrVe;
-      }
-    if( isS(velInfo[i]) ) // south
-      for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-        VEL(ix, BY).u[0] -= coefS * corrUs;
-        // VEL(ix, BY).u[1] -= corrVs;
-      }
-    if( isN(velInfo[i]) ) // north
-      for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-        VEL(ix, EY).u[0] -= coefN * corrUn;
-        // VEL(ix, EY).u[1] -= corrVn;
       }
   }
 }
