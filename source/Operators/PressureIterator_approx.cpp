@@ -13,9 +13,9 @@
 #include "Utils/BufferedLogger.h"
 
 using namespace cubism;
-#define ETA   0.2
+#define ETA   0
 #define ALPHA 1
-// #define DECOUPLE
+#define DECOUPLE
 //#define EXPL_INTEGRATE_MOM
 
 template<typename T>
@@ -108,8 +108,8 @@ void PressureVarRho_approx::updatePressureRHS(const double dt) const
         const Real dE = pNextE - pNextC, dW = pNextC - pNextW;
         // hatPfac=div((1-1/rho^*) gradP), div gives missing 1/h to make h^2
         const Real hatPfac = rE*dE - rW*dW + rN*dN - rS*dS;
-        const Real divVx  = V(ix+1,iy).u[0]    - V(ix-1,iy).u[0];
-        const Real divVy  = V(ix,iy+1).u[1]    - V(ix,iy-1).u[1];
+        const Real divVx  =    V(ix+1,iy).u[0] -    V(ix-1,iy).u[0];
+        const Real divVy  =    V(ix,iy+1).u[1] -    V(ix,iy-1).u[1];
         const Real divUSx = UDEF(ix+1,iy).u[0] - UDEF(ix-1,iy).u[0];
         const Real divUSy = UDEF(ix,iy+1).u[1] - UDEF(ix,iy-1).u[1];
         const Real rhsDiv = divVx+divVy - CHI(ix,iy).s * (divUSx+divUSy);
@@ -153,20 +153,20 @@ void PressureVarRho_approx::pressureCorrectionInit(const double dt) const
   }
 }
 
-void PressureVarRho_approx::pressureCorrection(const double dt) const
+Real PressureVarRho_approx::pressureCorrection(const double dt) const
 {
   const Real h = sim.getH(), pFac = -0.5*dt/h;
   const std::vector<BlockInfo>& iRhoInfo = sim.invRho->getBlocksInfo();
   const std::vector<BlockInfo>&  tmpInfo = sim.tmp->getBlocksInfo();
+  const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
   #ifndef DECOUPLE
     const Real invRho0 = 1 / rho0;
-    const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
     const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
   #endif
   const std::vector<BlockInfo>& tmpVInfo = sim.tmpV->getBlocksInfo();
   const std::vector<BlockInfo>& vPresInfo= sim.vFluid->getBlocksInfo();
-
-  #pragma omp parallel
+  Real DP = 0, NP = 0;
+  #pragma omp parallel reduction(+ : DP, NP)
   {
     static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 2, 2, 1};
     ScalarLab  tmpLab;  tmpLab.prepare(*(sim.tmp ), stenBeg, stenEnd, 0);
@@ -177,8 +177,8 @@ void PressureVarRho_approx::pressureCorrection(const double dt) const
     for (size_t i=0; i < Nblocks; i++)
     {
        tmpLab.load( tmpInfo[i],0); const ScalarLab&__restrict__ Pcur =  tmpLab;
-      #ifndef DECOUPLE
       presLab.load(presInfo[i],0); const ScalarLab&__restrict__ P    = presLab;
+      #ifndef DECOUPLE
       pOldLab.load(pOldInfo[i],0); const ScalarLab&__restrict__ pOld = pOldLab;
       #endif
             VectorBlock&__restrict__   V = *(VectorBlock*)vPresInfo[i].ptrBlock;
@@ -206,9 +206,13 @@ void PressureVarRho_approx::pressureCorrection(const double dt) const
           V(ix,iy).u[0] = TMPV(ix,iy).u[0] +pFac*(pNextE-pNextW) *IRHO(ix,iy).s;
           V(ix,iy).u[1] = TMPV(ix,iy).u[1] +pFac*(pNextN-pNextS) *IRHO(ix,iy).s;
         #endif
+        DP += std::pow(Pcur(ix,iy).s - P(ix,iy).s, 2);
+        NP += std::pow(P(ix,iy).s, 2);
       }
     }
   }
+
+  return std::sqrt(DP / std::max(EPS, NP));
 }
 
 void PressureVarRho_approx::integrateMomenta(Shape * const shape) const
@@ -397,7 +401,7 @@ void PressureVarRho_approx::operator()(const double dt)
   pressureCorrectionInit(dt);
 
   int iter = 0;
-  Real relDF = 1e3;
+  Real relDF = 1e3, relDP = 1e3;
   bool bConverged = false;
   for(iter = 0; iter < 1000; iter++)
   {
@@ -412,7 +416,6 @@ void PressureVarRho_approx::operator()(const double dt)
      // finally update vel with penalization but without pressure
     relDF = penalize(dt);
     sim.stopProfiler();
-    printf("iter:%02d - max relative error: %f\n", iter, relDF);
 
     // pressure solver is going to use as RHS = div VEL - \chi div UDEF
     sim.startProfiler("Prhs");
@@ -431,23 +434,25 @@ void PressureVarRho_approx::operator()(const double dt)
     else
     {
       sim.startProfiler("PCorrect");
-      pressureCorrection(dt);
+      relDP = pressureCorrection(dt);
       sim.stopProfiler();
     }
+    printf("iter:%02d - rel. err penal:%e press:%e\n", iter, relDF, relDP);
+    relDF = std::max(relDF, relDP);
 
     #pragma omp parallel for schedule(static)
     for (size_t i=0; i < Nblocks; i++)
     {
-      const ScalarBlock& __restrict__ Pn = *(ScalarBlock*)  tmpInfo[i].ptrBlock;
-            ScalarBlock& __restrict__ Pc = *(ScalarBlock*) presInfo[i].ptrBlock;
-            ScalarBlock& __restrict__ Po = *(ScalarBlock*) pOldInfo[i].ptrBlock;
-      Po.copy(Pc);
-      Pc.copy(Pn);
+      const auto& __restrict__ Pnew = *(ScalarBlock*)  tmpInfo[i].ptrBlock;
+            auto& __restrict__ Pcur = *(ScalarBlock*) presInfo[i].ptrBlock;
+            auto& __restrict__ Pold = *(ScalarBlock*) pOldInfo[i].ptrBlock;
+      Pold.copy(Pcur);
+      Pcur.copy(Pnew);
     }
 
     if(bConverged) break;
     bConverged = (relDF<0.0005 && iter>0) || iter>2*oldNsteps;
-    if(iter == 0) bConverged = false;
+    // bConverged = true;
     // if penalization force converged, do one more Poisson solve
   }
 

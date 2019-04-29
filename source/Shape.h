@@ -27,13 +27,13 @@ class Shape
   double orientation;
 
   const double rhoS;
-  const bool bForced;
   const bool bFixed;
+  const bool bFixedx;
+  const bool bFixedy;
+  const bool bForced;
   const bool bForcedx;
   const bool bForcedy;
   const bool bBlockang;
-  const bool bFixedx;
-  const bool bFixedy;
   const double forcedu;
   const double forcedv;
 

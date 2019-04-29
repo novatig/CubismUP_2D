@@ -26,20 +26,48 @@ class FFTW_dirichlet : public PoissonSolver
   const Real norm_factor = 0.25/(MX*MY);
   myplan fwd, bwd;
 
+  inline void _solveSpectral() const
+  {
+    const Real waveFactX = M_PI/MX, waveFactY = M_PI/MY;
+    Real * __restrict__ const in_out = buffer;
+    #pragma omp parallel for schedule(static)
+    for(size_t j=0; j<MY; ++j)
+    for(size_t i=0; i<MX; ++i) {
+      const Real rkx = (i+(Real).5)*waveFactX, rky = (j+(Real).5)*waveFactY;
+      in_out[j * MX + i] *= - norm_factor / (rkx*rkx+rky*rky);
+    }
+    in_out[0] = 0; //this is sparta! (part 2)
+  }
+
   inline void _solve() const
   {
     const Real waveFactX = M_PI/MX, waveFactY = M_PI/MY;
     Real * __restrict__ const in_out = buffer;
     #pragma omp parallel for schedule(static)
     for(size_t j=0; j<MY; ++j)
-    for(size_t i=0; i<MX; ++i)
-    {
-      const Real rkx = (i+0.5)*waveFactX, rky = (j+0.5)*waveFactY;
-      //const Real kinv = (kx==0 && ky==0) ? 0 : -1/(rkx*rkx+rky*rky);
-      const Real kinv = -1/(rkx*rkx+rky*rky); //this is sparta! (part 1)
-      in_out[j * MX + i] *= kinv*norm_factor;
+    for(size_t i=0; i<MX; ++i) {
+      const Real cosx = std::cos(2*waveFactX*i), cosy = std::cos(2*waveFactY*j);
+      const Real rkx = (i + (Real).5)*waveFactX, rky = (j + (Real).5)*waveFactY;
+      const Real denomFD = 1 - cosx/2 - cosy/2;
+      const Real denomSP = rkx*rkx + rky*rky;
+      in_out[j * MX + i] *=  - norm_factor / ( (denomFD + denomSP) / 2 );
     }
     in_out[0] = 0; //this is sparta! (part 2)
+    ///*
+    //in_out[    MX-1 ] = 0; // j=0, i=end
+    //in_out[MX*(MY-1)] = 0; // j=end, i=0
+    //in_out[MX*MY -1 ] = 0; // j=end, i=end
+    //*/
+    /*
+    #pragma omp parallel for schedule(static)
+    for(size_t j=0; j<MY; ++j) in_out[   j   * MX + (MX-1)] = 0;
+    #pragma omp parallel for schedule(static)
+    for(size_t j=0; j<MY; ++j) in_out[   j   * MX + (MX-2)] = 0;
+    #pragma omp parallel for schedule(static)
+    for(size_t i=0; i<MX; ++i) in_out[(MY-1) * MX +    i  ] = 0;
+    #pragma omp parallel for schedule(static)
+    for(size_t i=0; i<MX; ++i) in_out[(MY-2) * MX +    i  ] = 0;
+    */
   }
 
  public:

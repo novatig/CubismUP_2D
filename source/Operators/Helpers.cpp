@@ -9,6 +9,7 @@
 
 #include "Helpers.h"
 #include <gsl/gsl_linalg.h>
+#include <random>
 
 using namespace cubism;
 
@@ -57,26 +58,37 @@ void IC::operator()(const double dt)
   const std::vector<BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
   const std::vector<BlockInfo>& iRhoInfo  = sim.invRho->getBlocksInfo();
 
-  #pragma omp parallel for schedule(static)
-  for (size_t i=0; i < Nblocks; i++)
+  #pragma omp parallel
   {
-    VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;  VEL.clear();
-    VectorBlock& UDEF= *(VectorBlock*) uDefInfo[i].ptrBlock; UDEF.clear();
-    ScalarBlock& CHI = *(ScalarBlock*)  chiInfo[i].ptrBlock;  CHI.clear();
-    ScalarBlock& PRES= *(ScalarBlock*) presInfo[i].ptrBlock; PRES.clear();
-    //VectorBlock&    F= *(VectorBlock*)forceInfo[i].ptrBlock;    F.clear();
+    //std::random_device rd;
+    //std::normal_distribution<Real> dist(0, 1e-7);
+    //std::mt19937 gen(rd());
+    #pragma omp for schedule(static)
+    for (size_t i=0; i < Nblocks; i++)
+    {
+      VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;  VEL.clear();
+      VectorBlock& UDEF= *(VectorBlock*) uDefInfo[i].ptrBlock; UDEF.clear();
+      ScalarBlock& CHI = *(ScalarBlock*)  chiInfo[i].ptrBlock;  CHI.clear();
+      ScalarBlock& PRES= *(ScalarBlock*) presInfo[i].ptrBlock; PRES.clear();
+      //VectorBlock&    F= *(VectorBlock*)forceInfo[i].ptrBlock;    F.clear();
 
-    ScalarBlock& TMP = *(ScalarBlock*)  tmpInfo[i].ptrBlock;  TMP.clear();
-    ScalarBlock& PRHS= *(ScalarBlock*) pRHSInfo[i].ptrBlock; PRHS.clear();
-    VectorBlock& TMPV= *(VectorBlock*) tmpVInfo[i].ptrBlock; TMPV.clear();
-    ScalarBlock& IRHO= *(ScalarBlock*) iRhoInfo[i].ptrBlock; IRHO.set(1);
-    assert(velInfo[i].blockID ==  uDefInfo[i].blockID);
-    assert(velInfo[i].blockID ==   chiInfo[i].blockID);
-    assert(velInfo[i].blockID ==  presInfo[i].blockID);
-    //assert(velInfo[i].blockID == forceInfo[i].blockID);
-    assert(velInfo[i].blockID ==   tmpInfo[i].blockID);
-    assert(velInfo[i].blockID ==  pRHSInfo[i].blockID);
-    assert(velInfo[i].blockID ==  tmpVInfo[i].blockID);
+      ScalarBlock& TMP = *(ScalarBlock*)  tmpInfo[i].ptrBlock;  TMP.clear();
+      ScalarBlock& PRHS= *(ScalarBlock*) pRHSInfo[i].ptrBlock; PRHS.clear();
+      VectorBlock& TMPV= *(VectorBlock*) tmpVInfo[i].ptrBlock; TMPV.clear();
+      ScalarBlock& IRHO= *(ScalarBlock*) iRhoInfo[i].ptrBlock; IRHO.set(1);
+      assert(velInfo[i].blockID ==  uDefInfo[i].blockID);
+      assert(velInfo[i].blockID ==   chiInfo[i].blockID);
+      assert(velInfo[i].blockID ==  presInfo[i].blockID);
+      //assert(velInfo[i].blockID == forceInfo[i].blockID);
+      assert(velInfo[i].blockID ==   tmpInfo[i].blockID);
+      assert(velInfo[i].blockID ==  pRHSInfo[i].blockID);
+      assert(velInfo[i].blockID ==  tmpVInfo[i].blockID);
+      //for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+      //for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
+      //  VEL(ix,iy).u[0] += dist(gen);
+      //  VEL(ix,iy).u[1] += dist(gen);
+      //}
+    }
   }
 }
 
@@ -100,10 +112,10 @@ void FadeOut::operator()(const double dt)
   };
   const Real uinfx = sim.uinfx, uinfy = sim.uinfy;
   const Real normU = std::max( std::sqrt(uinfx*uinfx + uinfy*uinfy), EPS );
-  const Real coefW = std::max( uinfx, (Real)0 ) / normU;
-  const Real coefE = std::max(-uinfx, (Real)0 ) / normU;
-  const Real coefS = std::max( uinfy, (Real)0 ) / normU;
-  const Real coefN = std::max(-uinfy, (Real)0 ) / normU;
+  const Real coefW = std::min((Real)1, std::max(normU+uinfx, (Real)0) /normU);
+  const Real coefE = std::min((Real)1, std::max(normU-uinfx, (Real)0) /normU);
+  const Real coefS = std::min((Real)1, std::max(normU+uinfy, (Real)0) /normU);
+  const Real coefN = std::min((Real)1, std::max(normU-uinfy, (Real)0) /normU);
 
   #pragma omp parallel for schedule(dynamic)
   for (size_t i=0; i < Nblocks; i++)

@@ -74,11 +74,11 @@ void Simulation::parseRuntime()
   parser.set_strict_mode();
   sim.bpdx = parser("-bpdx").asInt();
   sim.bpdy = parser("-bpdy").asInt();
+  parser.unset_strict_mode();
   sim.extent = parser("-extent").asDouble(1);
   sim.allocateGrid();
 
   // simulation ending parameters
-  parser.unset_strict_mode();
   sim.nsteps = parser("-nsteps").asInt(0);
   sim.endTime = parser("-tend").asDouble(0);
 
@@ -92,7 +92,7 @@ void Simulation::parseRuntime()
   sim.poissonType = parser("-poissonType").asString("");
   // simulation settings
   sim.CFL = parser("-CFL").asDouble(.1);
-  sim.lambda = parser("-lambda").asDouble(1e6);
+  sim.lambda = parser("-lambda").asDouble(1e3 / sim.CFL);
   sim.dlm = parser("-dlm").asDouble(0);
   sim.nu = parser("-nu").asDouble(1e-2);
 

@@ -34,13 +34,13 @@ void Shape::updateVelocity(double dt)
   };
 
   if(bForcedx) {
-    A[0][1] = 0; A[0][2] = 0; b[0] = penalM * forcedu;
+                 A[0][1] = 0; A[0][2] = 0; b[0] = penalM * forcedu;
   }
   if(bForcedy) {
-    A[1][0] = 0; A[1][2] = 0; b[1] = penalM * forcedv;
+    A[1][0] = 0;              A[1][2] = 0; b[1] = penalM * forcedv;
   }
   if(bBlockang) {
-    A[2][0] = 0; A[2][1] = 0; b[2] = 0;
+    A[2][0] = 0; A[2][1] = 0;              b[2] = 0;
   }
 
   gsl_matrix_view Agsl = gsl_matrix_view_array (&A[0][0], 3, 3);
@@ -152,10 +152,10 @@ Shape::Integrals Shape::integrateObstBlock(const std::vector<BlockInfo>& vInfo)
       double p[2];
       vInfo[i].pos(p, ix, iy);
       const double rhochi = CHI[iy][ix] * RHO[iy][ix] * hsq;
-      _x += rhochi*p[0];
-      _y += rhochi*p[1];
       p[0] -= centerOfMass[0];
       p[1] -= centerOfMass[1];
+      _x += rhochi*p[0];
+      _y += rhochi*p[1];
       _m += rhochi;
       _j += rhochi*(p[0]*p[0] + p[1]*p[1]);
       _u += rhochi*UDEF[iy][ix][0];
@@ -163,19 +163,15 @@ Shape::Integrals Shape::integrateObstBlock(const std::vector<BlockInfo>& vInfo)
       _a += rhochi*(p[0]*UDEF[iy][ix][1] - p[1]*UDEF[iy][ix][0]);
     }
   }
-  _x /= _m;
-  _y /= _m;
-  // Parallel axis theorem:
-  const double dC[2] = { _x - centerOfMass[0], _y - centerOfMass[1] };
-  //assert( std::fabs(dC[0]) < 1000*std::numeric_limits<Real>::epsilon() );
-  //assert( std::fabs(dC[1]) < 1000*std::numeric_limits<Real>::epsilon() );
-  //assert( std::fabs(M - _m) <  10*std::numeric_limits<Real>::epsilon() );
-
-  // I_arbitrary_axis = I_CM + m * dist_CM_axis ^ 2 . Now _j is J around old CM
-  _j = _j - _m*(dC[0]*dC[0] + dC[1]*dC[1]);
-  _a = _a - ( dC[0]*_v - dC[1]*_u );
+  assert(std::fabs(_x)     < 10*std::numeric_limits<Real>::epsilon() );
+  assert(std::fabs(_y)     < 10*std::numeric_limits<Real>::epsilon() );
+  assert(std::fabs(M - _m) < 10*std::numeric_limits<Real>::epsilon() );
+  _j = _j;
+  _a = _a;
   // turn moments into velocities:
-  _u /= _m;  _v /= _m;  _a /= _j;
+  _u /= _m;
+  _v /= _m;
+  _a /= _j;
   return Integrals(_x, _y, _m, _j, _u, _v, _a);
 }
 
@@ -183,16 +179,14 @@ void Shape::removeMoments(const std::vector<BlockInfo>& vInfo)
 {
   static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
   Shape::Integrals I = integrateObstBlock(vInfo);
-  M = I.m;
-  J = I.j;
   if(sim.verbose)
-    if( std::max({std::fabs(I.u), std::fabs(I.v), std::fabs(I.a)}) > 10*EPS )
-      printf("Correct: lin mom [%f %f] ang mom [%f]. Error in CM=[%f %f]\n",
-        I.u, I.v, I.a, I.x-centerOfMass[0], I.y-centerOfMass[1]);
+    //if( std::max({std::fabs(I.u), std::fabs(I.v), std::fabs(I.a)}) > 10*EPS )
+  printf("Udef momenta: lin=[%e %e] ang=[%e]. Errors: dCM=[%e %e] dM=%e\n",
+      I.u, I.v, I.a, I.x, I.y, std::fabs(I.m-M));
+  M = I.m; J = I.j;
 
-  //update the center of mass, this operation should not move 'center'
-  centerOfMass[0] = I.x; centerOfMass[1] = I.y;
-  //center[0] = I.X; center[1] = I.Y;
+  //with current center put shape on grid, with current shape on grid we updated
+  //the center of mass, now recompute the distance betweeen the two:
   const double dCx = center[0]-centerOfMass[0];
   const double dCy = center[1]-centerOfMass[1];
   d_gm[0] =  dCx*std::cos(orientation) +dCy*std::sin(orientation);
@@ -209,7 +203,8 @@ void Shape::removeMoments(const std::vector<BlockInfo>& vInfo)
   #endif
 
   #pragma omp parallel for schedule(dynamic)
-  for(size_t i=0; i<vInfo.size(); i++) {
+  for(size_t i=0; i<vInfo.size(); i++)
+  {
     const auto pos = obstacleBlocks[vInfo[i].blockID];
     if(pos == nullptr) continue;
 
@@ -344,13 +339,13 @@ Shape::Shape( SimulationData& s, ArgumentParser& p, double C[2] ) :
   sim(s), origC{C[0],C[1]}, origAng( p("-angle").asDouble(0)*M_PI/180 ),
   center{C[0],C[1]}, centerOfMass{C[0],C[1]}, orientation(origAng),
   rhoS( p("-rhoS").asDouble(1) ),
-  bForced( p("-bForced").asBool(false) ),
-  bFixed( p("-bFixed").asBool(false) ),
-  bForcedx(p("-bForcedx").asBool(bForced)),
-  bForcedy(p("-bForcedy").asBool(bForced)),
+  bFixed(    p("-bFixed").asBool(false) ),
+  bFixedx(   p("-bFixedx" ).asBool(bFixed) ),
+  bFixedy(   p("-bFixedy" ).asBool(bFixed) ),
+  bForced(   p("-bForced").asBool(false) ),
+  bForcedx(  p("-bForcedx").asBool(bForced)),
+  bForcedy(  p("-bForcedy").asBool(bForced)),
   bBlockang( p("-bBlockAng").asBool(bForcedx || bForcedy) ),
-  bFixedx(p("-bFixedx" ).asBool(bFixed) ),
-  bFixedy(p("-bFixedy" ).asBool(bFixed) ),
   forcedu( - p("-xvel").asDouble(0) ),
   forcedv( - p("-yvel").asDouble(0) ) {  }
 

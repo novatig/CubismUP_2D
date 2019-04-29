@@ -36,19 +36,23 @@ class FFTW_periodic : public PoissonSolver
     for(size_t j=0; j<MY; ++j)
     for(size_t i=0; i<MX_hat; ++i)
     {
-      #if 1 // based on the 5 point stencil in 1D (h^4 error)
-        const Real cosx = std::cos(waveFactX*i), cosy = std::cos(waveFactY * j);
+      const size_t kx = i<=MX/2 ? i : MX-i, ky = j<=MY/2 ? j : MY-j;
+      #if 0 // based on the 5 point stencil in 1D (h^4 error)
+        const Real cosx = std::cos(waveFactX*kx), cosy = std::cos(waveFactY*ky);
         const Real denom = 32*(cosx + cosy) - 4*(cosx*cosx + cosy*cosy) - 56;
         //const Real X = waveFactX*i, Y = waveFactY * j;
         //const Real denom = 32*(std::cos(X) + std::cos(Y))
         //                  - 2*(std::cos(2*X) + std::cos(2*Y)) - 60;
         const Real inv_denom = denom == 0 ? 0 : 1 / denom;
         const Real fatfactor = 12 * norm_factor * inv_denom;
-      #elif 0 // based on the 3 point stencil in 1D (h^2 error)
-        const Real X = waveFactX * i, Y = waveFactY * j;
-        const Real denom =  2*(std::cos(X) + std::cos(Y)) - 4;
-        const Real inv_denom = denom == 0 ? 0 : 1 / denom;
-        const Real fatfactor = norm_factor * inv_denom;
+      #elif 1 // based on the 3 point stencil in 1D (2h^2 error)
+        const Real cosx = std::cos(2*waveFactX*kx);
+        const Real cosy = std::cos(2*waveFactY*ky);
+        const Real fatfactor = norm_factor / ( cosx/2 + cosy/2 - 1 );
+      #elif 1 // based on the 3 point stencil in 1D (h^2 error)
+        const Real cosx = std::cos(waveFactX*kx), cosy = std::cos(waveFactY*ky);
+        const Real denom =  2*cosx + 2*cosy - 4;
+        const Real fatfactor = norm_factor / denom;
       #else // this is to check the transform only
         const Real fatfactor = norm_factor;
       #endif
@@ -56,6 +60,11 @@ class FFTW_periodic : public PoissonSolver
       in_out[j*MX_hat + i][1] *= fatfactor;
     }
     in_out[0][0] = 0; in_out[0][1] = 0; //this is sparta!
+    #if 1
+    in_out[MX/2][0] = 0;              in_out[MX/2][1] = 0;
+    in_out[MY/2*MX_hat][0] = 0;       in_out[MY/2*MX_hat][1] = 0;
+    in_out[MY/2*MX_hat+ MX/2][0] = 0; in_out[MY/2*MX_hat + MX/2][1] = 0;
+    #endif
   }
 
   inline void _solve_spectral() const
@@ -66,8 +75,7 @@ class FFTW_periodic : public PoissonSolver
     for(size_t j=0; j<MY; ++j)
     for(size_t i=0; i<MX_hat; ++i)
     {
-      const int kx = (i <= MX/2) ? i : -(MX-i);
-      const int ky = (j <= MY/2) ? j : -(MY-j);
+      const size_t kx = i <= MX/2 ? i : MX-i, ky = j <= MY/2 ? j : MY-j;
       const Real rkx = kx*waveFactX, rky = ky*waveFactY;
       const Real kinv = -1/(rkx*rkx+rky*rky); //this is sparta! (part 1)
       in_out[j*MX_hat + i][0] *= kinv*norm_factor;

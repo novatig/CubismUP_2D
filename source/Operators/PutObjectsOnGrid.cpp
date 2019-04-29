@@ -32,8 +32,8 @@ void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const
 
       distlab.load(tmpInfo[i], 0); // loads signed distance field with ghosts
       const ScalarLab& __restrict__ SDIST = distlab;
-      auto & __restrict__ CHI  = *(ScalarBlock*) chiInfo[i].ptrBlock; // dest
-      auto & __restrict__ IRHO  = *(ScalarBlock*) invRhoInfo[i].ptrBlock;
+      auto & __restrict__ CHI  = *(ScalarBlock*)    chiInfo[i].ptrBlock; // dest
+      auto & __restrict__ IRHO = *(ScalarBlock*) invRhoInfo[i].ptrBlock;
       CHI_MAT & __restrict__ X = o.chi;
       const CHI_MAT & __restrict__ rho = o.rho;
       const CHI_MAT & __restrict__ sdf = o.dist;
@@ -71,15 +71,18 @@ void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const
         }
 
         // an other partial
-        if(X[iy][ix] >= CHI(ix,iy).s) {
-          CHI(ix,iy).s = X[iy][ix];
+        if(X[iy][ix] >= CHI(ix,iy).s)
+        {
+           CHI(ix,iy).s = X[iy][ix];
           IRHO(ix,iy).s = X[iy][ix]/rho[iy][ix] + (1-X[iy][ix])*IRHO(ix,iy).s;
         }
-
-        double p[2]; chiInfo[i].pos(p, ix, iy);
-        _x += rho[iy][ix] * X[iy][ix] * h*h * p[0];
-        _y += rho[iy][ix] * X[iy][ix] * h*h * p[1];
-        _m += rho[iy][ix] * X[iy][ix] * h*h;
+        if(X[iy][ix] > 0)
+        {
+          double p[2]; chiInfo[i].pos(p, ix, iy);
+          _x += rho[iy][ix] * X[iy][ix] * h*h * p[0];
+          _y += rho[iy][ix] * X[iy][ix] * h*h * p[1];
+          _m += rho[iy][ix] * X[iy][ix] * h*h;
+        }
       }
     }
   }

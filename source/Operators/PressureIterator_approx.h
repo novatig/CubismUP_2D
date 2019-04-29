@@ -24,7 +24,7 @@ class PressureVarRho_approx : public Operator
   Real penalize(const double dt) const;
   void integrateMomenta(Shape * const shape) const;
   void pressureCorrectionInit(const double dt) const;
-  void pressureCorrection(const double dt) const;
+  Real pressureCorrection(const double dt) const;
 
  public:
   void operator()(const double dt);

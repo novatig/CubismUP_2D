@@ -14,7 +14,7 @@
 
 using namespace cubism;
 
-#define EXPL_INTEGRATE_MOM
+// #define EXPL_INTEGRATE_MOM
 
 using CHI_MAT = Real[VectorBlock::sizeY][VectorBlock::sizeX];
 using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];
@@ -76,8 +76,8 @@ void PressureIterator_unif::updatePressureRHS(const double dt) const
             ScalarBlock& __restrict__ TMP = *(ScalarBlock*)tmpInfo[i].ptrBlock;
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-        const Real divVx  = V(ix+1,iy).u[0]    - V(ix-1,iy).u[0];
-        const Real divVy  = V(ix,iy+1).u[1]    - V(ix,iy-1).u[1];
+        const Real divVx  =    V(ix+1,iy).u[0] -    V(ix-1,iy).u[0];
+        const Real divVy  =    V(ix,iy+1).u[1] -    V(ix,iy-1).u[1];
         const Real divUSx = UDEF(ix+1,iy).u[0] - UDEF(ix-1,iy).u[0];
         const Real divUSy = UDEF(ix,iy+1).u[1] - UDEF(ix,iy-1).u[1];
         TMP(ix, iy).s = facDiv*( divVx+divVy - CHI(ix,iy).s*(divUSx+divUSy) );
@@ -266,7 +266,7 @@ void PressureIterator_unif::operator()(const double dt)
   int iter = 0;
   Real relDF = 1e3;
   bool bConverged = false;
-  for(iter = 0; iter < 100; iter++)
+  for(iter = 0; iter < 1000; iter++)
   {
     // pressure solver is going to use as RHS = div VEL - \chi div UDEF
     sim.startProfiler("Prhs");
@@ -306,7 +306,7 @@ void PressureIterator_unif::operator()(const double dt)
     }
   }
 
-  oldNsteps = iter;
+  oldNsteps = iter+1;
 
   if(not sim.muteAll)
   {
