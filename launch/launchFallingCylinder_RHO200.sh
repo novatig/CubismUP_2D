@@ -6,7 +6,7 @@ NU=${NU:-0.001754639792}
 BPDX=${BPDX:-16}
 BPDY=${BPDY:-16}
 
-OPTIONS=" -CFL 0.1 -DLM 0 -bpdx $BPDX -bpdy $BPDY -tdump 0.1 -nu ${NU} -extent 2 -tend 30 -poissonType freespace -iterativePenalization 1 -lambda 1e5"
+OPTIONS=" -CFL 0.1 -DLM 0 -bpdx $BPDX -bpdy $BPDY -tdump 0.1 -nu ${NU} -extent 2 -tend 250 -poissonType cosine -iterativePenalization 1 -lambda 1e5"
 OBJECTS='disk radius=0.1 ypos=0.6 bFixed=1 rhoS=2
 '
 
