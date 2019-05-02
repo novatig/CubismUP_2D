@@ -23,6 +23,8 @@ typedef fftwf_plan myplan;
 class FFTW_dirichlet : public PoissonSolver
 {
   const size_t MX = totNx, MY = totNy;
+  float * const COScoefX = new float[MX];
+  float * const COScoefY = new float[MY];
   const Real norm_factor = 0.25/(MX*MY);
   myplan fwd, bwd;
 
@@ -46,9 +48,8 @@ class FFTW_dirichlet : public PoissonSolver
     #pragma omp parallel for schedule(static)
     for(size_t j=0; j<MY; ++j)
     for(size_t i=0; i<MX; ++i) {
-      const Real cosx = std::cos(2*waveFactX*i), cosy = std::cos(2*waveFactY*j);
       const Real rkx = (i + (Real).5)*waveFactX, rky = (j + (Real).5)*waveFactY;
-      const Real denomFD = 1 - cosx/2 - cosy/2;
+      const Real denomFD = 1 - COScoefX[i]/2 - COScoefY[j]/2;
       const Real denomSP = rkx*rkx + rky*rky;
       in_out[j * MX + i] *=  - norm_factor / ( (denomFD + denomSP) / 2 );
     }
@@ -76,6 +77,11 @@ class FFTW_dirichlet : public PoissonSolver
 
   FFTW_dirichlet(SimulationData& s) : PoissonSolver(s, TOT_DOF_X)
   {
+    #pragma omp parallel for schedule(static)
+    for(size_t j=0; j<MY; ++j) COScoefY[j] = std::cos(M_PI/MY*2.0*j);
+    #pragma omp parallel for schedule(static)
+    for(size_t i=0; i<MX; ++i) COScoefX[i] = std::cos(M_PI/MX*2.0*i);
+
     printf("Employing FFTW-based Poisson solver by cosine transform.\n");
     const int desired_threads = omp_get_max_threads();
     #ifndef _FLOAT_PRECISION_
@@ -134,6 +140,8 @@ class FFTW_dirichlet : public PoissonSolver
 
   ~FFTW_dirichlet()
   {
+    delete [] COScoefX;
+    delete [] COScoefY;
     #ifndef _FLOAT_PRECISION_
       fftw_cleanup_threads();
       fftw_destroy_plan(fwd);

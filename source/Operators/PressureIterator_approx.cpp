@@ -15,7 +15,7 @@
 using namespace cubism;
 #define ETA   0
 #define ALPHA 1
-#define DECOUPLE
+//#define DECOUPLE
 //#define EXPL_INTEGRATE_MOM
 
 template<typename T>
@@ -451,12 +451,14 @@ void PressureVarRho_approx::operator()(const double dt)
     }
 
     if(bConverged) break;
-    bConverged = (relDF<0.0005 && iter>0) || iter>2*oldNsteps;
+    bConverged = relDF<targetRelError || iter>2*oldNsteps;
     // bConverged = true;
     // if penalization force converged, do one more Poisson solve
   }
 
   oldNsteps = iter+1;
+  if(oldNsteps > 10) targetRelError *= 1.01;
+  if(oldNsteps <= 2) targetRelError *= 0.99;
 
   if(not sim.muteAll)
   {
