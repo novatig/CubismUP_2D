@@ -15,7 +15,7 @@
 using namespace cubism;
 #define ETA   0
 #define ALPHA 1
-//#define DECOUPLE
+#define DECOUPLE
 //#define EXPL_INTEGRATE_MOM
 
 template<typename T>
@@ -58,96 +58,48 @@ void PressureVarRho_approx::fadeoutBorder(const double dt) const
       RHS(ix,iy).s *= 1-std::pow(std::min(std::max({yt,yb,xt,xb}), (Real)1), 2);
     }
   }
-};
-
-void PressureVarRho_approx::updatePressureRHS(const double dt) const
-{
-  const Real h = sim.getH(), facDiv = 0.5*rho0*h/dt;
-  const std::vector<BlockInfo>& iRhoInfo = sim.invRho->getBlocksInfo();
-  const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
-  const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
-  const std::vector<BlockInfo>& uDefInfo = sim.uDef->getBlocksInfo();
-  const std::vector<BlockInfo>&  tmpInfo = sim.tmp->getBlocksInfo();
-  const std::vector<BlockInfo>&  chiInfo = sim.chi->getBlocksInfo();
-
-  #pragma omp parallel
-  {
-    static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 2, 2, 1};
-    VectorLab velLab;  velLab.prepare( *(sim.vel),    stenBeg, stenEnd, 0);
-    VectorLab uDefLab; uDefLab.prepare(*(sim.uDef),   stenBeg, stenEnd, 0);
-    ScalarLab presLab; presLab.prepare(*(sim.pres),   stenBeg, stenEnd, 0);
-    ScalarLab pOldLab; pOldLab.prepare(*(sim.pOld),   stenBeg, stenEnd, 0);
-    ScalarLab iRhoLab; iRhoLab.prepare(*(sim.invRho), stenBeg, stenEnd, 0);
-    #pragma omp for schedule(static)
-    for (size_t i=0; i < Nblocks; i++)
-    {
-       velLab.load( velInfo[i], 0); uDefLab.load(uDefInfo[i], 0);
-      presLab.load(presInfo[i], 0); pOldLab.load(pOldInfo[i], 0);
-      iRhoLab.load(iRhoInfo[i], 0);
-      const VectorLab  & __restrict__ V   =  velLab;
-      const VectorLab  & __restrict__ UDEF= uDefLab;
-      const ScalarLab  & __restrict__ P   = presLab;
-      const ScalarLab  & __restrict__ pOld= pOldLab;
-      const ScalarLab  & __restrict__ IRHO= iRhoLab;
-      const ScalarBlock& __restrict__ CHI = *(ScalarBlock*)chiInfo[i].ptrBlock;
-            ScalarBlock& __restrict__ TMP = *(ScalarBlock*)tmpInfo[i].ptrBlock;
-      for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-      for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-      {
-        const Real pNextE = P(ix+1,iy).s + ETA*(P(ix+1,iy).s-pOld(ix+1,iy).s);
-        const Real pNextW = P(ix-1,iy).s + ETA*(P(ix-1,iy).s-pOld(ix-1,iy).s);
-        const Real pNextN = P(ix,iy+1).s + ETA*(P(ix,iy+1).s-pOld(ix,iy+1).s);
-        const Real pNextS = P(ix,iy-1).s + ETA*(P(ix,iy-1).s-pOld(ix,iy-1).s);
-        const Real pNextC = P(ix,iy).s   + ETA*(P(ix,iy).s - pOld(ix,iy).s  );
-        const Real rE = (1 -rho0 * mean(IRHO(ix+1,iy).s, IRHO(ix,iy).s));
-        const Real rW = (1 -rho0 * mean(IRHO(ix-1,iy).s, IRHO(ix,iy).s));
-        const Real rN = (1 -rho0 * mean(IRHO(ix,iy+1).s, IRHO(ix,iy).s));
-        const Real rS = (1 -rho0 * mean(IRHO(ix,iy-1).s, IRHO(ix,iy).s));
-        // gradP at midpoints, skip factor 1/h, but skip multiply by h^2 later
-        const Real dN = pNextN - pNextC, dS = pNextC - pNextS;
-        const Real dE = pNextE - pNextC, dW = pNextC - pNextW;
-        // hatPfac=div((1-1/rho^*) gradP), div gives missing 1/h to make h^2
-        const Real hatPfac = rE*dE - rW*dW + rN*dN - rS*dS;
-        const Real divVx  =    V(ix+1,iy).u[0] -    V(ix-1,iy).u[0];
-        const Real divVy  =    V(ix,iy+1).u[1] -    V(ix,iy-1).u[1];
-        const Real divUSx = UDEF(ix+1,iy).u[0] - UDEF(ix-1,iy).u[0];
-        const Real divUSy = UDEF(ix,iy+1).u[1] - UDEF(ix,iy-1).u[1];
-        const Real rhsDiv = divVx+divVy - CHI(ix,iy).s * (divUSx+divUSy);
-        TMP(ix, iy).s = facDiv*rhsDiv + hatPfac;
-        //TMP(ix, iy).s = - CHI(ix,iy).s *facDiv* (divUSx+divUSy);
-      }
-    }
-  }
 }
 
 void PressureVarRho_approx::pressureCorrectionInit(const double dt) const
 {
   const Real h = sim.getH(), pFac = -0.5*dt/h;
-  const std::vector<BlockInfo>& iRhoInfo = sim.invRho->getBlocksInfo();
+  const std::vector<BlockInfo>& uDefInfo = sim.uDef->getBlocksInfo();
   const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
-  const std::vector<BlockInfo>& tmpVInfo = sim.tmpV->getBlocksInfo();
+  const std::vector<BlockInfo>& iRhoInfo = sim.invRho->getBlocksInfo();
+  const std::vector<BlockInfo>&  chiInfo = sim.chi->getBlocksInfo();
   const std::vector<BlockInfo>& vPresInfo= sim.vFluid->getBlocksInfo();
+  const std::vector<BlockInfo>& pRhsInfo = sim.pRHS->getBlocksInfo();
 
   #pragma omp parallel
   {
     static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 2, 2, 1};
     ScalarLab presLab; presLab.prepare(*(sim.pres), stenBeg, stenEnd, 0);
+    VectorLab velLab;   velLab.prepare(*(sim.vel),  stenBeg, stenEnd, 0);
+    VectorLab uDefLab; uDefLab.prepare(*(sim.uDef), stenBeg, stenEnd, 0);
 
     #pragma omp for schedule(static)
     for (size_t i=0; i < Nblocks; i++)
     {
-      presLab.load(presInfo[i],0); const ScalarLab&__restrict__ P    = presLab;
-            VectorBlock&__restrict__   V = *(VectorBlock*)vPresInfo[i].ptrBlock;
+      presLab.load(presInfo[i],0); const ScalarLab& __restrict__ P   = presLab;
+       velLab.load( velInfo[i],0); const VectorLab& __restrict__ V   =  velLab;
+      uDefLab.load(uDefInfo[i],0); const VectorLab& __restrict__ UDEF= uDefLab;
       const ScalarBlock&__restrict__ IRHO= *(ScalarBlock*) iRhoInfo[i].ptrBlock;
-      const VectorBlock&__restrict__ TMPV= *(VectorBlock*) tmpVInfo[i].ptrBlock;
+      const ScalarBlock&__restrict__  CHI= *(ScalarBlock*)  chiInfo[i].ptrBlock;
+      // returns : pressure-corrected velocity and initial pressure eq RHS
+      VectorBlock & __restrict__ vPres =  *(VectorBlock*) vPresInfo[i].ptrBlock;
+      ScalarBlock & __restrict__ pRhs  =  *(ScalarBlock*)  pRhsInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-      for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-      {
-          const Real pNextE = P(ix+1,iy).s, pNextW = P(ix-1,iy).s;
-          const Real pNextN = P(ix,iy+1).s, pNextS = P(ix,iy-1).s;
-          V(ix,iy).u[0] = TMPV(ix,iy).u[0] +pFac*(pNextE-pNextW) *IRHO(ix,iy).s;
-          V(ix,iy).u[1] = TMPV(ix,iy).u[1] +pFac*(pNextN-pNextS) *IRHO(ix,iy).s;
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
+          const Real PE = P(ix+1,iy).s, PW = P(ix-1,iy).s;
+          const Real PN = P(ix,iy+1).s, PS = P(ix,iy-1).s;
+          const Real divVx  =    V(ix+1,iy).u[0] -    V(ix-1,iy).u[0];
+          const Real divVy  =    V(ix,iy+1).u[1] -    V(ix,iy-1).u[1];
+          const Real divUSx = UDEF(ix+1,iy).u[0] - UDEF(ix-1,iy).u[0];
+          const Real divUSy = UDEF(ix,iy+1).u[1] - UDEF(ix,iy-1).u[1];
+          vPres(ix,iy).u[0] = V(ix,iy).u[0] + pFac * (PE-PW) * IRHO(ix,iy).s;
+          vPres(ix,iy).u[1] = V(ix,iy).u[1] + pFac * (PN-PS) * IRHO(ix,iy).s;
+          pRhs(ix,iy).s = divVx+divVy - CHI(ix,iy).s * (divUSx+divUSy);
       }
     }
   }
@@ -163,7 +115,6 @@ Real PressureVarRho_approx::pressureCorrection(const double dt) const
     const Real invRho0 = 1 / rho0;
     const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
   #endif
-  const std::vector<BlockInfo>& tmpVInfo = sim.tmpV->getBlocksInfo();
   const std::vector<BlockInfo>& vPresInfo= sim.vFluid->getBlocksInfo();
   Real DP = 0, NP = 0;
   #pragma omp parallel reduction(+ : DP, NP)
@@ -181,33 +132,34 @@ Real PressureVarRho_approx::pressureCorrection(const double dt) const
       #ifndef DECOUPLE
       pOldLab.load(pOldInfo[i],0); const ScalarLab&__restrict__ pOld = pOldLab;
       #endif
-            VectorBlock&__restrict__   V = *(VectorBlock*)vPresInfo[i].ptrBlock;
+
+      VectorBlock & __restrict__ vPres =  *(VectorBlock*) vPresInfo[i].ptrBlock;
       const ScalarBlock&__restrict__ IRHO= *(ScalarBlock*) iRhoInfo[i].ptrBlock;
-      const VectorBlock&__restrict__ TMPV= *(VectorBlock*) tmpVInfo[i].ptrBlock;
+      const VectorBlock&__restrict__    V= *(VectorBlock*)  velInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
         #ifndef DECOUPLE
-        const Real pNextE = P(ix+1,iy).s + ETA*(P(ix+1,iy).s-pOld(ix+1,iy).s);
-        const Real pNextW = P(ix-1,iy).s + ETA*(P(ix-1,iy).s-pOld(ix-1,iy).s);
-        const Real pNextN = P(ix,iy+1).s + ETA*(P(ix,iy+1).s-pOld(ix,iy+1).s);
-        const Real pNextS = P(ix,iy-1).s + ETA*(P(ix,iy-1).s-pOld(ix,iy-1).s);
-        // update vel field after most recent force and pressure response:
-        const Real dUdiv = pFac * (pNextE-pNextW) * (IRHO(ix,iy).s - invRho0);
-        const Real dVdiv = pFac * (pNextN-pNextS) * (IRHO(ix,iy).s - invRho0);
-        const Real dUpre = pFac * (Pcur(ix+1,iy).s - Pcur(ix-1,iy).s) * invRho0;
-        const Real dVpre = pFac * (Pcur(ix,iy+1).s - Pcur(ix,iy-1).s) * invRho0;
-        V(ix,iy).u[0] = TMPV(ix,iy).u[0] + dUpre + dUdiv;
-        V(ix,iy).u[1] = TMPV(ix,iy).u[1] + dVpre + dVdiv;
+          const Real pNextE = P(ix+1,iy).s + ETA*(P(ix+1,iy).s-pOld(ix+1,iy).s);
+          const Real pNextW = P(ix-1,iy).s + ETA*(P(ix-1,iy).s-pOld(ix-1,iy).s);
+          const Real pNextN = P(ix,iy+1).s + ETA*(P(ix,iy+1).s-pOld(ix,iy+1).s);
+          const Real pNextS = P(ix,iy-1).s + ETA*(P(ix,iy-1).s-pOld(ix,iy-1).s);
+          // update vel field after most recent force and pressure response:
+          const Real dUdiv = pFac*(pNextE-pNextW) * (IRHO(ix,iy).s - invRho0);
+          const Real dVdiv = pFac*(pNextN-pNextS) * (IRHO(ix,iy).s - invRho0);
+          const Real dUpre = pFac*(Pcur(ix+1,iy).s - Pcur(ix-1,iy).s) * invRho0;
+          const Real dVpre = pFac*(Pcur(ix,iy+1).s - Pcur(ix,iy-1).s) * invRho0;
+          vPres(ix,iy).u[0] = V(ix,iy).u[0] + dUpre + dUdiv;
+          vPres(ix,iy).u[1] = V(ix,iy).u[1] + dVpre + dVdiv;
         #else
-          const Real pNextE = Pcur(ix+1,iy).s, pNextW = Pcur(ix-1,iy).s;
-          const Real pNextN = Pcur(ix,iy+1).s, pNextS = Pcur(ix,iy-1).s;
-          V(ix,iy).u[0] = TMPV(ix,iy).u[0] +pFac*(pNextE-pNextW) *IRHO(ix,iy).s;
-          V(ix,iy).u[1] = TMPV(ix,iy).u[1] +pFac*(pNextN-pNextS) *IRHO(ix,iy).s;
+          const Real PE = Pcur(ix+1,iy).s, PW = Pcur(ix-1,iy).s;
+          const Real PN = Pcur(ix,iy+1).s, PS = Pcur(ix,iy-1).s;
+          vPres(ix,iy).u[0] = V(ix,iy).u[0] + pFac * (PE-PW) * IRHO(ix,iy).s;
+          vPres(ix,iy).u[1] = V(ix,iy).u[1] + pFac * (PN-PS) * IRHO(ix,iy).s;
         #endif
         DP += std::pow(Pcur(ix,iy).s - P(ix,iy).s, 2);
-        NP += std::pow(P(ix,iy).s, 2);
+        NP += std::pow(Pcur(ix,iy).s, 2);
       }
     }
   }
@@ -276,8 +228,10 @@ Real PressureVarRho_approx::penalize(const double dt) const
   const std::vector<BlockInfo>& chiInfo = sim.chi->getBlocksInfo();
   const std::vector<BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
   const std::vector<BlockInfo>& vFluidInfo = sim.vFluid->getBlocksInfo();
-  #ifndef EXPL_INTEGRATE_MOM
-  const Real lamdt = sim.lambda * dt;
+  #ifdef EXPL_INTEGRATE_MOM
+    const Real lambda = 1 / sim.dt;
+  #else
+    const Real lambda = sim.lambda;
   #endif
 
   Real MX = 0, MY = 0, DMX = 0, DMY = 0;
@@ -294,10 +248,9 @@ Real PressureVarRho_approx::penalize(const double dt) const
 
     const CHI_MAT & __restrict__ X = o->chi;
     const UDEFMAT & __restrict__ UDEF = o->udef;
-    const VectorBlock&__restrict__ TMPV = *(VectorBlock*)  tmpVInfo[i].ptrBlock;
+          VectorBlock& __restrict__   F = *(VectorBlock*)  tmpVInfo[i].ptrBlock;
     const ScalarBlock& __restrict__ CHI = *(ScalarBlock*)   chiInfo[i].ptrBlock;
-    const VectorBlock& __restrict__  UF = *(VectorBlock*)vFluidInfo[i].ptrBlock;
-          VectorBlock& __restrict__   V = *(VectorBlock*)   velInfo[i].ptrBlock;
+          VectorBlock& __restrict__  UF = *(VectorBlock*)vFluidInfo[i].ptrBlock;
 
     for(int iy=0; iy<VectorBlock::sizeY; ++iy)
     for(int ix=0; ix<VectorBlock::sizeX; ++ix)
@@ -311,22 +264,83 @@ Real PressureVarRho_approx::penalize(const double dt) const
       const Real US = u_s - omega_s * p[1] + UDEF[iy][ix][0];
       const Real VS = v_s + omega_s * p[0] + UDEF[iy][ix][1];
       #ifdef EXPL_INTEGRATE_MOM
-        const Real penalFac = X[iy][ix];
+        const Real penalFac = lambda * X[iy][ix];
       #else
-        const Real penalFac = lamdt*X[iy][ix]/(1 +lamdt*X[iy][ix]);
+        const Real penalFac = lambda * X[iy][ix] / (1 +lambda * X[iy][ix] * dt);
       #endif
-      const Real DFX = penalFac * (US - UF(ix,iy).u[0]);
-      const Real DFY = penalFac * (VS - UF(ix,iy).u[1]);
-      const Real DPX = TMPV(ix,iy).u[0]+DFX - V(ix,iy).u[0];
-      const Real DPY = TMPV(ix,iy).u[1]+DFY - V(ix,iy).u[1];
-      V(ix,iy).u[0] += DPX; // in V store u^t plus penalization force
-      V(ix,iy).u[1] += DPY; // without pressure projection (for P rhs)
-      MX += std::pow(V(ix,iy).u[0], 2); DMX += std::pow(DPX, 2);
-      MY += std::pow(V(ix,iy).u[1], 2); DMY += std::pow(DPY, 2);
+      F(ix,iy).u[0] = penalFac * (US - UF(ix,iy).u[0]);
+      F(ix,iy).u[1] = penalFac * (VS - UF(ix,iy).u[1]);
+      const Real uNext  = UF(ix,iy).u[0] + dt * F(ix,iy).u[0];
+      const Real vNext  = UF(ix,iy).u[1] + dt * F(ix,iy).u[1];
+      // uPres now becomes delta Vel
+      UF(ix,iy).u[0] = dt * (uNext - US);
+      UF(ix,iy).u[1] = dt * (vNext - VS);
+      MX += std::pow(uNext, 2); DMX += std::pow(X[iy][ix] * (uNext - US), 2);
+      MY += std::pow(vNext, 2); DMY += std::pow(X[iy][ix] * (vNext - VS), 2);
     }
   }
   // return L2 relative momentum
   return std::sqrt((DMX + DMY) / (EPS + MX + MY));
+}
+
+void PressureVarRho_approx::updatePressureRHS(const double dt) const
+{
+  const Real h = sim.getH(), facDiv = 0.5*rho0*h/dt;
+  const std::vector<BlockInfo>& penlInfo = sim.tmpV->getBlocksInfo();
+  const std::vector<BlockInfo>&   dUInfo = sim.vFluid->getBlocksInfo();
+  const std::vector<BlockInfo>& iRhoInfo = sim.invRho->getBlocksInfo();
+  const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
+  const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
+  const std::vector<BlockInfo>&  tmpInfo = sim.tmp->getBlocksInfo();
+  const std::vector<BlockInfo>&  chiInfo = sim.chi->getBlocksInfo();
+  const std::vector<BlockInfo>& pRhsInfo = sim.pRHS->getBlocksInfo();
+
+  #pragma omp parallel
+  {
+    static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 2, 2, 1};
+    VectorLab penlLab; penlLab.prepare(*(sim.tmpV),   stenBeg, stenEnd, 0);
+    ScalarLab  chiLab;  chiLab.prepare(*(sim.chi),    stenBeg, stenEnd, 0);
+    ScalarLab presLab; presLab.prepare(*(sim.pres),   stenBeg, stenEnd, 0);
+    ScalarLab pOldLab; pOldLab.prepare(*(sim.pOld),   stenBeg, stenEnd, 0);
+    ScalarLab iRhoLab; iRhoLab.prepare(*(sim.invRho), stenBeg, stenEnd, 0);
+    #pragma omp for schedule(static)
+    for (size_t i=0; i < Nblocks; i++)
+    {
+      presLab.load(presInfo[i],0); const ScalarLab& __restrict__ P   = presLab;
+      pOldLab.load(pOldInfo[i],0); const ScalarLab& __restrict__ pOld= pOldLab;
+      iRhoLab.load(iRhoInfo[i],0); const ScalarLab& __restrict__ IRHO= iRhoLab;
+      penlLab.load(penlInfo[i],0); const VectorLab& __restrict__ PENL= penlLab;
+       chiLab.load( chiInfo[i],0); const ScalarLab& __restrict__   X =  chiLab;
+            ScalarBlock& __restrict__ TMP  =*(ScalarBlock*) tmpInfo[i].ptrBlock;
+      const VectorBlock& __restrict__ deltaU=*(VectorBlock*)dUInfo[i].ptrBlock;
+      const ScalarBlock& __restrict__ pRhs =*(ScalarBlock*)pRhsInfo[i].ptrBlock;
+
+      for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix)
+      {
+        const Real pNextE = P(ix+1,iy).s + ETA*(P(ix+1,iy).s-pOld(ix+1,iy).s);
+        const Real pNextW = P(ix-1,iy).s + ETA*(P(ix-1,iy).s-pOld(ix-1,iy).s);
+        const Real pNextN = P(ix,iy+1).s + ETA*(P(ix,iy+1).s-pOld(ix,iy+1).s);
+        const Real pNextS = P(ix,iy-1).s + ETA*(P(ix,iy-1).s-pOld(ix,iy-1).s);
+        const Real pNextC = P(ix,iy).s   + ETA*(P(ix,iy).s - pOld(ix,iy).s  );
+        const Real rE = (1 -rho0 * mean(IRHO(ix+1,iy).s, IRHO(ix,iy).s));
+        const Real rW = (1 -rho0 * mean(IRHO(ix-1,iy).s, IRHO(ix,iy).s));
+        const Real rN = (1 -rho0 * mean(IRHO(ix,iy+1).s, IRHO(ix,iy).s));
+        const Real rS = (1 -rho0 * mean(IRHO(ix,iy-1).s, IRHO(ix,iy).s));
+        // gradP at midpoints, skip factor 1/h, but skip multiply by h^2 later
+        const Real dN = pNextN - pNextC, dS = pNextC - pNextS;
+        const Real dE = pNextE - pNextC, dW = pNextC - pNextW;
+        // hatPfac=div((1-1/rho^*) gradP), div gives missing 1/h to make h^2
+        const Real hatPfac = rE*dE - rW*dW + rN*dN - rS*dS;
+        const Real divFx = PENL(ix+1,iy).u[0] - PENL(ix-1,iy).u[0];
+        const Real divFy = PENL(ix,iy+1).u[1] - PENL(ix,iy-1).u[1];
+        const Real dUgradXx = (X(ix+1,iy).s-X(ix-1,iy).s) * deltaU(ix,iy).u[0];
+        const Real dUgradXy = (X(ix,iy+1).s-X(ix,iy-1).s) * deltaU(ix,iy).u[1];
+        const Real rhsDiv = pRhs(ix,iy).s +dUgradXx+dUgradXy +dt*(divFx+divFy);
+        TMP(ix,iy).s = facDiv*rhsDiv + hatPfac;
+      }
+    }
+  }
 }
 
 void PressureVarRho_approx::finalizePressure(const double dt) const
@@ -339,6 +353,7 @@ void PressureVarRho_approx::finalizePressure(const double dt) const
   #endif
   const std::vector<BlockInfo>& iRhoInfo = sim.invRho->getBlocksInfo();
   const std::vector<BlockInfo>&  tmpInfo = sim.tmp->getBlocksInfo();
+  const std::vector<BlockInfo>& tmpVInfo  = sim.tmpV->getBlocksInfo();
 
   #pragma omp parallel
   {
@@ -356,6 +371,7 @@ void PressureVarRho_approx::finalizePressure(const double dt) const
       pOldLab.load(pOldInfo[i],0); const ScalarLab&__restrict__ pOld = pOldLab;
       #endif
             VectorBlock&__restrict__   V = *(VectorBlock*)  velInfo[i].ptrBlock;
+      const VectorBlock& __restrict__  F = *(VectorBlock*) tmpVInfo[i].ptrBlock;
       const ScalarBlock&__restrict__ IRHO= *(ScalarBlock*) iRhoInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
@@ -376,8 +392,10 @@ void PressureVarRho_approx::finalizePressure(const double dt) const
         #else
           const Real pNextE = Pcur(ix+1,iy).s, pNextW = Pcur(ix-1,iy).s;
           const Real pNextN = Pcur(ix,iy+1).s, pNextS = Pcur(ix,iy-1).s;
-          V(ix,iy).u[0] += pFac * (pNextE - pNextW) * IRHO(ix,iy).s;
-          V(ix,iy).u[1] += pFac * (pNextN - pNextS) * IRHO(ix,iy).s;
+          const Real dUpres = pFac * (pNextE - pNextW) * IRHO(ix,iy).s;
+          const Real dVpres = pFac * (pNextN - pNextS) * IRHO(ix,iy).s;
+          V(ix,iy).u[0] += dt*F(ix,iy).u[0] + dUpres;
+          V(ix,iy).u[1] += dt*F(ix,iy).u[1] + dVpres;
         #endif
       }
     }
@@ -387,16 +405,9 @@ void PressureVarRho_approx::finalizePressure(const double dt) const
 void PressureVarRho_approx::operator()(const double dt)
 {
   // first copy velocity before either Pres or Penal onto tmpV
-  const std::vector<BlockInfo>& tmpVInfo = sim.tmpV->getBlocksInfo();
   const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
   const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
   const std::vector<BlockInfo>&  tmpInfo = sim.tmp->getBlocksInfo();
-  #pragma omp parallel for schedule(static)
-  for (size_t i=0; i < Nblocks; i++) {
-          VectorBlock & __restrict__ UT = *(VectorBlock*) tmpVInfo[i].ptrBlock;
-    const VectorBlock & __restrict__  V = *(VectorBlock*)  velInfo[i].ptrBlock;
-    UT.copy(V);
-  }
 
   pressureCorrectionInit(dt);
 
