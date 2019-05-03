@@ -412,8 +412,10 @@ void PutFishOnBlocks::signedDistanceSqrt(const BlockInfo& info, ScalarBlock& b,
     o->dist[iy][ix] = o->dist[iy][ix]>=0 ?  std::sqrt( o->dist[iy][ix])
                                          : -std::sqrt(-o->dist[iy][ix]);
     b(ix,iy).s = std::max(b(ix,iy).s, o->dist[iy][ix]);;
-    o->chi[iy][ix] = 0;
   }
+  static constexpr int BS[2] = {ScalarBlock::sizeX, ScalarBlock::sizeY};
+  std::fill(o->chi [0], o->chi [0] + BS[1]*BS[0],  0);
+  std::fill(o->rho [0], o->rho [0] + BS[1]*BS[0],  1);
 }
 
 void PutFishOnBlocks::constructSurface(const BlockInfo& info, ScalarBlock& b,
