@@ -335,9 +335,10 @@ void PressureVarRho_approx::updatePressureRHS(const double dt) const
         const Real hatPfac = rE*dE - rW*dW + rN*dN - rS*dS;
         const Real divFx = PENL(ix+1,iy).u[0] - PENL(ix-1,iy).u[0];
         const Real divFy = PENL(ix,iy+1).u[1] - PENL(ix,iy-1).u[1];
-        const Real dUgradXx = (X(ix+1,iy).s-X(ix-1,iy).s) * deltaU(ix,iy).u[0];
-        const Real dUgradXy = (X(ix,iy+1).s-X(ix,iy-1).s) * deltaU(ix,iy).u[1];
-        const Real rhsDiv = pRhs(ix,iy).s +dUgradXx+dUgradXy +dt*(divFx+divFy);
+        //const Real dUgradXx = (X(ix+1,iy).s-X(ix-1,iy).s) * deltaU(ix,iy).u[0];
+        //const Real dUgradXy = (X(ix,iy+1).s-X(ix,iy-1).s) * deltaU(ix,iy).u[1];
+        // +dUgradXx+dUgradXy
+        const Real rhsDiv = pRhs(ix,iy).s +dt*(divFx+divFy);
         TMP(ix,iy).s = facDiv*rhsDiv + hatPfac;
       }
     }
