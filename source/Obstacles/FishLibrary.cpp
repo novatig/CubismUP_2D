@@ -15,7 +15,7 @@ FishData::FishData(Real L, Real Tp, Real phi, Real _h, const Real A):
  length(L), Tperiod(Tp), phaseShift(phi), h(_h), amplitudeFactor(A),
  rS(_alloc(Nm)),rX(_alloc(Nm)),rY(_alloc(Nm)),vX(_alloc(Nm)),vY(_alloc(Nm)),
  norX(_alloc(Nm)), norY(_alloc(Nm)), vNorX(_alloc(Nm)), vNorY(_alloc(Nm)),
- width(_alloc(Nm))//, upperSkin(new FishSkin(Nm)), lowerSkin(new FishSkin(Nm))
+ width(_alloc(Nm))
 {
   // extension head
   assert(dSref > 0);
@@ -66,7 +66,7 @@ void FishData::writeMidline2File(const int step_id, std::string filename)
   }
 }
 
-void FishData::_computeMidlineNormals()
+void FishData::_computeMidlineNormals() const
 {
   #pragma omp parallel for schedule(static)
   for(int i=0; i<Nm-1; i++) {
@@ -152,7 +152,8 @@ Real FishData::integrateAngularMomentum(double& angVel)
   return J;
 }
 
-void FishData::changeToCoMFrameLinear(const double Cin[2], const double vCin[2])
+void FishData::changeToCoMFrameLinear(const double Cin[2],
+                                      const double vCin[2]) const
 {
   #pragma omp parallel for schedule(static)
   for(int i=0;i<Nm;++i) { // subtract internal CM and vCM
@@ -160,120 +161,141 @@ void FishData::changeToCoMFrameLinear(const double Cin[2], const double vCin[2])
   }
 }
 
-void FishData::changeToCoMFrameAngular(const Real Ain, const Real vAin)
+void FishData::changeToCoMFrameAngular(const Real Ain, const Real vAin) const
 {
-  _prepareRotation2D(Ain);
+  const Real Rmatrix2D[2][2] = {
+    { std::cos(Ain),-std::sin(Ain)},
+    { std::sin(Ain), std::cos(Ain)}
+  };
+
   #pragma omp parallel for schedule(static)
   for(int i=0;i<Nm;++i) { // subtract internal angvel and rotate position by ang
     vX[i] += vAin*rY[i];
     vY[i] -= vAin*rX[i];
-    _rotate2D(rX[i], rY[i]);
-    _rotate2D(vX[i], vY[i]);
+    _rotate2D(Rmatrix2D, rX[i], rY[i]);
+    _rotate2D(Rmatrix2D, vX[i], vY[i]);
   }
   _computeMidlineNormals();
 }
 
-#if 0
-void FishMidlineData::computeSurface() {
-  const int Nskin = lowerSkin->Npoints;
+void FishData::computeSurface() const
+{
   // Compute surface points by adding width to the midline points
   #pragma omp parallel for schedule(static)
-  for(int i=0; i<Nskin; ++i) {
+  for(size_t i=0; i<lowerSkin.Npoints; ++i)
+  {
     Real norm[2] = {norX[i], norY[i]};
     Real const norm_mod1 = std::sqrt(norm[0]*norm[0] + norm[1]*norm[1]);
     norm[0] /= norm_mod1;
     norm[1] /= norm_mod1;
     assert(width[i] >= 0);
-    lowerSkin->xSurf[i] = rX[i] - width[i]*norm[0];
-    lowerSkin->ySurf[i] = rY[i] - width[i]*norm[1];
-    upperSkin->xSurf[i] = rX[i] + width[i]*norm[0];
-    upperSkin->ySurf[i] = rY[i] + width[i]*norm[1];
+    lowerSkin.xSurf[i] = rX[i] - width[i] * norm[0];
+    lowerSkin.ySurf[i] = rY[i] - width[i] * norm[1];
+    upperSkin.xSurf[i] = rX[i] + width[i] * norm[0];
+    upperSkin.ySurf[i] = rY[i] + width[i] * norm[1];
   }
 }
-void FishMidlineData::computeSkinNormals(const Real theta_comp, const Real CoM_comp[3]) {
-  _prepareRotation2D(theta_comp);
+
+#if 0 // here is code to compute normals on skin, prolly unneeded
+void FishData::computeSkinNormals(const Real theta_comp,
+                                  const Real CoM_comp[3])
+{
+  const Real Rmatrix2D[2][2]={ { std::cos(theta_comp),-std::sin(theta_comp)},
+                               { std::sin(theta_comp), std::cos(theta_comp)} };
+
   for(int i=0; i<Nm; ++i) {
-    _rotate2D(rX[i], rY[i]);
+    _rotate2D(Rmatrix2D, rX[i], rY[i]);
     rX[i] += CoM_comp[0];
     rY[i] += CoM_comp[1];
   }
 
-  const int Nskin = lowerSkin->Npoints;
   // Compute midpoints as they will be pressure targets
   #pragma omp parallel for
-  for(int i=0; i<Nskin-1; ++i)
+  for(size_t i=0; i<lowerSkin.Npoints-1; ++i)
   {
-    lowerSkin->midX[i] = (lowerSkin->xSurf[i] + lowerSkin->xSurf[i+1])/2.;
-    upperSkin->midX[i] = (upperSkin->xSurf[i] + upperSkin->xSurf[i+1])/2.;
-    lowerSkin->midY[i] = (lowerSkin->ySurf[i] + lowerSkin->ySurf[i+1])/2.;
-    upperSkin->midY[i] = (upperSkin->ySurf[i] + upperSkin->ySurf[i+1])/2.;
+    lowerSkin.midX[i] = (lowerSkin.xSurf[i] + lowerSkin.xSurf[i+1])/2.;
+    upperSkin.midX[i] = (upperSkin.xSurf[i] + upperSkin.xSurf[i+1])/2.;
+    lowerSkin.midY[i] = (lowerSkin.ySurf[i] + lowerSkin.ySurf[i+1])/2.;
+    upperSkin.midY[i] = (upperSkin.ySurf[i] + upperSkin.ySurf[i+1])/2.;
 
-    lowerSkin->normXSurf[i]=  (lowerSkin->ySurf[i+1]-lowerSkin->ySurf[i]);
-    upperSkin->normXSurf[i]=  (upperSkin->ySurf[i+1]-upperSkin->ySurf[i]);
-    lowerSkin->normYSurf[i]= -(lowerSkin->xSurf[i+1]-lowerSkin->xSurf[i]);
-    upperSkin->normYSurf[i]= -(upperSkin->xSurf[i+1]-upperSkin->xSurf[i]);
+    lowerSkin.normXSurf[i]=  (lowerSkin.ySurf[i+1]-lowerSkin.ySurf[i]);
+    upperSkin.normXSurf[i]=  (upperSkin.ySurf[i+1]-upperSkin.ySurf[i]);
+    lowerSkin.normYSurf[i]= -(lowerSkin.xSurf[i+1]-lowerSkin.xSurf[i]);
+    upperSkin.normYSurf[i]= -(upperSkin.xSurf[i+1]-upperSkin.xSurf[i]);
 
-    const Real normL = std::sqrt( std::pow(lowerSkin->normXSurf[i],2) +
-                                  std::pow(lowerSkin->normYSurf[i],2) );
-    const Real normU = std::sqrt( std::pow(upperSkin->normXSurf[i],2) +
-                                  std::pow(upperSkin->normYSurf[i],2) );
+    const Real normL = std::sqrt( std::pow(lowerSkin.normXSurf[i],2) +
+                                  std::pow(lowerSkin.normYSurf[i],2) );
+    const Real normU = std::sqrt( std::pow(upperSkin.normXSurf[i],2) +
+                                  std::pow(upperSkin.normYSurf[i],2) );
 
-    lowerSkin->normXSurf[i] /= normL;
-    upperSkin->normXSurf[i] /= normU;
-    lowerSkin->normYSurf[i] /= normL;
-    upperSkin->normYSurf[i] /= normU;
+    lowerSkin.normXSurf[i] /= normL;
+    upperSkin.normXSurf[i] /= normU;
+    lowerSkin.normYSurf[i] /= normL;
+    upperSkin.normYSurf[i] /= normU;
 
     //if too close to the head or tail, consider a point further in, so that we are pointing out for sure
     const int ii = (i<8) ? 8 : ((i > Nskin-9) ? Nskin-9 : i);
 
     const Real dirL =
-      lowerSkin->normXSurf[i] * (lowerSkin->midX[i]-rX[ii]) +
-      lowerSkin->normYSurf[i] * (lowerSkin->midY[i]-rY[ii]);
+      lowerSkin.normXSurf[i] * (lowerSkin.midX[i]-rX[ii]) +
+      lowerSkin.normYSurf[i] * (lowerSkin.midY[i]-rY[ii]);
     const Real dirU =
-      upperSkin->normXSurf[i] * (upperSkin->midX[i]-rX[ii]) +
-      upperSkin->normYSurf[i] * (upperSkin->midY[i]-rY[ii]);
+      upperSkin.normXSurf[i] * (upperSkin.midX[i]-rX[ii]) +
+      upperSkin.normYSurf[i] * (upperSkin.midY[i]-rY[ii]);
 
     if(dirL < 0) {
-        lowerSkin->normXSurf[i] *= -1.0;
-        lowerSkin->normYSurf[i] *= -1.0;
+        lowerSkin.normXSurf[i] *= -1.0;
+        lowerSkin.normYSurf[i] *= -1.0;
     }
     if(dirU < 0) {
-        upperSkin->normXSurf[i] *= -1.0;
-        upperSkin->normYSurf[i] *= -1.0;
+        upperSkin.normXSurf[i] *= -1.0;
+        upperSkin.normYSurf[i] *= -1.0;
     }
-  }
-}
-void FishMidlineData::surfaceToCOMFrame(const Real theta_internal, const Real CoM_internal[2]) {
-  _prepareRotation2D(theta_internal);
-  // Surface points rotation and translation
-
-  #pragma omp parallel for
-  for(int i=0; i<upperSkin->Npoints; ++i)
-  //for(int i=0; i<upperSkin->Npoints-1; ++i)
-  {
-    upperSkin->xSurf[i] -= CoM_internal[0];
-    upperSkin->ySurf[i] -= CoM_internal[1];
-    _rotate2D(upperSkin->xSurf[i], upperSkin->ySurf[i]);
-    lowerSkin->xSurf[i] -= CoM_internal[0];
-    lowerSkin->ySurf[i] -= CoM_internal[1];
-    _rotate2D(lowerSkin->xSurf[i], lowerSkin->ySurf[i]);
-  }
-}
-void FishMidlineData::surfaceToComputationalFrame(const Real theta_comp, const Real CoM_interpolated[2]) {
-  _prepareRotation2D(theta_comp);
-
-  #pragma omp parallel for
-  for(int i=0; i<upperSkin->Npoints; ++i)
-  {
-    _rotate2D(upperSkin->xSurf[i], upperSkin->ySurf[i]);
-    upperSkin->xSurf[i] += CoM_interpolated[0];
-    upperSkin->ySurf[i] += CoM_interpolated[1];
-    _rotate2D(lowerSkin->xSurf[i], lowerSkin->ySurf[i]);
-    lowerSkin->xSurf[i] += CoM_interpolated[0];
-    lowerSkin->ySurf[i] += CoM_interpolated[1];
   }
 }
 #endif
+
+void FishData::surfaceToCOMFrame(const Real theta_internal,
+                                 const Real CoM_internal[2]) const
+{
+  const Real Rmatrix2D[2][2] = {
+    { std::cos(theta_internal),-std::sin(theta_internal)},
+    { std::sin(theta_internal), std::cos(theta_internal)}
+  };
+  // Surface points rotation and translation
+
+  #pragma omp parallel for schedule(static)
+  for(size_t i=0; i<upperSkin.Npoints; ++i)
+  //for(int i=0; i<upperSkin.Npoints-1; ++i)
+  {
+    upperSkin.xSurf[i] -= CoM_internal[0];
+    upperSkin.ySurf[i] -= CoM_internal[1];
+    _rotate2D(Rmatrix2D, upperSkin.xSurf[i], upperSkin.ySurf[i]);
+    lowerSkin.xSurf[i] -= CoM_internal[0];
+    lowerSkin.ySurf[i] -= CoM_internal[1];
+    _rotate2D(Rmatrix2D, lowerSkin.xSurf[i], lowerSkin.ySurf[i]);
+  }
+}
+
+void FishData::surfaceToComputationalFrame(const Real theta_comp,
+                                           const Real CoM_interpolated[2]) const
+{
+  const Real Rmatrix2D[2][2] = {
+    { std::cos(theta_comp),-std::sin(theta_comp)},
+    { std::sin(theta_comp), std::cos(theta_comp)}
+  };
+
+  #pragma omp parallel for schedule(static)
+  for(size_t i=0; i<upperSkin.Npoints; ++i)
+  {
+    _rotate2D(Rmatrix2D, upperSkin.xSurf[i], upperSkin.ySurf[i]);
+    upperSkin.xSurf[i] += CoM_interpolated[0];
+    upperSkin.ySurf[i] += CoM_interpolated[1];
+    _rotate2D(Rmatrix2D, lowerSkin.xSurf[i], lowerSkin.ySurf[i]);
+    lowerSkin.xSurf[i] += CoM_interpolated[0];
+    lowerSkin.ySurf[i] += CoM_interpolated[1];
+  }
+}
 
 void AreaSegment::changeToComputationalFrame(const double pos[2],const Real angle)
 {

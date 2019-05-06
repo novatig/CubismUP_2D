@@ -176,7 +176,7 @@ class Shape
 
   Integrals integrateObstBlock(const std::vector<cubism::BlockInfo>& vInfo);
 
-  void removeMoments(const std::vector<cubism::BlockInfo>& vInfo);
+  virtual void removeMoments(const std::vector<cubism::BlockInfo>& vInfo);
 
   void updateLabVelocity( int mSum[2], double uSum[2] );
 

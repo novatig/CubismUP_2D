@@ -33,6 +33,7 @@ class Fish: public Shape
   Real getCharLength() const override {
     return length;
   }
+  void removeMoments(const std::vector<cubism::BlockInfo>& vInfo) override;
   virtual void resetAll() override;
   void updatePosition(double dt) override;
   virtual void create(const std::vector<cubism::BlockInfo>& vInfo) override;

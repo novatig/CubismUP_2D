@@ -12,32 +12,32 @@
 #include "ObstacleBlock.h"
 #include "../Operator.h"
 
-/*
 struct FishSkin
 {
- public:
-  const int Npoints;
+  const size_t Npoints;
   Real * const xSurf;
   Real * const ySurf;
-  Real * const normXSurf;
-  Real * const normYSurf;
-  Real * const midX;
-  Real * const midY;
+  //Real * const normXSurf;
+  //Real * const normYSurf;
+  //Real * const midX;
+  //Real * const midY;
+  FishSkin(const FishSkin& c) : Npoints(c.Npoints),
+    xSurf(new Real[Npoints]), ySurf(new Real[Npoints])
+    //, normXSurf(new Real[Npoints-1]), normYSurf(new Real[Npoints-1])
+    //, midX(new Real[Npoints-1]), midY(new Real[Npoints-1])
+    { }
 
-  FishSkin(const int N): Npoints(N), xSurf(_alloc(N)), ySurf(_alloc(N)),
-    normXSurf(_alloc(N-1)), normYSurf(_alloc(N-1)), midX(_alloc(N-1)),
-    midY(_alloc(N-1)) { }
+  FishSkin(const size_t N): Npoints(N),
+    xSurf(new Real[Npoints]), ySurf(new Real[Npoints])
+    //, normXSurf(new Real[Npoints-1]), normYSurf(new Real[Npoints-1])
+    //, midX(new Real[Npoints-1]), midY(new Real[Npoints-1])
+    { }
 
-  virtual ~FishSkin() {
-      _dealloc(xSurf);
-      _dealloc(ySurf);
-      _dealloc(normXSurf);
-      _dealloc(normYSurf);
-      _dealloc(midX);
-      _dealloc(midY);
+  ~FishSkin() { delete [] xSurf; delete [] ySurf;
+    // _dealloc(normXSurf); _dealloc(normYSurf);
+    // _dealloc(midX); _dealloc(midY);
   }
 };
-*/
 
 struct FishData
 {
@@ -75,38 +75,33 @@ struct FishData
 
   Real linMom[2], area, J, angMom; // for diagnostics
   // start and end indices in the arrays where the fish starts and ends (to ignore the extensions when interpolating the shapes)
-  //FishSkin * upperSkin, * lowerSkin;
+  FishSkin upperSkin = FishSkin(Nm);
+  FishSkin lowerSkin = FishSkin(Nm);
   virtual void resetAll();
 
  protected:
-  Real Rmatrix2D[2][2];
 
   template<typename T>
-  inline void _rotate2D(T &x, T &y) const {
+  inline void _rotate2D(const Real Rmatrix2D[2][2], T &x, T &y) const {
     const T p[2] = {x, y};
     x = Rmatrix2D[0][0]*p[0] + Rmatrix2D[0][1]*p[1];
     y = Rmatrix2D[1][0]*p[0] + Rmatrix2D[1][1]*p[1];
   }
   template<typename T>
-  inline void _translateAndRotate2D(const T pos[2], Real&x, Real&y) const {
+  inline void _translateAndRotate2D(const T pos[2], const Real Rmatrix2D[2][2], Real&x, Real&y) const {
     const Real p[2] = { x-pos[0], y-pos[1] };
     x = Rmatrix2D[0][0]*p[0] + Rmatrix2D[0][1]*p[1];
     y = Rmatrix2D[1][0]*p[0] + Rmatrix2D[1][1]*p[1];
   }
-  void _prepareRotation2D(const Real angle) {
-    Rmatrix2D[0][0] =  std::cos(angle);
-    Rmatrix2D[0][1] = -std::sin(angle);
-    Rmatrix2D[1][0] =  std::sin(angle);
-    Rmatrix2D[1][1] =  std::cos(angle);
-  }
 
-  Real* _alloc(const int N) {
+  static Real* _alloc(const int N) {
     return new Real[N];
   }
   template<typename T>
-  void _dealloc(T * ptr) {
+  static void _dealloc(T * ptr) {
     if(ptr not_eq nullptr) { delete [] ptr; ptr=nullptr; }
   }
+
   inline Real _d_ds(const int idx, const Real*const vals, const int maxidx) const {
     if(idx==0) return (vals[idx+1]-vals[idx])/(rS[idx+1]-rS[idx]);
     else if(idx==maxidx-1) return (vals[idx]-vals[idx-1])/(rS[idx]-rS[idx-1]);
@@ -125,7 +120,7 @@ struct FishData
     return 2*std::pow(width[idx],3)/3;
   }
 
-  virtual void _computeMidlineNormals();
+  virtual void _computeMidlineNormals() const;
 
   virtual Real _width(const Real s, const Real L) = 0;
 
@@ -140,12 +135,14 @@ struct FishData
   Real integrateLinearMomentum(double CoM[2], double vCoM[2]);
   Real integrateAngularMomentum(double & angVel);
 
-  void changeToCoMFrameLinear(const double CoM_internal[2], const double vCoM_internal[2]);
-  void changeToCoMFrameAngular(const Real theta_internal, const Real angvel_internal);
+  void changeToCoMFrameLinear(const double CoM_internal[2], const double vCoM_internal[2]) const;
+  void changeToCoMFrameAngular(const Real theta_internal, const Real angvel_internal) const;
 
-  //void computeSurface();
-  //void surfaceToCOMFrame(const Real theta_internal, const Real CoM_internal[2]);
-  //void surfaceToComputationalFrame(const Real theta_comp, const Real CoM_interpolated[2]);
+  void computeSurface() const;
+  void surfaceToCOMFrame(const Real theta_internal,
+                         const Real CoM_internal[2]) const;
+  void surfaceToComputationalFrame(const Real theta_comp,
+                                   const Real CoM_interpolated[2]) const;
 
   void writeMidline2File(const int step_id, std::string filename);
 

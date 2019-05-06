@@ -9,6 +9,8 @@
 
 #include "Fish.h"
 #include "FishLibrary.h"
+//#include <sstream>
+//#include <iomanip>
 
 using namespace cubism;
 
@@ -36,7 +38,7 @@ void Fish::create(const std::vector<BlockInfo>& vInfo)
   // 1.
   profile(push_start("midline"));
   myFish->computeMidline(sim.time, sim.dt);
-  //myFish->computeSurface();
+  myFish->computeSurface();
   profile(pop_stop());
 
   // 2. and 3.
@@ -68,7 +70,7 @@ void Fish::create(const std::vector<BlockInfo>& vInfo)
   }
   #endif
   profile(pop_stop());
-  //myFish->surfaceToCOMFrame(theta_internal,CoM_internal);
+  myFish->surfaceToCOMFrame(theta_internal, CoM_internal);
 
   //- VolumeSegment_OBB's volume cannot be zero
   //- therefore no VolumeSegment_OBB can be only occupied by extension midline
@@ -200,6 +202,25 @@ Fish::~Fish()
     delete myFish;
     myFish = nullptr;
   }
+}
+
+void Fish::removeMoments(const std::vector<cubism::BlockInfo>& vInfo)
+{
+  Shape::removeMoments(vInfo);
+  myFish->surfaceToComputationalFrame(orientation, centerOfMass);
+  #if 0
+  {
+    std::stringstream ssF;
+    ssF<<"skinPoints"<<std::setfill('0')<<std::setw(9)<<sim.step<<".dat";
+    std::ofstream ofs (ssF.str().c_str(), std::ofstream::out);
+    for(size_t i=0; i<myFish->upperSkin.Npoints; ++i)
+      ofs<<myFish->upperSkin.xSurf[i]  <<" "<<myFish->upperSkin.ySurf[i]  <<"\n";
+    for(size_t i=myFish->lowerSkin.Npoints; i>0; --i)
+      ofs<<myFish->lowerSkin.xSurf[i-1]<<" "<<myFish->lowerSkin.ySurf[i-1]<<"\n";
+    ofs.flush();
+    ofs.close();
+  }
+  #endif
 }
 
 #if 0
