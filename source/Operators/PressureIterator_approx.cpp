@@ -268,6 +268,7 @@ Real PressureVarRho_approx::penalize(const double dt) const
       #else
         const Real penalFac = lambda * X[iy][ix] / (1 +lambda * X[iy][ix] * dt);
       #endif
+      const Real oldF[2] = {F(ix,iy).u[0], F(ix,iy).u[1]};
       F(ix,iy).u[0] = penalFac * (US - UF(ix,iy).u[0]);
       F(ix,iy).u[1] = penalFac * (VS - UF(ix,iy).u[1]);
       const Real uNext  = UF(ix,iy).u[0] + dt * F(ix,iy).u[0];
@@ -275,8 +276,8 @@ Real PressureVarRho_approx::penalize(const double dt) const
       // uPres now becomes delta Vel
       UF(ix,iy).u[0] = dt * (uNext - US);
       UF(ix,iy).u[1] = dt * (vNext - VS);
-      MX += std::pow(uNext, 2); DMX += std::pow(X[iy][ix] * (uNext - US), 2);
-      MY += std::pow(vNext, 2); DMY += std::pow(X[iy][ix] * (vNext - VS), 2);
+      MX += std::pow(F(ix,iy).u[0],2); DMX += std::pow(F(ix,iy).u[0]-oldF[0],2);
+      MY += std::pow(F(ix,iy).u[1],2); DMY += std::pow(F(ix,iy).u[1]-oldF[1],2);
     }
   }
   // return L2 relative momentum
