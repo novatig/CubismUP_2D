@@ -208,15 +208,16 @@ void Fish::removeMoments(const std::vector<cubism::BlockInfo>& vInfo)
 {
   Shape::removeMoments(vInfo);
   myFish->surfaceToComputationalFrame(orientation, centerOfMass);
+  myFish->computeSkinNormals(orientation, centerOfMass);
   #if 0
   {
     std::stringstream ssF;
     ssF<<"skinPoints"<<std::setfill('0')<<std::setw(9)<<sim.step<<".dat";
     std::ofstream ofs (ssF.str().c_str(), std::ofstream::out);
     for(size_t i=0; i<myFish->upperSkin.Npoints; ++i)
-      ofs<<myFish->upperSkin.xSurf[i]  <<" "<<myFish->upperSkin.ySurf[i]  <<"\n";
+      ofs<<myFish->upperSkin.xSurf[i]  <<" "<<myFish->upperSkin.ySurf[i]<<" " <<myFish->upperSkin.normXSurf[i]  <<" "<<myFish->upperSkin.normYSurf[i]  <<"\n";
     for(size_t i=myFish->lowerSkin.Npoints; i>0; --i)
-      ofs<<myFish->lowerSkin.xSurf[i-1]<<" "<<myFish->lowerSkin.ySurf[i-1]<<"\n";
+      ofs<<myFish->lowerSkin.xSurf[i-1]<<" "<<myFish->lowerSkin.ySurf[i-1]<<" "<<myFish->lowerSkin.normXSurf[i-1]<<" "<<myFish->lowerSkin.normYSurf[i-1]<<"\n";
     ofs.flush();
     ofs.close();
   }

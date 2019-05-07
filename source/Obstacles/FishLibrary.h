@@ -17,25 +17,24 @@ struct FishSkin
   const size_t Npoints;
   Real * const xSurf;
   Real * const ySurf;
-  //Real * const normXSurf;
-  //Real * const normYSurf;
-  //Real * const midX;
-  //Real * const midY;
+  Real * const normXSurf;
+  Real * const normYSurf;
+  Real * const midX;
+  Real * const midY;
   FishSkin(const FishSkin& c) : Npoints(c.Npoints),
     xSurf(new Real[Npoints]), ySurf(new Real[Npoints])
-    //, normXSurf(new Real[Npoints-1]), normYSurf(new Real[Npoints-1])
-    //, midX(new Real[Npoints-1]), midY(new Real[Npoints-1])
+    , normXSurf(new Real[Npoints-1]), normYSurf(new Real[Npoints-1])
+    , midX(new Real[Npoints-1]), midY(new Real[Npoints-1])
     { }
 
   FishSkin(const size_t N): Npoints(N),
     xSurf(new Real[Npoints]), ySurf(new Real[Npoints])
-    //, normXSurf(new Real[Npoints-1]), normYSurf(new Real[Npoints-1])
-    //, midX(new Real[Npoints-1]), midY(new Real[Npoints-1])
+    , normXSurf(new Real[Npoints-1]), normYSurf(new Real[Npoints-1])
+    , midX(new Real[Npoints-1]), midY(new Real[Npoints-1])
     { }
 
   ~FishSkin() { delete [] xSurf; delete [] ySurf;
-    // _dealloc(normXSurf); _dealloc(normYSurf);
-    // _dealloc(midX); _dealloc(midY);
+      delete [] normXSurf; delete [] normYSurf; delete [] midX; delete [] midY;
   }
 };
 
@@ -143,7 +142,7 @@ struct FishData
                          const Real CoM_internal[2]) const;
   void surfaceToComputationalFrame(const Real theta_comp,
                                    const Real CoM_interpolated[2]) const;
-
+  void computeSkinNormals(const Real theta_comp, const Real CoM_comp[3]) const;
   void writeMidline2File(const int step_id, std::string filename);
 
   virtual void computeMidline(const Real time, const Real dt) = 0;

@@ -196,9 +196,8 @@ void FishData::computeSurface() const
   }
 }
 
-#if 0 // here is code to compute normals on skin, prolly unneeded
 void FishData::computeSkinNormals(const Real theta_comp,
-                                  const Real CoM_comp[3])
+                                  const Real CoM_comp[3]) const
 {
   const Real Rmatrix2D[2][2]={ { std::cos(theta_comp),-std::sin(theta_comp)},
                                { std::sin(theta_comp), std::cos(theta_comp)} };
@@ -213,10 +212,10 @@ void FishData::computeSkinNormals(const Real theta_comp,
   #pragma omp parallel for
   for(size_t i=0; i<lowerSkin.Npoints-1; ++i)
   {
-    lowerSkin.midX[i] = (lowerSkin.xSurf[i] + lowerSkin.xSurf[i+1])/2.;
-    upperSkin.midX[i] = (upperSkin.xSurf[i] + upperSkin.xSurf[i+1])/2.;
-    lowerSkin.midY[i] = (lowerSkin.ySurf[i] + lowerSkin.ySurf[i+1])/2.;
-    upperSkin.midY[i] = (upperSkin.ySurf[i] + upperSkin.ySurf[i+1])/2.;
+    lowerSkin.midX[i] = (lowerSkin.xSurf[i] + lowerSkin.xSurf[i+1])/2;
+    upperSkin.midX[i] = (upperSkin.xSurf[i] + upperSkin.xSurf[i+1])/2;
+    lowerSkin.midY[i] = (lowerSkin.ySurf[i] + lowerSkin.ySurf[i+1])/2;
+    upperSkin.midY[i] = (upperSkin.ySurf[i] + upperSkin.ySurf[i+1])/2;
 
     lowerSkin.normXSurf[i]=  (lowerSkin.ySurf[i+1]-lowerSkin.ySurf[i]);
     upperSkin.normXSurf[i]=  (upperSkin.ySurf[i+1]-upperSkin.ySurf[i]);
@@ -234,7 +233,7 @@ void FishData::computeSkinNormals(const Real theta_comp,
     upperSkin.normYSurf[i] /= normU;
 
     //if too close to the head or tail, consider a point further in, so that we are pointing out for sure
-    const int ii = (i<8) ? 8 : ((i > Nskin-9) ? Nskin-9 : i);
+    const int ii = (i<8) ? 8 : ((i > lowerSkin.Npoints-9) ? lowerSkin.Npoints-9 : i);
 
     const Real dirL =
       lowerSkin.normXSurf[i] * (lowerSkin.midX[i]-rX[ii]) +
@@ -253,7 +252,6 @@ void FishData::computeSkinNormals(const Real theta_comp,
     }
   }
 }
-#endif
 
 void FishData::surfaceToCOMFrame(const Real theta_internal,
                                  const Real CoM_internal[2]) const
