@@ -47,7 +47,17 @@ class FFTW_dirichlet : public PoissonSolver
     #pragma omp parallel for schedule(static)
     for(size_t j=0; j<MY; ++j)
     for(size_t i=0; i<MX; ++i)
+    {
+    #if 0
       in_out[j * MX + i] *= norm_factor / (2*COScoefX[i] + 2*COScoefY[j] - 4);
+    #else
+      const Real waveFactX = M_PI/MX, waveFactY = M_PI/MY;
+      const Real rkx = (i+(Real).5)*waveFactX, rky = (j+(Real).5)*waveFactY;
+      const Real denomSP = - rkx*rkx - rky*rky;
+      const Real denomFD = 2*COScoefX[i] + 2*COScoefY[j] - 4;
+      in_out[j * MX + i] *= norm_factor / ( (denomSP+denomFD)/2 );
+    #endif
+    }
     in_out[0] = 0; //this is sparta! (part 2)
     ///*
     //in_out[    MX-1 ] = 0; // j=0, i=end
@@ -116,8 +126,8 @@ class FFTW_dirichlet : public PoissonSolver
     sim.stopProfiler();
 
     sim.startProfiler("FFTW_solve");
-      _solve();
-      //_solveFiniteDiff();
+      //_solve();
+      _solveFiniteDiff();
     sim.stopProfiler();
 
     sim.startProfiler("FFTW_fwd");

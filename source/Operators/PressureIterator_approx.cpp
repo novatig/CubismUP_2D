@@ -156,15 +156,19 @@ void PressureVarRho_approx::integrateMomenta(Shape * const shape) const
 {
   const std::vector<ObstacleBlock*> & OBLOCK = shape->obstacleBlocks;
   const std::vector<BlockInfo>& vFluidInfo = sim.vFluid->getBlocksInfo();
+  const std::vector<BlockInfo>& iRhoInfo = sim.invRho->getBlocksInfo();
+  const std::vector<BlockInfo>& chiInfo = sim.chi->getBlocksInfo();
 
   const Real Cx = shape->centerOfMass[0], Cy = shape->centerOfMass[1];
   const double hsq = std::pow(velInfo[0].h_gridpoint, 2);
-  double PM=0, PJ=0, PX=0, PY=0, UM=0, VM=0, AM=0; //linear momenta
+  double PMX=0, PMY=0, PJ=0, PX=0, PY=0, UM=0, VM=0, AM=0; //linear momenta
 
-  #pragma omp parallel reduction(+ : PM, PJ, PX, PY, UM, VM, AM)
+  #pragma omp parallel reduction(+ : PMX, PMY, PJ, PX, PY, UM, VM, AM)
   {
-    static constexpr int stenBeg[3] = {0,0,0}, stenEnd[3] = {2,2,1};
+    static constexpr int stenBeg[3] = {-1,-1,0}, stenEnd[3] = {2,2,1};
+    ScalarLab iRhoLab; iRhoLab.prepare(*(sim.invRho), stenBeg, stenEnd, 0);
     VectorLab velLab; velLab.prepare(*(sim.vFluid), stenBeg, stenEnd, 0);
+    ScalarLab chiLab; chiLab.prepare(*(sim.chi), stenBeg, stenEnd, 0);
 
     #pragma omp for schedule(dynamic,1)
     for(size_t i=0; i<Nblocks; i++)
@@ -172,7 +176,9 @@ void PressureVarRho_approx::integrateMomenta(Shape * const shape) const
       if(OBLOCK[vFluidInfo[i].blockID] == nullptr) continue;
 
       velLab.load(vFluidInfo[i],0); const VectorLab& __restrict__ V = velLab;
-      const CHI_MAT & __restrict__ rho = OBLOCK[ vFluidInfo[i].blockID ]->rho;
+      chiLab.load(chiInfo[i],0);  const ScalarLab& __restrict__ CHI = chiLab;
+      iRhoLab.load(iRhoInfo[i],0); const ScalarLab&__restrict__ IRHO = iRhoLab;
+      //const CHI_MAT & __restrict__ rho = OBLOCK[ vFluidInfo[i].blockID ]->rho;
       const CHI_MAT & __restrict__ chi = OBLOCK[ vFluidInfo[i].blockID ]->chi;
       #ifndef EXPL_INTEGRATE_MOM
       const Real lambdt = sim.lambda * sim.dt;
@@ -183,23 +189,28 @@ void PressureVarRho_approx::integrateMomenta(Shape * const shape) const
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
         if (chi[iy][ix] <= 0) continue;
-        const Real UCC = (V(ix,iy).u[0] + V(ix+1,iy).u[0])/2;
-        const Real VCC = (V(ix,iy).u[1] + V(ix,iy+1).u[1])/2;
+        const Real invRhoX = mean(IRHO(ix,iy).s, IRHO(ix-1,iy).s);
+        const Real invRhoY = mean(IRHO(ix,iy).s, IRHO(ix,iy-1).s);
+        const Real XX = (CHI(ix,iy).s + CHI(ix-1,iy).s)/2;
+        const Real XY = (CHI(ix,iy).s + CHI(ix,iy-1).s)/2;
         #ifdef EXPL_INTEGRATE_MOM
-          const Real F = rho[iy][ix] * hsq * chi[iy][ix];
-          const Real udiff[2] = { UCC, VCC };
+          const Real FX = hsq * XX / invRhoX, FY = hsq * XY / invRhoY;
+          const Real udiff[2] = { V(ix,iy).u[0], V(ix,iy).u[1] };
         #else
-          const Real XTL = chi[iy][ix]*lambdt, F = rho[iy][ix]*hsq*XTL/(1+XTL);
-          const Real udiff[2] = { UCC-udef[iy][ix][0], VCC-udef[iy][ix][1] };
+          const Real FX = hsq * XX * lambdt /((1 + lambdt * XX) * invRhoX);
+          const Real FY = hsq * XY * lambdt /((1 + lambdt * XY) * invRhoY);
+          const Real udiff[2] = { V(ix,iy).u[0]-udef[iy][ix][0],
+                                  V(ix,iy).u[1]-udef[iy][ix][1] };
         #endif
         double p[2]; vFluidInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;
-        PM += F;
-        PJ += F * (p[0]*p[0] + p[1]*p[1]);
-        PX += F * p[0];
-        PY += F * p[1];
-        UM += F * udiff[0];
-        VM += F * udiff[1];
-        AM += F * (p[0]*udiff[1] - p[1]*udiff[0]);
+        PMX += FX;
+        PMY += FY;
+        PJ  += FY * p[0]*p[0] + FX * p[1]*p[1];
+        PX  += FY * p[0];
+        PY  += FX * p[1];
+        UM  += FX * udiff[0];
+        VM  += FY * udiff[1];
+        AM  += FY * p[0] * udiff[1] - FX * p[1] * udiff[0];
       }
     }
   }
@@ -209,7 +220,8 @@ void PressureVarRho_approx::integrateMomenta(Shape * const shape) const
   shape->fluidMomY = VM;
   shape->penalDX = PX;
   shape->penalDY = PY;
-  shape->penalM = PM;
+  shape->penalMX = PMX;
+  shape->penalMY = PMY;
   shape->penalJ = PJ;
 }
 

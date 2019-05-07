@@ -23,8 +23,8 @@ bool Shape::bVariableDensity() const {
 void Shape::updateVelocity(double dt)
 {
   double A[3][3] = {
-    {   penalM,       0, -penalDY },
-    {        0,  penalM,  penalDX },
+    {  penalMX,       0, -penalDY },
+    {        0, penalMY,  penalDX },
     { -penalDY, penalDX,  penalJ  }
   };
   double b[3] = {
@@ -34,10 +34,10 @@ void Shape::updateVelocity(double dt)
   };
 
   if(bForcedx) {
-                 A[0][1] = 0; A[0][2] = 0; b[0] = penalM * forcedu;
+                 A[0][1] = 0; A[0][2] = 0; b[0] = penalMX * forcedu;
   }
   if(bForcedy) {
-    A[1][0] = 0;              A[1][2] = 0; b[1] = penalM * forcedv;
+    A[1][0] = 0;              A[1][2] = 0; b[1] = penalMY * forcedv;
   }
   if(bBlockang) {
     A[2][0] = 0; A[2][1] = 0;              b[2] = 0;
@@ -118,8 +118,8 @@ void Shape::updatePosition(double dt)
      fout<<"t dt CXsim CYsim CXlab CYlab angle u v omega M J accx accy accw\n";
 
     fout<<t<<" "<<dt<<" "<<cx<<" "<<cy<<" "<<CX<<" "<<CY<<" "<<angle<<" "
-        <<u<<" "<<v<<" "<<omega<<" "<<M<<" "<<J<<" "<<fluidMomX/penalM<<" "
-        <<fluidMomY/penalM<<" "<<fluidAngMom/penalJ<<"\n";
+        <<u<<" "<<v<<" "<<omega<<" "<<M<<" "<<J<<" "<<fluidMomX/penalMX<<" "
+        <<fluidMomY/penalMY<<" "<<fluidAngMom/penalJ<<"\n";
   }
 }
 

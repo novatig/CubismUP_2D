@@ -164,7 +164,8 @@ void PressureIterator_unif::integrateMomenta(Shape * const shape) const
   shape->fluidMomY = VM;
   shape->penalDX = PX;
   shape->penalDY = PY;
-  shape->penalM = PM;
+  shape->penalMX = PM;
+  shape->penalMY = PM;
   shape->penalJ = PJ;
 }
 

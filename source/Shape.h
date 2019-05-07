@@ -47,7 +47,8 @@ class Shape
   double fluidMomY = 0;
   double penalDX = 0;
   double penalDY = 0;
-  double penalM = 0;
+  double penalMX = 0;
+  double penalMY = 0;
   double penalJ = 0;
   double appliedForceX = 0;
   double appliedForceY = 0;
