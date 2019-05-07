@@ -29,6 +29,8 @@ struct ObstacleBlock
 
   // bulk quantities:
   Real chi[sizeY][sizeX];
+  //Real chiX[sizeY][sizeX];
+  //Real chiY[sizeY][sizeX];
   Real dist[sizeY][sizeX];
   Real rho[sizeY][sizeX];
   Real udef[sizeY][sizeX][2];

@@ -14,17 +14,30 @@ using namespace cubism;
 
 static constexpr double EPS = std::numeric_limits<double>::epsilon();
 
+static inline Real computeChi(const Real h, const Real dist,
+                         const Real distPx, const Real distMx,
+                         const Real distPy, const Real distMy)
+{
+  if (dist > +2*h || dist < -2*h) return dist > 0 ? 1 : 0;
+  const double IplusX = distPx<0? 0 : distPx, IminuX = distMx<0? 0 : distMx;
+  const double IplusY = distPy<0? 0 : distPy, IminuY = distMy<0? 0 : distMy;
+  const double gradIX= IplusX-IminuX, gradIY= IplusY-IminuY;
+  const double gradUX= distPx-distMx, gradUY= distPy-distMy;
+  const double gradUSq = gradUX * gradUX + gradUY * gradUY;
+  return (gradIX*gradUX + gradIY*gradUY) / ( gradUSq<EPS ? EPS : gradUSq );
+}
+
 void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const
 {
   const std::vector<ObstacleBlock*>& OBLOCK = shape->obstacleBlocks;
   double _x=0, _y=0, _m=0;
-  const Real h = sim.getH(), i2h = 0.5/h, fac = 0.5*h; // fac explained down
-  #pragma omp parallel
+  const Real h = sim.getH(), i2h = 0.5/h, facDelta = 0.5*h; //fac explained down
+  #pragma omp parallel reduction(+ : _x, _y, _m)
   {
-    static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 2, 2, 1};
-    ScalarLab distlab; distlab.prepare(*(sim.tmp), stenBeg, stenEnd, 0);
+    static constexpr int stenBeg[3] = {-2,-2, 0}, stenEnd[3] = { 3, 3, 1};
+    ScalarLab distlab; distlab.prepare(*(sim.tmp), stenBeg, stenEnd, 1);
 
-    #pragma omp for schedule(dynamic, 1) reduction(+ : _x, _y, _m)
+    #pragma omp for schedule(dynamic, 1)
     for (size_t i=0; i < Nblocks; i++)
     {
       if(OBLOCK[chiInfo[i].blockID] == nullptr) continue; //obst not in block
@@ -35,13 +48,33 @@ void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const
       auto & __restrict__ CHI  = *(ScalarBlock*)    chiInfo[i].ptrBlock; // dest
       auto & __restrict__ IRHO = *(ScalarBlock*) invRhoInfo[i].ptrBlock;
       CHI_MAT & __restrict__ X = o.chi;
+      //static constexpr int BS[2] = {ScalarBlock::sizeX, ScalarBlock::sizeY};
+      //std::fill(o.chi [0], o.chi [0] + BS[1]*BS[0],  0);
+      //std::fill(o.chiX[0], o.chiX[0] + BS[1]*BS[0],  0);
+      //std::fill(o.chiY[0], o.chiY[0] + BS[1]*BS[0],  0);
       const CHI_MAT & __restrict__ rho = o.rho;
       const CHI_MAT & __restrict__ sdf = o.dist;
 
       for(int iy=0; iy<VectorBlock::sizeY; iy++)
       for(int ix=0; ix<VectorBlock::sizeX; ix++)
       {
+        /*
         // here I read SDF to deal with obstacles sharing block
+        X[iy][ix] = computeChi( h, sdf[iy][ix], SDIST(ix+1,iy).s,
+                        SDIST(ix-1,iy).s, SDIST(ix,iy+1).s, SDIST(ix,iy-1).s );
+        o.chiX[iy][ix] = computeChi( h,
+                            (sdf[iy][ix] + SDIST(ix-1,iy).s)/2,
+                            (SDIST(ix  ,iy).s + SDIST(ix+1,iy  ).s)/2,
+                            (SDIST(ix-1,iy).s + SDIST(ix-2,iy  ).s)/2,
+                            (SDIST(ix,iy+1).s + SDIST(ix-1,iy+1).s)/2,
+                            (SDIST(ix,iy-1).s + SDIST(ix-1,iy-1).s)/2 );
+        o.chiY[iy][ix] = computeChi( h,
+                            (sdf[iy][ix] + SDIST(ix,iy-1).s)/2,
+                            (SDIST(ix+1,iy).s + SDIST(ix+1,iy-1).s)/2,
+                            (SDIST(ix-1,iy).s + SDIST(ix-1,iy-1).s)/2,
+                            (SDIST(ix,iy  ).s + SDIST(ix,iy+1).s)/2,
+                            (SDIST(ix,iy-1).s + SDIST(ix,iy-2).s)/2 );
+        */
         if (sdf[iy][ix] > +2*h || sdf[iy][ix] < -2*h)
         {
           X[iy][ix] = sdf[iy][ix] > 0 ? 1 : 0;
@@ -52,21 +85,18 @@ void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const
           const double distPy = SDIST(ix  ,iy+1).s, distMy = SDIST(ix  ,iy-1).s;
           const double IplusX = distPx<0? 0:distPx, IminuX = distMx<0? 0:distMx;
           const double IplusY = distPy<0? 0:distPy, IminuY = distMy<0? 0:distMy;
-
           const auto HplusX = std::fabs(distPx)<EPS? (double).5 :(distPx<0?0:1);
           const auto HminuX = std::fabs(distMx)<EPS? (double).5 :(distMx<0?0:1);
           const auto HplusY = std::fabs(distPy)<EPS? (double).5 :(distPy<0?0:1);
           const auto HminuY = std::fabs(distMy)<EPS? (double).5 :(distMy<0?0:1);
-
           const double gradIX= i2h*(IplusX-IminuX), gradIY= i2h*(IplusY-IminuY);
           const double gradUX= i2h*(distPx-distMx), gradUY= i2h*(distPy-distMy);
           const double gradHX=     (HplusX-HminuX), gradHY=     (HplusY-HminuY);
-
           const double gradUSq = gradUX * gradUX + gradUY * gradUY;
           const double denum = 1 / ( gradUSq<EPS ? EPS : gradUSq );
           X[iy][ix] = (gradIX*gradUX + gradIY*gradUY) * denum;
           //fac is 1/2h of gradH times h^2 to make \int_v D*gradU = \int_s norm
-          const double D = fac*(gradHX*gradUX + gradHY*gradUY) * denum;
+          const double D = facDelta * (gradHX*gradUX + gradHY*gradUY) * denum;
           o.write(ix, iy, D, gradUX, gradUY);
         }
 

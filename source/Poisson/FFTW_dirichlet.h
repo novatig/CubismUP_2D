@@ -28,7 +28,7 @@ class FFTW_dirichlet : public PoissonSolver
   const Real norm_factor = 0.25/(MX*MY);
   myplan fwd, bwd;
 
-  inline void _solveSpectral() const
+  inline void _solve() const
   {
     const Real waveFactX = M_PI/MX, waveFactY = M_PI/MY;
     Real * __restrict__ const in_out = buffer;
@@ -41,18 +41,13 @@ class FFTW_dirichlet : public PoissonSolver
     in_out[0] = 0; //this is sparta! (part 2)
   }
 
-  inline void _solve() const
+  inline void _solveFiniteDiff() const
   {
-    const Real waveFactX = M_PI/MX, waveFactY = M_PI/MY;
     Real * __restrict__ const in_out = buffer;
     #pragma omp parallel for schedule(static)
     for(size_t j=0; j<MY; ++j)
-    for(size_t i=0; i<MX; ++i) {
-      const Real rkx = (i + (Real).5)*waveFactX, rky = (j + (Real).5)*waveFactY;
-      const Real denomFD = 1 - COScoefX[i]/2 - COScoefY[j]/2;
-      const Real denomSP = rkx*rkx + rky*rky;
-      in_out[j * MX + i] *=  - norm_factor / ( (denomFD + denomSP) / 2 );
-    }
+    for(size_t i=0; i<MX; ++i)
+      in_out[j * MX + i] *= norm_factor / (2*COScoefX[i] + 2*COScoefY[j] - 4);
     in_out[0] = 0; //this is sparta! (part 2)
     ///*
     //in_out[    MX-1 ] = 0; // j=0, i=end
@@ -78,9 +73,9 @@ class FFTW_dirichlet : public PoissonSolver
   FFTW_dirichlet(SimulationData& s) : PoissonSolver(s, TOT_DOF_X)
   {
     #pragma omp parallel for schedule(static)
-    for(size_t j=0; j<MY; ++j) COScoefY[j] = std::cos(M_PI/MY*2.0*j);
+    for(size_t j=0; j<MY; ++j) COScoefY[j] = std::cos(M_PI/MY*j);
     #pragma omp parallel for schedule(static)
-    for(size_t i=0; i<MX; ++i) COScoefX[i] = std::cos(M_PI/MX*2.0*i);
+    for(size_t i=0; i<MX; ++i) COScoefX[i] = std::cos(M_PI/MX*i);
 
     printf("Employing FFTW-based Poisson solver by cosine transform.\n");
     const int desired_threads = omp_get_max_threads();
@@ -122,7 +117,7 @@ class FFTW_dirichlet : public PoissonSolver
 
     sim.startProfiler("FFTW_solve");
       _solve();
-      //_solve_finiteDiff();
+      //_solveFiniteDiff();
     sim.stopProfiler();
 
     sim.startProfiler("FFTW_fwd");

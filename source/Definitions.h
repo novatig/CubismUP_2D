@@ -161,6 +161,11 @@ class BlockLabOpen: public cubism::BlockLab<BlockType, allocator>
   const ElementType& operator()(int ix, int iy=0, int iz=0) const {
     return this->read(ix,iy,iz);
   }
+  ElementType& operator()(int ix, int iy=0, int iz=0) {
+    return this->m_cacheBlock->Access(ix - this->m_stencilStart[0],
+                                      iy - this->m_stencilStart[1],
+                                      iz - this->m_stencilStart[2]);
+  }
 };
 
 struct StreamerScalar
