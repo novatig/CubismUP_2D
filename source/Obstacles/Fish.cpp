@@ -72,12 +72,9 @@ void Fish::create(const std::vector<BlockInfo>& vInfo)
   profile(pop_stop());
   myFish->surfaceToCOMFrame(theta_internal, CoM_internal);
 
-  //- VolumeSegment_OBB's volume cannot be zero
-  //- therefore no VolumeSegment_OBB can be only occupied by extension midline
-  //  points (which have width and height = 0)
   //- performance of create seems to decrease if VolumeSegment_OBB are bigger
-  //- this is the smallest number of VolumeSegment_OBB (Nsegments) and points in
-  //  the midline (Nm) to ensure at least one non ext. point inside all segments
+  //- this code groups segments together and finds a bounding box (maximal
+  //  x and y coords) to then be able to check intersection with cartesian grid 
   const int Nsegments = (myFish->Nm-1)/8, Nm = myFish->Nm;
   assert((Nm-1)%Nsegments==0);
   profile(push_start("boxes"));

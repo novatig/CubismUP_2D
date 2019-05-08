@@ -179,10 +179,10 @@ void Shape::removeMoments(const std::vector<BlockInfo>& vInfo)
 {
   static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
   Shape::Integrals I = integrateObstBlock(vInfo);
-  if(sim.verbose)
+  //if(sim.verbose)
     //if( std::max({std::fabs(I.u), std::fabs(I.v), std::fabs(I.a)}) > 10*EPS )
-  printf("Udef momenta: lin=[%e %e] ang=[%e]. Errors: dCM=[%e %e] dM=%e\n",
-      I.u, I.v, I.a, I.x, I.y, std::fabs(I.m-M));
+  //printf("Udef momenta: lin=[%e %e] ang=[%e]. Errors: dCM=[%e %e] dM=%e\n",
+  //    I.u, I.v, I.a, I.x, I.y, std::fabs(I.m-M));
   M = I.m; J = I.j;
 
   //with current center put shape on grid, with current shape on grid we updated

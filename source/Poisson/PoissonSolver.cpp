@@ -81,7 +81,7 @@ void PoissonSolver::cub2rhs(const std::vector<BlockInfo>& BSRC)
     }
   }
 
-  #if 0
+  #if 1
     sumABS = std::max(std::numeric_limits<Real>::epsilon(), sumABS);
     const Real correction = sumRHS / sumABS;
     //printf("Relative RHS correction:%e\n", correction);

@@ -158,8 +158,12 @@ class BlockLabOpen: public cubism::BlockLab<BlockType, allocator>
   BlockLabOpen(const BlockLabOpen&) = delete;
   BlockLabOpen& operator=(const BlockLabOpen&) = delete;
 
-  const ElementType& operator()(int ix, int iy=0, int iz=0) const {
-    return this->read(ix,iy,iz);
+  const ElementType& operator()(const int ix, const int iy) const {
+    return this->read(ix,iy,0);
+  }
+  ElementType& operator()(const int ix, const int iy) {
+    return this->m_cacheBlock->Access(ix - this->m_stencilStart[0],
+                                      iy - this->m_stencilStart[1], 0);
   }
 };
 
@@ -233,6 +237,7 @@ struct StreamerGlue
 };
 ////////////////////////////////////////////////////////////////////////////////
 
+
 using ScalarBlock = GridBlock<ScalarElement>;
 using VectorBlock = GridBlock<VectorElement>;
 using VectorGrid = cubism::Grid<VectorBlock, std::allocator>;
@@ -240,3 +245,24 @@ using ScalarGrid = cubism::Grid<ScalarBlock, std::allocator>;
 using DumpGrid = cubism::Grid<VelChiGlueBlock, std::allocator>;
 using VectorLab = BlockLabOpen<VectorBlock, std::allocator>;
 using ScalarLab = BlockLabOpen<ScalarBlock, std::allocator>;
+
+/*
+template<> class BlockLabOpen<ScalarBlock, std::allocator> : public cubism::BlockLab<ScalarBlock, std::allocator>
+{
+public:
+  Real& operator()(const int ix, const int iy) {
+    return this->m_cacheBlock->Access(
+        ix - this->m_stencilStart[0],
+        iy - this->m_stencilStart[1], 0).s;
+  }
+};
+template<> class BlockLabOpen<VectorBlock, std::allocator> : public cubism::BlockLab<VectorBlock, std::allocator>
+{
+public:
+  Real& operator()(const int ix, const int iy, const int dir) {
+    return this->m_cacheBlock->Access(
+        ix - this->m_stencilStart[0],
+        iy - this->m_stencilStart[1], 0).u[dir];
+  }
+};
+*/
