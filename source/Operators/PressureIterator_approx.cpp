@@ -27,9 +27,11 @@ static constexpr double EPS = std::numeric_limits<double>::epsilon();
 void PressureVarRho_approx::fadeoutBorder(const double dt) const
 {
   const std::vector<BlockInfo>&  tmpInfo = sim.tmp->getBlocksInfo();
-  const Real fadeLenX = sim.fadeLenX, fadeLenY = sim.fadeLenY;
-  const Real invFadeX = 1/(fadeLenX+EPS), invFadeY = 1/(fadeLenY+EPS);
   const auto& extent = sim.extents;
+  //const Real fadeLenX = sim.fadeLenX, fadeLenY = sim.fadeLenY;
+  //const Real fadeLenX = 8*sim.getH(), fadeLenY = 8*sim.getH();
+  const Real fadeLenX = extent[0]*0.05, fadeLenY = extent[1]*0.05;
+  const Real invFadeX = 1/(fadeLenX+EPS), invFadeY = 1/(fadeLenY+EPS);
   const auto _is_touching = [&] (const BlockInfo& i) {
     Real min_pos[2], max_pos[2];
     i.pos(max_pos, VectorBlock::sizeX-1, VectorBlock::sizeY-1);
@@ -252,8 +254,10 @@ Real PressureVarRho_approx::penalize(const double dt) const
         const Real penalFac = lambda * X[iy][ix] / (1 +lambda * X[iy][ix] * dt);
       #endif
       const Real oldF[2] = {F(ix,iy).u[0], F(ix,iy).u[1]};
-      F(ix,iy).u[0] = 0.1*F(ix,iy).u[0] + 0.9*penalFac*(US-UF(ix,iy).u[0]);
-      F(ix,iy).u[1] = 0.1*F(ix,iy).u[1] + 0.9*penalFac*(VS-UF(ix,iy).u[1]);
+      F(ix,iy).u[0] = penalFac * ( US - UF(ix,iy).u[0] );
+      F(ix,iy).u[1] = penalFac * ( VS - UF(ix,iy).u[1] );
+      //F(ix,iy).u[0] = 0.1*F(ix,iy).u[0] + 0.9*penalFac*(US-UF(ix,iy).u[0]);
+      //F(ix,iy).u[1] = 0.1*F(ix,iy).u[1] + 0.9*penalFac*(VS-UF(ix,iy).u[1]);
       const Real newF[2] = { F(ix,iy).u[0], F(ix,iy).u[1] };
       MX += std::pow(newF[0], 2); DMX += std::pow(newF[0]-oldF[0], 2);
       MY += std::pow(newF[1], 2); DMY += std::pow(newF[1]-oldF[1], 2);
@@ -358,6 +362,45 @@ void PressureVarRho_approx::updatePressureRHS(const double dt) const
       const Real rhsFluid = RHSF(ix,iy).s - std::fabs(RHSF(ix,iy).s) * corrF;
       const Real rhsSolid = RHS (ix,iy).s - std::fabs(RHS (ix,iy).s) * corrS;
       RHS(ix,iy).s = rhsFluid + rhsSolid;
+    }
+  }
+}
+#elif 1
+void PressureVarRho_approx::updatePressureRHS(const double dt) const
+{
+  const Real h = sim.getH(), facDiv = 0.5*rho0*h/dt;
+  const std::vector<BlockInfo>& iRhoInfo = sim.invRho->getBlocksInfo();
+  const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
+  const std::vector<BlockInfo>&  tmpInfo = sim.tmp->getBlocksInfo();
+  const std::vector<BlockInfo>& pRhsInfo = sim.pRHS->getBlocksInfo();
+  #pragma omp parallel
+  {
+    static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 2, 2, 1};
+    ScalarLab presLab; presLab.prepare(*(sim.pres),   stenBeg, stenEnd, 0);
+    ScalarLab iRhoLab; iRhoLab.prepare(*(sim.invRho), stenBeg, stenEnd, 0);
+
+    #pragma omp for schedule(static)
+    for (size_t i=0; i < Nblocks; i++)
+    {
+      presLab.load(presInfo[i],0); const ScalarLab& __restrict__ P   = presLab;
+      iRhoLab.load(iRhoInfo[i],0); const ScalarLab& __restrict__ IRHO= iRhoLab;
+      ScalarBlock& __restrict__ RHS  = *(ScalarBlock*)  tmpInfo[i].ptrBlock;
+      const ScalarBlock& __restrict__ vRHS =*(ScalarBlock*)pRhsInfo[i].ptrBlock;
+
+      for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix)
+      {
+        const Real rE = (1 -rho0 * mean(IRHO(ix+1,iy).s, IRHO(ix,iy).s));
+        const Real rW = (1 -rho0 * mean(IRHO(ix-1,iy).s, IRHO(ix,iy).s));
+        const Real rN = (1 -rho0 * mean(IRHO(ix,iy+1).s, IRHO(ix,iy).s));
+        const Real rS = (1 -rho0 * mean(IRHO(ix,iy-1).s, IRHO(ix,iy).s));
+        // gradP at midpoints, skip factor 1/h, but skip multiply by h^2 later
+        const Real dN = P(ix,iy+1).s-P(ix,iy).s, dS = P(ix,iy).s-P(ix,iy-1).s;
+        const Real dE = P(ix+1,iy).s-P(ix,iy).s, dW = P(ix,iy).s-P(ix-1,iy).s;
+        // hatPfac=div((1-1/rho^*) gradP), div gives missing 1/h to make h^2
+        const Real hatPfac = rE*dE - rW*dW + rN*dN - rS*dS;
+        RHS(ix,iy).s = facDiv * vRHS(ix,iy).s + hatPfac;
+      }
     }
   }
 }
