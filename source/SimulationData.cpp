@@ -61,6 +61,10 @@ void SimulationData::dumpTmp(std::string name) {
   DumpHDF5<StreamerScalar, float, ScalarGrid>(*(tmp), step, time,
     "tmp_" + ss.str(), path4serialization);
 }
+void SimulationData::dumpTmp2(std::string name) {
+  DumpHDF5<StreamerScalar, float, ScalarGrid>(*(tmp), step, time,
+    "tmp_" + name, path4serialization);
+}
 void SimulationData::dumpVel(std::string name) {
   std::stringstream ss; ss<<name<<std::setfill('0')<<std::setw(7)<<step;
   DumpHDF5<StreamerVector, float, VectorGrid>(*(vel), step, time,

@@ -104,6 +104,7 @@ struct SimulationData
   void dumpPres  (std::string name);
   void dumpPrhs  (std::string name);
   void dumpTmp   (std::string name);
+  void dumpTmp2  (std::string name);
   void dumpVel   (std::string name);
   void dumpUobj  (std::string name);
   void dumpTmpV  (std::string name);
