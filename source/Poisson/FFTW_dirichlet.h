@@ -28,7 +28,7 @@ class FFTW_dirichlet : public PoissonSolver
   const Real norm_factor = 0.25/(MX*MY);
   myplan fwd, bwd;
 
-  inline void _solveSpectral() const
+  inline void _solve() const
   {
     const Real waveFactX = M_PI/MX, waveFactY = M_PI/MY;
     Real * __restrict__ const in_out = buffer;
@@ -41,7 +41,7 @@ class FFTW_dirichlet : public PoissonSolver
     in_out[0] = 0; //this is sparta! (part 2)
   }
 
-  inline void _solve() const
+  inline void _solveSpectral() const
   {
     const Real waveFactX = M_PI/MX, waveFactY = M_PI/MY;
     Real * __restrict__ const in_out = buffer;
