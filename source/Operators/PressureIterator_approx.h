@@ -16,7 +16,7 @@ class PressureVarRho_approx : public Operator
 {
   int oldNsteps = 10000;
   Real targetRelError = 0.0001;
-  const Real rho0 = sim.minRho();
+  const Real rho0 = sim.minRho(), iRho0 = 1 / rho0;
   PoissonSolver * const pressureSolver;
 
   void fadeoutBorder(const double dt) const;

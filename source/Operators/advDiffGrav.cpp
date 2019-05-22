@@ -148,9 +148,9 @@ void advDiffGrav::operator()(const double dt)
       const ScalarBlock& __restrict__ invRho=*(ScalarBlock*)rhoInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY && isW(velInfo[i]); ++iy) { // west
-        V(BX-1, iy).u[0] = 0;//V(BX,iy).u[0]+UINF[0]>0? 0 : V(BX-1, iy).u[0];
+        V(BX-1, iy).u[0] = V(BX,iy).u[0]+UINF[0]>0? 0 : V(BX-1, iy).u[0];
         V(BX-1, iy).u[1] = V(BX,iy).u[0]+UINF[0]>0? 0 : V(BX-1, iy).u[1];
-        V(BX-2, iy).u[0] = 0;//V(BX,iy).u[0]+UINF[0]>0? 0 : V(BX-2, iy).u[0];
+        V(BX-2, iy).u[0] = V(BX,iy).u[0]+UINF[0]>0? 0 : V(BX-2, iy).u[0];
         V(BX-2, iy).u[1] = V(BX,iy).u[0]+UINF[0]>0? 0 : V(BX-2, iy).u[1];
       }
 
@@ -162,9 +162,9 @@ void advDiffGrav::operator()(const double dt)
       }
 
       for(int iy=0; iy<VectorBlock::sizeY && isE(velInfo[i]); ++iy) { // east
-        V(EX+1, iy).u[0] = 0;//V(EX,iy).u[0]+UINF[0]<0? 0 : V(EX+1, iy).u[0];
+        V(EX+1, iy).u[0] = V(EX,iy).u[0]+UINF[0]<0? 0 : V(EX+1, iy).u[0];
         V(EX+1, iy).u[1] = V(EX,iy).u[0]+UINF[0]<0? 0 : V(EX+1, iy).u[1];
-        V(EX+2, iy).u[0] = 0;//V(EX,iy).u[0]+UINF[0]<0? 0 : V(EX+2, iy).u[0];
+        V(EX+2, iy).u[0] = V(EX,iy).u[0]+UINF[0]<0? 0 : V(EX+2, iy).u[0];
         V(EX+2, iy).u[1] = V(EX,iy).u[0]+UINF[0]<0? 0 : V(EX+2, iy).u[1];
       }
 

@@ -23,6 +23,8 @@ typedef fftwf_plan myplan;
 class FFTW_periodic : public PoissonSolver
 {
   const size_t MX = totNx, MY = totNy, MX_hat = MX/2 +1;
+  float * const COScoefX = new float[MX];
+  float * const COScoefY = new float[MY];
   const Real norm_factor = 1.0/(MX*MY);
   myplan fwd, bwd;
 
@@ -31,38 +33,43 @@ class FFTW_periodic : public PoissonSolver
   void _solve_finiteDiff()
   {
     mycomplex * __restrict__ const in_out = (mycomplex *) buffer;
-    const Real waveFactX = 2*M_PI/MX, waveFactY = 2*M_PI/MY;
+    //const Real waveFactX = 2*M_PI/MX, waveFactY = 2*M_PI/MY;
     #pragma omp parallel for schedule(static)
     for(size_t j=0; j<MY; ++j)
     for(size_t i=0; i<MX_hat; ++i)
     {
-      const size_t kx = i<=MX/2 ? i : MX-i, ky = j<=MY/2 ? j : MY-j;
-      #if 0 // based on the 5 point stencil in 1D (h^4 error)
-        const Real cosx = std::cos(waveFactX*kx), cosy = std::cos(waveFactY*ky);
-        const Real denom = 32*(cosx + cosy) - 4*(cosx*cosx + cosy*cosy) - 56;
-        //const Real X = waveFactX*i, Y = waveFactY * j;
-        //const Real denom = 32*(std::cos(X) + std::cos(Y))
-        //                  - 2*(std::cos(2*X) + std::cos(2*Y)) - 60;
-        const Real inv_denom = denom == 0 ? 0 : 1 / denom;
-        const Real fatfactor = 12 * norm_factor * inv_denom;
-      #elif 1 // based on the 3 point stencil in 1D (2h^2 error)
-        const Real cosx = std::cos(2*waveFactX*kx);
-        const Real cosy = std::cos(2*waveFactY*ky);
-        const Real fatfactor = norm_factor / ( cosx/2 + cosy/2 - 1 );
-      #elif 1 // based on the 3 point stencil in 1D (h^2 error)
-        const Real cosx = std::cos(waveFactX*kx), cosy = std::cos(waveFactY*ky);
-        const Real denom =  2*cosx + 2*cosy - 4;
-        const Real fatfactor = norm_factor / denom;
-      #else // this is to check the transform only
-        const Real fatfactor = norm_factor;
-      #endif
+      //const size_t kx = i<=MX/2 ? i : MX-i, ky = j<=MY/2 ? j : MY-j;
+      /*
+        #if 0 // based on the 5 point stencil in 1D (h^4 error)
+          const Real cosx = std::cos(waveFactX*kx), cosy = std::cos(waveFactY*ky);
+          const Real denom = 32*(cosx + cosy) - 4*(cosx*cosx + cosy*cosy) - 56;
+          //const Real X = waveFactX*i, Y = waveFactY * j;
+          //const Real denom = 32*(std::cos(X) + std::cos(Y))
+          //                  - 2*(std::cos(2*X) + std::cos(2*Y)) - 60;
+          const Real inv_denom = denom == 0 ? 0 : 1 / denom;
+          const Real fatfactor = 12 * norm_factor * inv_denom;
+        #elif 0 // based on the 3 point stencil in 1D (h^2 error)
+          const size_t kx = i<=MX/2 ? i : MX-i, ky = j<=MY/2 ? j : MY-j;
+          const Real cosx = std::cos(waveFactX*kx), cosy = std::cos(waveFactY*ky);
+          const Real denom =  2*cosx + 2*cosy - 4;
+          const Real fatfactor = norm_factor / denom;
+        #else // this is to check the transform only
+          const Real fatfactor = norm_factor;
+        #endif
+      */
+      //const Real denomX = (2*std::cos(4*waveFactX*kx) - 32*std::cos(3*waveFactX*kx) + 128*std::cos(2*waveFactX*kx) + 32*std::cos(waveFactX*kx) - 130)/144;
+      //const Real denomY = (2*std::cos(4*waveFactY*ky) - 32*std::cos(3*waveFactY*ky) + 128*std::cos(2*waveFactY*ky) + 32*std::cos(waveFactY*ky) - 130)/144;
+      //const Real fatfactor = norm_factor / (denomX + denomY);
+
+      const Real fatfactor = norm_factor / (1 -COScoefX[i]/2 -COScoefY[j]/2);
+
       in_out[j*MX_hat + i][0] *= fatfactor;
       in_out[j*MX_hat + i][1] *= fatfactor;
     }
     in_out[0][0] = 0; in_out[0][1] = 0; //this is sparta!
     #if 1
-    in_out[MX/2][0] = 0;              in_out[MX/2][1] = 0;
-    in_out[MY/2*MX_hat][0] = 0;       in_out[MY/2*MX_hat][1] = 0;
+    in_out[             MX/2][0] = 0; in_out[              MX/2][1] = 0;
+    in_out[MY/2*MX_hat      ][0] = 0; in_out[MY/2*MX_hat       ][1] = 0;
     in_out[MY/2*MX_hat+ MX/2][0] = 0; in_out[MY/2*MX_hat + MX/2][1] = 0;
     #endif
   }
@@ -91,6 +98,17 @@ public:
 
   FFTW_periodic(SimulationData& s) : PoissonSolver(s, STRIDE)
   {
+    #pragma omp parallel for schedule(static)
+    for(size_t j=0; j<MY; ++j) {
+      const Real ky = j<=MY/2 ? j : MY-j;
+      COScoefY[j] = std::cos(M_PI/MY*4.0*ky);
+    }
+    #pragma omp parallel for schedule(static)
+    for(size_t i=0; i<MX; ++i) {
+      const Real kx = i<=MX/2 ? i : MX-i;
+      COScoefX[i] = std::cos(M_PI/MX*4.0*kx);
+    }
+
     printf("Employing FFTW-based Poisson solver by Fourier transform.\n");
     const int desired_threads = omp_get_max_threads();
     #ifndef _FLOAT_PRECISION_
@@ -130,8 +148,8 @@ public:
     sim.stopProfiler();
 
     sim.startProfiler("FFTW_solve");
-      //_solve_spectral();
-      _solve_finiteDiff();
+      _solve_spectral();
+      //_solve_finiteDiff();
     sim.stopProfiler();
 
     sim.startProfiler("FFTW_fwd");
@@ -149,6 +167,8 @@ public:
 
   ~FFTW_periodic()
   {
+    delete [] COScoefX;
+    delete [] COScoefY;
     #ifndef _FLOAT_PRECISION_
       fftw_cleanup_threads();
       fftw_destroy_plan(fwd);

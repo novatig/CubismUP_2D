@@ -122,7 +122,7 @@ class FFTW_dirichlet : public PoissonSolver
 
     sim.startProfiler("FFTW_solve");
       _solve();
-      //_solve_finiteDiff();
+      //_solveSpectral();
     sim.stopProfiler();
 
     sim.startProfiler("FFTW_fwd");

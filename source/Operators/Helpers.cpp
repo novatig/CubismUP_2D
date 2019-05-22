@@ -147,7 +147,7 @@ void FadeOut::operator()(const double dt)
 Real findMaxU::run() const
 {
   const Real UINF = sim.uinfx, VINF = sim.uinfy;
-  /*
+  ///*
   const std::vector<BlockInfo>& iRhoInfo  = sim.invRho->getBlocksInfo();
   Real momX = 0, momY = 0, totM = 0; const Real h = sim.getH();
   #pragma omp parallel for schedule(static) reduction(+ : momX, momY, totM)
@@ -164,7 +164,7 @@ Real findMaxU::run() const
   }
   printf("Integral of momenta X:%e Y:%e mass:%e\n", momX, momY, totM);
   const Real DU = momX / totM, DV = momY / totM;
-  */
+  //*/
   Real U = 0, V = 0, u = 0, v = 0;
   #pragma omp parallel for schedule(static) reduction(max : U, V, u, v)
   for (size_t i=0; i < Nblocks; i++)
@@ -172,7 +172,7 @@ Real findMaxU::run() const
     VectorBlock& VEL = *(VectorBlock*)  velInfo[i].ptrBlock;
     for(int iy=0; iy<VectorBlock::sizeY; ++iy)
     for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-      //VEL(ix,iy).u[0] -= DU; VEL(ix,iy).u[1] -= DV;
+      VEL(ix,iy).u[0] -= DU; VEL(ix,iy).u[1] -= DV;
       U = std::max( U, std::fabs( VEL(ix,iy).u[0] + UINF ) );
       V = std::max( V, std::fabs( VEL(ix,iy).u[1] + VINF ) );
       u = std::max( u, std::fabs( VEL(ix,iy).u[0] ) );

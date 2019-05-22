@@ -177,7 +177,7 @@ Shape::Integrals Shape::integrateObstBlock(const std::vector<BlockInfo>& vInfo)
 
 void Shape::removeMoments(const std::vector<BlockInfo>& vInfo)
 {
-  static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
+  //static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
   Shape::Integrals I = integrateObstBlock(vInfo);
   //if(sim.verbose)
     //if( std::max({std::fabs(I.u), std::fabs(I.v), std::fabs(I.a)}) > 10*EPS )
