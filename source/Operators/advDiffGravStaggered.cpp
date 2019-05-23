@@ -7,14 +7,14 @@
 //
 
 
-#include "advDiffGrav.h"
+#include "advDiffGravStaggered.h"
 
 using namespace cubism;
 
-void advDiffGrav::operator()(const double dt)
+void advDiffGravStaggered::operator()(const double dt)
 {
   const std::vector<cubism::BlockInfo>& tmpVInfo = sim.tmpV->getBlocksInfo();
-  const std::vector<cubism::BlockInfo>& rhoInfo = sim.rho->getBlocksInfo();
+  const std::vector<cubism::BlockInfo>& iRhoInfo = sim.invRho->getBlocksInfo();
 
   sim.startProfiler("advDiffGrav");
   static constexpr int BSX = VectorBlock::sizeX, BSY = VectorBlock::sizeY;
@@ -39,51 +39,108 @@ void advDiffGrav::operator()(const double dt)
   #pragma omp parallel
   {
     static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 1, 1, 1};
-    VectorLab vellab; vellab.prepare(*(sim.vel), stenBeg, stenEnd, 1);
-    ScalarLab rholab; rholab.prepare(*(sim.rho), stenBeg, stenEnd, 1);
+    static constexpr int stenBegV[3] = {-1,-1, 0}, stenEndV[3] = { 2, 2, 1};
+    VectorLab vellab; vellab.prepare(*(sim.vel), stenBegV, stenEndV, 1);
+    ScalarLab rholab; rholab.prepare(*(sim.invRho), stenBeg, stenEnd, 1);
 
     #pragma omp for schedule(static)
     for (size_t i=0; i < Nblocks; ++i)
     {
-      vellab.load(velInfo[i], 0); auto & __restrict__ V = vellab;
-      VectorBlock & __restrict__ TMP = *(VectorBlock*) tmpVInfo[i].ptrBlock;
-      const auto& __restrict__ RHO = *(ScalarBlock*) rhoInfo[i].ptrBlock;
+      vellab.load( velInfo[i], 0); auto & __restrict__ V = vellab;
+      rholab.load(iRhoInfo[i], 0); auto & __restrict__ IRHO = rholab;
+      auto& __restrict__ TMP = *(VectorBlock*) tmpVInfo[i].ptrBlock;
+
+      if(isW(velInfo[i]) && isS(velInfo[i])) {
+        const Real u = V(BX,BY).u[0]+UINF[0], v = V(BX,BY).u[1]+UINF[1];
+        V(BX-1,BY).u[1] = u>0? 0 : V(BX-1,BY).u[1];
+        V(BX  ,BY).u[1] = u>0? 0 : V(BX  ,BY).u[1];
+        V(BX,BY-1).u[0] = v>0? 0 : V(BX,BY-1).u[0];
+        V(BX,BY  ).u[0] = v>0? 0 : V(BX,BY  ).u[0];
+      }
+      if(isE(velInfo[i]) && isS(velInfo[i])) {
+        const Real u = V(EX,BY).u[0]+UINF[0], v = V(EX,BY).u[1]+UINF[1];
+        V(EX+1,BY).u[1] = u<0? 0 : V(EX+1,BY).u[1];
+        V(EX  ,BY).u[1] = u<0? 0 : V(EX  ,BY).u[1];
+        V(EX,BY-1).u[0] = v>0? 0 : V(EX,BY-1).u[0];
+        V(EX,BY  ).u[0] = v>0? 0 : V(EX,BY  ).u[0];
+      }
+      if(isW(velInfo[i]) && isN(velInfo[i])) {
+        const Real u = V(BX,EY).u[0]+UINF[0], v = V(BX,EY).u[1]+UINF[1];
+        V(BX-1,EY).u[1] = u>0? 0 : V(BX-1,EY).u[1];
+        V(BX  ,EY).u[1] = u>0? 0 : V(BX  ,EY).u[1];
+        V(BX,EY+1).u[0] = v<0? 0 : V(BX,EY+1).u[0];
+        V(BX,EY  ).u[0] = v<0? 0 : V(BX,EY  ).u[0];
+      }
+      if(isE(velInfo[i]) && isN(velInfo[i])) {
+        const Real u = V(EX,EY).u[0]+UINF[0], v = V(EX,EY).u[1]+UINF[1];
+        V(EX+1,EY).u[1] = u<0? 0 : V(EX+1,EY).u[1];
+        V(EX  ,EY).u[1] = u<0? 0 : V(EX  ,EY).u[1];
+        V(EX,EY+1).u[0] = v<0? 0 : V(EX,EY+1).u[0];
+        V(EX,EY  ).u[0] = v<0? 0 : V(EX,EY  ).u[0];
+      }
+
+      for(int iy=-1; iy<=VectorBlock::sizeY && isW(velInfo[i]); ++iy) { // west
+        V(BX-1, iy).u[0] = V(BX,iy).u[0]+UINF[0]>0? 0 : V(BX-1, iy).u[0];
+        V(BX  , iy).u[0] = V(BX,iy).u[0]+UINF[0]>0? 0 : V(BX  , iy).u[0];
+      }
+      for(int ix=-1; ix<=VectorBlock::sizeX && isS(velInfo[i]); ++ix) { // south
+        V(ix, BY-1).u[1] = V(ix,BY).u[1]+UINF[1]>0? 0 : V(ix, BY-1).u[1];
+        V(ix, BY  ).u[1] = V(ix,BY).u[1]+UINF[1]>0? 0 : V(ix, BY  ).u[1];
+      }
+      for(int iy=-1; iy<=VectorBlock::sizeY && isE(velInfo[i]); ++iy) { // east
+        V(EX+1, iy).u[0] = V(EX,iy).u[0]+UINF[0]<0? 0 : V(EX+1, iy).u[0];
+        V(EX  , iy).u[0] = V(EX,iy).u[0]+UINF[0]<0? 0 : V(EX  , iy).u[0];
+      }
+      for(int ix=-1; ix<=VectorBlock::sizeX && isN(velInfo[i]); ++ix) { // north
+        V(ix, EY+1).u[1] = V(ix,EY).u[1]+UINF[1]<0? 0 : V(ix, EY+1).u[1];
+        V(ix, EY  ).u[1] = V(ix,EY).u[1]+UINF[1]<0? 0 : V(ix, EY  ).u[1];
+      }
 
       for(int iy=0; iy<=VectorBlock::sizeY && isW(velInfo[i]); ++iy) { // west
-        const Real uAdvV = (V(BX,iy).u[0] + V(BX,iy-1).u[0])/2;
-        V(BX-1, iy).u[0] = V(BX,iy).u[0]+UINF[0]>0? 0 : V(BX-1, iy).u[0];
-        V(BX-1, iy).u[1] = uAdvV+UINF[0]>0? 0 : V(BX-1, iy).u[1];
+        const Real uAdvV = (V(BX,iy).u[0] + V(BX,iy-1).u[0])/2 +UINF[0];
+        V(BX-1, iy).u[1] = uAdvV>0? 0 : V(BX-1, iy).u[1];
+        V(BX  , iy).u[1] = uAdvV>0? 0 : V(BX  , iy).u[1];
       }
-      for(int ix=0; ix<=VectorBlock::sizeX && isS(velInfo[i]); ++ix) { // south
-        const Real vAdvU = (V(ix,BY).u[1] + V(ix-1,BY).u[1])/2;
-        V(ix, BY-1).u[1] = V(ix,BY).u[1]+UINF[1]>0? 0 : V(ix, BY-1).u[1];
-        V(ix, BY-1).u[0] = vAdvU+UINF[1]>0? 0 : V(ix, BY-1).u[0];
+      for(int ix=0; ix<=VectorBlock::sizeX && isS(velInfo[i]); ++ix) { //south
+        const Real vAdvU = (V(ix,BY).u[1] + V(ix-1,BY).u[1])/2 +UINF[1];
+        V(ix, BY-1).u[0] = vAdvU>0? 0 : V(ix, BY-1).u[0];
+        V(ix, BY  ).u[0] = vAdvU>0? 0 : V(ix, BY  ).u[0];
       }
-
-      for(int iy=-1; iy<VectorBlock::sizeY && isE(velInfo[i]); ++iy) // east
-        V(EX+1, iy).u[0] = V(EX,iy).u[0]+UINF[0]<0? 0 : V(EX+1, iy).u[0];
-      for(int ix=-1; ix<VectorBlock::sizeX && isN(velInfo[i]); ++ix) // north
-        V(ix, EY+1).u[1] = V(ix,EY).u[1]+UINF[1]<0? 0 : V(ix, EY+1).u[1];
-
-      for(int iy=0; iy<VectorBlock::sizeY && isE(velInfo[i]); ++iy) { // east
-        const Real uAdvV = (V(EX+1, iy).u[0] + V(EX+1, iy-1).u[0])/2;
-        V(EX+1, iy).u[1] = uAdvV+UINF[0]<0? 0 : V(EX+1, iy).u[1];
+      for(int iy=0; iy<=VectorBlock::sizeY && isE(velInfo[i]); ++iy) { //east
+        const Real uAdvV = (V(EX+1, iy).u[0] + V(EX+1, iy-1).u[0])/2 +UINF[0];
+        V(EX+1, iy).u[1] = uAdvV<0? 0 : V(EX+1, iy).u[1];
+        V(EX  , iy).u[1] = uAdvV<0? 0 : V(EX  , iy).u[1];
       }
-      for(int ix=0; ix<VectorBlock::sizeX && isN(velInfo[i]); ++ix) { // north
-        const Real vAdvU = (V(ix, EY+1).u[1] + V(ix-1, EY+1).u[1])/2;
-        V(ix, EY+1).u[0] = vAdvU+UINF[1]<0? 0 : V(ix, EY+1).u[0];
+      for(int ix=0; ix<=VectorBlock::sizeX && isN(velInfo[i]); ++ix) { //north
+        const Real vAdvU = (V(ix, EY+1).u[1] + V(ix-1, EY+1).u[1])/2 +UINF[1];
+        V(ix, EY+1).u[0] = vAdvU<0? 0 : V(ix, EY+1).u[0];
+        V(ix, EY  ).u[0] = vAdvU<0? 0 : V(ix, EY  ).u[0];
       }
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
-        const Real gravFacU = G[0] * ( 1 - ( RHO(ix-1,iy).s+RHO(ix,iy).s )/2 );
-        const Real gravFacV = G[1] * ( 1 - ( RHO(ix,iy-1).s+RHO(ix,iy).s )/2 );
+        const Real gravFacU = G[0] * ( 1 - (IRHO(ix-1,iy).s+IRHO(ix,iy).s)/2 );
+        const Real gravFacV = G[1] * ( 1 - (IRHO(ix,iy-1).s+IRHO(ix,iy).s)/2 );
         const Real upx = V(ix+1, iy).u[0], upy = V(ix, iy+1).u[0];
         const Real ulx = V(ix-1, iy).u[0], uly = V(ix, iy-1).u[0];
         const Real vpx = V(ix+1, iy).u[1], vpy = V(ix, iy+1).u[1];
         const Real vlx = V(ix-1, iy).u[1], vly = V(ix, iy-1).u[1];
         const Real ucc = V(ix  , iy).u[0], vcc = V(ix, iy  ).u[1];
+        #if 1
+        {
+          const Real VadvU = (vpy + V(ix-1,iy+1).u[1] + vcc + vlx)/4  + UINF[1];
+          const Real dUadv = (ucc+UINF[0]) * (upx-ulx) + VadvU * (upy - uly);
+          const Real dUdif = upx + upy + ulx + uly - 4 * ucc;
+          TMP(ix,iy).u[0] = V(ix,iy).u[0] + afac*dUadv + dfac*dUdif + gravFacU;
+        }
+        {
+          const Real UadvV = (upx + V(ix+1,iy-1).u[0] + ucc + uly)/4 + UINF[0];
+          const Real dVadv = UadvV * (vpx-vlx) + (vcc+UINF[1]) * (vpy-vly);
+          const Real dVdif = vpx + vpy + vlx + vly - 4 * vcc;
+          TMP(ix,iy).u[1] = V(ix,iy).u[1] + afac*dVadv + dfac*dVdif + gravFacV;
+        }
+        #else
         {
           const Real UE = (upx+ucc)/2, UW = (ulx+ucc)/2;
           const Real UN = (upy+ucc)/2, US = (uly+ucc)/2;
@@ -104,13 +161,13 @@ void advDiffGrav::operator()(const double dt)
           const Real dVAdvDiff = afac*(dVadvX + dVadvY) + dfac*dVdif;
           TMP(ix,iy).u[1] = V(ix,iy).u[1] + dVAdvDiff + gravFacV;
         }
+        #endif
       }
     }
   }
 
   #pragma omp parallel for schedule(static)
-  for (size_t i=0; i < Nblocks; i++)
-  {
+  for (size_t i=0; i < Nblocks; ++i) {
           VectorBlock & __restrict__ V  = *(VectorBlock*)  velInfo[i].ptrBlock;
     const VectorBlock & __restrict__ T  = *(VectorBlock*) tmpVInfo[i].ptrBlock;
     V.copy(T);

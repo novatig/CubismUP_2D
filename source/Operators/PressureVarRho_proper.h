@@ -10,17 +10,22 @@
 #pragma once
 
 #include "../Operator.h"
+
 #ifdef HYPREFFT
 class HYPREdirichletVarRho;
 #endif
+class PoissonSolver;
 
 class PressureVarRho_proper : public Operator
 {
   #ifdef HYPREFFT
-    HYPREdirichletVarRho * const pressureSolver;
+    HYPREdirichletVarRho * const varRhoSolver;
   #endif
+  PoissonSolver * const unifRhoSolver;
 
   void pressureCorrection(const double dt) const;
+  void fadeoutBorder(const double dt) const;
+  void updatePressureRHS(const double dt) const;
 
  public:
   void operator()(const double dt);

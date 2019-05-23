@@ -11,15 +11,15 @@
 
 #include "../Operator.h"
 
-class advDiffGrav : public Operator
+class advDiffGravStaggered : public Operator
 {
  public:
-  advDiffGrav(SimulationData& s) : Operator(s) { }
+  advDiffGravStaggered(SimulationData& s) : Operator(s) { }
 
   void operator()(const double dt);
 
   std::string getName()
   {
-    return "advDiffGrav";
+    return "advDiffGravStaggered";
   }
 };

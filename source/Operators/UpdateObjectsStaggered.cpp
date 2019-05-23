@@ -7,7 +7,7 @@
 //
 
 
-#include "UpdateObjects.h"
+#include "UpdateObjectsStaggered.h"
 #include "../Shape.h"
 
 using namespace cubism;
@@ -17,29 +17,29 @@ using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];
 
 #define EXPL_INTEGRATE_MOM
 
-void UpdateObjects::integrateMomenta(Shape * const shape) const
+void UpdateObjectsStaggered::integrateMomenta(Shape * const shape) const
 {
   const std::vector<ObstacleBlock*> & OBLOCK = shape->obstacleBlocks;
   const Real Cx = shape->centerOfMass[0], Cy = shape->centerOfMass[1];
   const double hsq = std::pow(velInfo[0].h_gridpoint, 2);
   double PM=0, PJ=0, PX=0, PY=0, UM=0, VM=0, AM=0; //linear momenta
 
-  #pragma omp parallel for schedule(dynamic,1) reduction(+:PM,PJ,PX,PY,UM,VM,AM)
+  #pragma omp parallel reduction(+:PM,PJ,PX,PY,UM,VM,AM)
   {
     static constexpr int stenBeg[3] = {0,0,0}, stenEnd[3] = {2,2,1};
-    VectorLab velLab; velLab.prepare(*(sim.vFluid), stenBeg, stenEnd, 0);
+    VectorLab velLab; velLab.prepare(*(sim.vel), stenBeg, stenEnd, 0);
 
     #pragma omp for schedule(dynamic,1)
     for(size_t i=0; i<Nblocks; i++)
     {
       if(OBLOCK[velInfo[i].blockID] == nullptr) continue;
 
-      velLab.load(vFluidInfo[i],0); const VectorLab& __restrict__ VEL = velLab;
+      velLab.load(velInfo[i],0); const auto& __restrict__ VEL = velLab;
       const CHI_MAT & __restrict__ rho = OBLOCK[velInfo[i].blockID]->rho;
       const CHI_MAT & __restrict__ chi = OBLOCK[velInfo[i].blockID]->chi;
       #ifndef EXPL_INTEGRATE_MOM
         const Real lambdt = sim.lambda * sim.dt;
-        const UDEFMAT & __restrict__ udef = OBLOCK[velInfo[i].blockID]->udef;
+        const auto& __restrict__ udef = OBLOCK[velInfo[i].blockID]->udef;
       #endif
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
@@ -76,7 +76,7 @@ void UpdateObjects::integrateMomenta(Shape * const shape) const
   shape->penalJ = PJ;
 }
 
-void UpdateObjects::penalize(const double dt) const
+void UpdateObjectsStaggered::penalize(const double dt) const
 {
   const std::vector<BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
   const Real lamdt = sim.lambda * dt;//, dh = velInfo[0].h_gridpoint/2;
@@ -125,7 +125,7 @@ void UpdateObjects::penalize(const double dt) const
   }
 }
 
-void UpdateObjects::operator()(const double dt)
+void UpdateObjectsStaggered::operator()(const double dt)
 {
   // penalization force is now assumed to be finalized
   // 1) integrate momentum

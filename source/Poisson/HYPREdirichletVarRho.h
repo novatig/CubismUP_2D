@@ -24,13 +24,12 @@ class HYPREdirichletVarRho : public PoissonSolver
   HYPRE_StructVector   hypre_sol;
   HYPRE_StructSolver   hypre_solver;
   HYPRE_StructSolver   hypre_precond;
-  Real pLast = 0;
-  using RowType = Real[5];
-  RowType * matAry = new RowType[totNy*totNx];
-  void fadeoutBorder(const double dt) const;
-  void updateRHSandMAT(const double dt, const bool updateMat) const;
+
  public:
   bool bUpdateMat = true;
+  using RowType = Real[5];
+  RowType * matAry = new RowType[totNy*totNx];
+
   void solve(const std::vector<cubism::BlockInfo>& BSRC,
              const std::vector<cubism::BlockInfo>& BDST) override;
 

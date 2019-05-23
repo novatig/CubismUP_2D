@@ -13,7 +13,7 @@
 
 class Shape;
 
-class UpdateObjects : public Operator
+class UpdateObjectsStaggered : public Operator
 {
   const std::vector<cubism::BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
   //const std::vector<BlockInfo>& presInfo  = sim.pres->getBlocksInfo();
@@ -23,7 +23,7 @@ class UpdateObjects : public Operator
   void penalize(const double dt) const;
 
  public:
-  UpdateObjects(SimulationData& s) : Operator(s) { }
+  UpdateObjectsStaggered(SimulationData& s) : Operator(s) { }
 
   void operator()(const double dt);
 

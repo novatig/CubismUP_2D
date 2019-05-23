@@ -11,192 +11,150 @@
 
 using namespace cubism;
 #ifdef HYPREFFT
-
-template<typename T>
-static inline T mean(const T A, const T B) { return 0.5*(A+B); }
 static constexpr double EPS = std::numeric_limits<double>::epsilon();
-
-void HYPREdirichletVarRho::fadeoutBorder(const double dt) const
-{
-  Real * __restrict__ const dest = buffer;
-  const std::vector<BlockInfo>& velInfo  = sim.vel->getBlocksInfo();
-  const Real fadeLenX = sim.fadeLenX, fadeLenY = sim.fadeLenY;
-  const Real invFadeX = 1/(fadeLenX+EPS), invFadeY = 1/(fadeLenY+EPS);
-  const auto& extent = sim.extents;
-  const auto _is_touching = [&] (const BlockInfo& i) {
-    Real min_pos[2], max_pos[2];
-    i.pos(max_pos, VectorBlock::sizeX-1, VectorBlock::sizeY-1);
-    i.pos(min_pos, 0, 0);
-    const bool touchW = fadeLenX >= min_pos[0];
-    const bool touchE = fadeLenX >= extent[0] - max_pos[0];
-    const bool touchS = fadeLenY >= min_pos[1];
-    const bool touchN = fadeLenY >= extent[1] - max_pos[1];
-    return touchN || touchE || touchS || touchW;
-  };
-
-  #pragma omp parallel for schedule(dynamic)
-  for (size_t i=0; i < velInfo.size(); i++)
-  {
-    if( not _is_touching(velInfo[i]) ) continue;
-    const size_t blocki = VectorBlock::sizeX * velInfo[i].index[0];
-    const size_t blockj = VectorBlock::sizeY * velInfo[i].index[1];
-    const size_t blockStart = blocki + stride * blockj;
-    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-    for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-    {
-      Real p[2]; velInfo[i].pos(p, ix, iy);
-      const Real yt = invFadeY*std::max(Real(0), fadeLenY - extent[1] + p[1] );
-      const Real yb = invFadeY*std::max(Real(0), fadeLenY - p[1] );
-      const Real xt = invFadeX*std::max(Real(0), fadeLenX - extent[0] + p[0] );
-      const Real xb = invFadeX*std::max(Real(0), fadeLenX - p[0] );
-      const size_t idx = blockStart + ix + stride*iy;
-      dest[idx] *= 1 - std::pow(std::min(std::max({yt,yb,xt,xb}), (Real)1), 2);
-    }
-  }
-};
-
-void HYPREdirichletVarRho::updateRHSandMAT(const double dt, const bool updateMat) const
-{
-  const std::vector<BlockInfo>& chiInfo  = sim.chi->getBlocksInfo();
-  const std::vector<BlockInfo>& velInfo  = sim.vel->getBlocksInfo();
-  const std::vector<BlockInfo>& uDefInfo = sim.uDef->getBlocksInfo();
-  const std::vector<BlockInfo>& iRhoInfo = sim.invRho->getBlocksInfo();
-  RowType * __restrict__ const mat = matAry;
-  Real * __restrict__ const dest = buffer;
-
-  #pragma omp parallel
-  {
-    const Real h = sim.getH(), facDiv = h/dt;
-    static constexpr int stenBeg [3] = {-1,-1, 0}, stenEnd [3] = { 2, 2, 1};
-    static constexpr int stenBegV[3] = { 0, 0, 0}, stenEndV[3] = { 2, 2, 1};
-    VectorLab velLab;  velLab.prepare( *(sim.vel),    stenBegV, stenEndV, 0);
-    VectorLab uDefLab; uDefLab.prepare(*(sim.uDef),   stenBeg , stenEnd , 0);
-    ScalarLab iRhoLab; iRhoLab.prepare(*(sim.invRho), stenBeg , stenEnd , 0);
-
-    #pragma omp for schedule(static)
-    for (size_t i=0; i < velInfo.size(); i++)
-    {
-      const size_t blocki = VectorBlock::sizeX * velInfo[i].index[0];
-      const size_t blockj = VectorBlock::sizeY * velInfo[i].index[1];
-      const size_t blockStart = blocki + stride * blockj;
-      velLab. load( velInfo[i], 0);
-      uDefLab.load(uDefInfo[i], 0);
-      const VectorLab  & __restrict__ V   =  velLab;
-      const VectorLab  & __restrict__ UDEF= uDefLab;
-      const ScalarBlock& __restrict__ CHI = *(ScalarBlock*)chiInfo[i].ptrBlock;
-
-      for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-      for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-      {
-        const size_t idx = blockStart + ix + stride*iy;
-        const Real divVx  =    V(ix+1,iy).u[0] -    V(ix,iy).u[0];
-        const Real divVy  =    V(ix,iy+1).u[1] -    V(ix,iy).u[1];
-        const Real divUSx = UDEF(ix+1,iy).u[0] - UDEF(ix,iy).u[0];
-        const Real divUSy = UDEF(ix,iy+1).u[1] - UDEF(ix,iy).u[1];
-        dest[idx] = - facDiv*( divVx+divVy - CHI(ix,iy).s*(divUSx+divUSy) );
-      }
-      if(updateMat)
-      {
-        iRhoLab.load(iRhoInfo[i], 0); const auto & __restrict__ IRHO= iRhoLab;
-        for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-        for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-        {
-          const size_t idx = blockStart + ix + stride*iy;
-          const Real coefE = mean(IRHO(ix+1,iy).s, IRHO(ix,iy).s);
-          const Real coefW = mean(IRHO(ix-1,iy).s, IRHO(ix,iy).s);
-          const Real coefN = mean(IRHO(ix,iy+1).s, IRHO(ix,iy).s);
-          const Real coefS = mean(IRHO(ix,iy-1).s, IRHO(ix,iy).s);
-          mat[idx][0] = coefN + coefS + coefE + coefW;
-          mat[idx][1] = - coefW;
-          mat[idx][2] = - coefE;
-          mat[idx][3] = - coefS;
-          mat[idx][4] = - coefN;
-        }
-      }
-    }
-  }
-
-  fadeoutBorder(dt);
-
-  if (0) {
-    Real sumRHS = 0, sumABS = 0;
-    #pragma omp parallel for schedule(static) reduction(+ : sumRHS, sumABS)
-    for (size_t i = 0; i < totNy*totNx; i++) {
-      sumABS += std::fabs(dest[i]); sumRHS += dest[i];
-    }
-    sumABS = std::max(std::numeric_limits<Real>::epsilon(), sumABS);
-    const Real corr = sumRHS / sumABS;
-    printf("Relative RHS correction:%e\n", corr);
-    #pragma omp parallel for schedule(static)
-    for(size_t i=0; i<totNy*totNx; i++) dest[i] -= std::fabs(dest[i])*corr;
-  }
-
-  // apply Neumann boundary conditions:
-  if(not bPeriodic && updateMat)
-  {
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < totNx; i++) {
-      // first south row
-      mat[stride*(0)       +i][0] += mat[stride*(0)       +i][3]; // center
-      mat[stride*(0)       +i][3]  = 0; // south
-      // first north row
-      mat[stride*(totNy-1) +i][0] += mat[stride*(totNy-1) +i][4]; // center
-      mat[stride*(totNy-1) +i][4]  = 0; // north
-    }
-    #pragma omp parallel for schedule(static)
-    for (size_t j = 0; j < totNy; j++) {
-      // first west col
-      mat[stride * j +      0][0] += mat[stride*j +       0][1]; // center
-      mat[stride * j +      0][1]  = 0; // west
-      // first east col
-      mat[stride * j +totNx-1][0] += mat[stride*j + totNx-1][2]; // center
-      mat[stride * j +totNx-1][2]  = 0; // east
-    }
-  }
-  if (0) {// fix mean pressure
-    // set second to last corner such that last point has pressure pLast
-    const size_t dofFix00 = stride*(totNy-2) +totNx-2;
-    const size_t dofFixMx = stride*(totNy-2) +totNx-3;
-    const size_t dofFixPx = stride*(totNy-2) +totNx-1;
-    const size_t dofFixMy = stride*(totNy-3) +totNx-2;
-    const size_t dofFixPy = stride*(totNy-1) +totNx-2;
-
-    mat [dofFix00][1] = 0; mat [dofFix00][2] = 0; // west east
-    mat [dofFix00][3] = 0; mat [dofFix00][4] = 0; // south north
-    assert(std::fabs(mat[dofFix00][0]) > 2e-16);
-    // preserve conditioning? P * coef = pLast * coef -> P = pLast
-    dest[dofFix00]  = pLast * mat[dofFix00][0];
-    // dof to the west and to the south get affected:
-    dest[dofFixMy] -= pLast * mat[dofFixMy][4]; mat[dofFixMy][4] = 0;
-    dest[dofFixPy] -= pLast * mat[dofFixPy][3]; mat[dofFixPy][3] = 0;
-    dest[dofFixMx] -= pLast * mat[dofFixMx][2]; mat[dofFixMx][2] = 0;
-    dest[dofFixPx] -= pLast * mat[dofFixPx][1]; mat[dofFixPx][1] = 0;
-  }
-
-  if(updateMat)
-  {
-    Real * const linV = (Real*) matAry;
-    // These indices must match to those in the offset array:
-    HYPRE_Int inds[5] = {0, 1, 2, 3, 4};
-    HYPRE_Int ilower[2] = {0,0}, iupper[2] = {(int)totNx-1, (int)totNy-1};
-    HYPRE_StructMatrixSetBoxValues(hypre_mat, ilower, iupper, 5, inds, linV);
-    HYPRE_StructMatrixAssemble(hypre_mat);
-  }
-}
 
 void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
                                  const std::vector<BlockInfo>& BDST)
 {
-  HYPRE_Int ilower[2] = {0,0};
-  HYPRE_Int iupper[2] = {(int)totNx-1, (int)totNy-1};
+  const size_t nBlocks = BDST.size();
+  HYPRE_Int ilower[2] = {0,0}, iupper[2] = {(int)totNx-1, (int)totNy-1};
 
   sim.startProfiler("HYPRE_cub2rhs");
-  updateRHSandMAT(sim.dt, bUpdateMat);
+
+  // pre-hypre solve plan:
+  // 1) place initial guess of pressure into vector x
+  // 2) in the same compute discrepancy from sum RHS = 0
+  // 3) send initial guess for x to hypre
+  // 4) correct RHS such that sum RHS = 0 due to boundary conditions
+  // 5) give RHS to hypre
+  // 6) if user modified matrix, make sure it respects neumann BC
+  // 7) if user modified matrix, reassemble it so that hypre updates precond
+  {
+    Real sumRHS = 0, sumABS = 0;
+    #pragma omp parallel for schedule(static) reduction(+ : sumRHS,sumABS)
+    for(size_t i=0; i<nBlocks; ++i)
+    {
+      const size_t blocki = VectorBlock::sizeX * BSRC[i].index[0];
+      const size_t blockj = VectorBlock::sizeY * BSRC[i].index[1];
+      const ScalarBlock& RHS = *(ScalarBlock*) BSRC[i].ptrBlock;
+      const ScalarBlock& P = *(ScalarBlock*) BDST[i].ptrBlock;
+      const size_t blockStart = blocki + stride * blockj;
+
+      for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
+        buffer[blockStart + ix + stride*iy] = P(ix,iy).s; // 1)
+        sumABS += std::fabs(RHS(ix,iy).s); // 2)
+        sumRHS +=           RHS(ix,iy).s;  // 2)
+      }
+    }
+    HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, buffer); // 3)
+
+    #pragma omp parallel for schedule(static)
+    for(size_t i=0; i<nBlocks; ++i) {
+      const size_t blocki = VectorBlock::sizeX * BSRC[i].index[0];
+      const size_t blockj = VectorBlock::sizeY * BSRC[i].index[1];
+      const ScalarBlock& RHS = *(ScalarBlock*) BSRC[i].ptrBlock;
+      const size_t start = blocki + stride * blockj;
+
+      for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix) // 4)
+        buffer[start +ix +stride*iy] = RHS(ix,iy).s;
+    }
+
+    #if 0
+      const Real C = sumRHS / std::max(EPS, sumABS);
+      printf("Relative RHS correction:%e\n", C);
+      #pragma omp parallel for schedule(static)
+      for(size_t i=0; i<totNy*totNx; ++i) buffer[i] -= std::fabs(buffer[i]) * C;
+    #elif 0
+      const Real C = sumRHS/totNy/totNx; printf("RHS correction:%e\n", C);
+      #pragma omp parallel for schedule(static)
+      for(size_t i=0; i<totNy*totNx; ++i) buffer[i] -= C;
+    #else
+      const auto& extent = sim.extents;
+      const Real fadeLenX = sim.fadeLenX, fadeLenY = sim.fadeLenY;
+      const Real invFadeX = 1/std::max(fadeLenX,EPS);
+      const Real invFadeY = 1/std::max(fadeLenY,EPS);
+      const Real nInnX = totNx*(extent[0] - 2*fadeLenX)/extent[0];
+      const Real nInnY = totNy*(extent[1] - 2*fadeLenY)/extent[1];
+      const Real nOutX = (totNx-nInnX)/2, nOutY = (totNy-nInnY)/2;
+      const Real C = sumRHS/(nInnX*nOutY + nInnY*nOutX + 4*nOutX*nOutY);
+      const auto _is_touching = [&] (const BlockInfo& i) {
+        Real min_pos[2], max_pos[2]; i.pos(min_pos, 0, 0);
+        i.pos(max_pos, VectorBlock::sizeX-1, VectorBlock::sizeY-1);
+        const bool touchW = fadeLenX >= min_pos[0];
+        const bool touchE = fadeLenX >= extent[0] - max_pos[0];
+        const bool touchS = fadeLenY >= min_pos[1];
+        const bool touchN = fadeLenY >= extent[1] - max_pos[1];
+        return touchN || touchE || touchS || touchW;
+      };
+      #pragma omp parallel for schedule(dynamic)
+      for (size_t i=0; i < nBlocks; i++)
+      {
+        if( not _is_touching(BSRC[i]) ) continue;
+        const size_t blocki = VectorBlock::sizeX * BSRC[i].index[0];
+        const size_t blockj = VectorBlock::sizeY * BSRC[i].index[1];
+        const size_t start = blocki + stride * blockj;
+
+        for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+        for(int ix=0; ix<VectorBlock::sizeX; ++ix)
+        {
+          Real p[2]; BSRC[i].pos(p, ix, iy);
+          const Real yt = invFadeY*std::max(Real(0), fadeLenY -extent[1]+p[1] );
+          const Real yb = invFadeY*std::max(Real(0), fadeLenY -p[1] );
+          const Real xt = invFadeX*std::max(Real(0), fadeLenX -extent[0]+p[0] );
+          const Real xb = invFadeX*std::max(Real(0), fadeLenX -p[0] );
+          if(yt*xt>0 || yt*xb>0 || yb*xt>0 || yb*xb>0) {
+            buffer[start + ix + stride*iy] -= C;
+          } else {
+            const Real fadeArg = std::min(std::max({yt, yb, xt, xb}), (Real)1);
+            buffer[start + ix + stride*iy] -= C * fadeArg;
+          }
+        }
+      }
+    #endif
+    HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, buffer); // 5)
+  }
+
+
+  if(not bPeriodic && bUpdateMat) // 6)
+  {
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < totNx; ++i) {
+      // first south row
+      matAry[stride*(0)       +i][0] += matAry[stride*(0)       +i][3]; // cc
+      matAry[stride*(0)       +i][3]  = 0; // south
+      // first north row
+      matAry[stride*(totNy-1) +i][0] += matAry[stride*(totNy-1) +i][4]; // cc
+      matAry[stride*(totNy-1) +i][4]  = 0; // north
+    }
+    #pragma omp parallel for schedule(static)
+    for (size_t j = 0; j < totNy; ++j) {
+      // first west col
+      matAry[stride * j +      0][0] += matAry[stride*j +       0][1]; // center
+      matAry[stride * j +      0][1]  = 0; // west
+      // first east col
+      matAry[stride * j +totNx-1][0] += matAry[stride*j + totNx-1][2]; // center
+      matAry[stride * j +totNx-1][2]  = 0; // east
+    }
+  }
+
+  if(bUpdateMat) // 7)
+  {
+    Real * const linV = (Real*) matAry;
+    // These indices must match to those in the offset array:
+    HYPRE_Int inds[5] = {0, 1, 2, 3, 4};
+    HYPRE_StructMatrixSetBoxValues(hypre_mat, ilower, iupper, 5, inds, linV);
+    HYPRE_StructMatrixAssemble(hypre_mat);
+  }
+
   sim.stopProfiler();
 
-  sim.startProfiler("HYPRE_setBoxV");
-  HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, buffer);
-  sim.stopProfiler();
+  if(0)
+  {
+    char fname[512]; sprintf(fname, "RHS_%06d", sim.step);
+    sim.dumpTmp2( std::string(fname) );
+  }
 
   sim.startProfiler("HYPRE_solve");
   if (solver == "gmres")
@@ -214,19 +172,18 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
   sim.stopProfiler();
 
   sim.startProfiler("HYPRE_sol2cub");
+
+  if(1) // remove mean pressure
   {
     Real avgP = 0;
     const Real fac = 1.0 / (totNx * totNy);
-    Real * const nxtGuess = buffer;
     #pragma omp parallel for schedule(static) reduction(+ : avgP)
-    for (size_t i = 0; i < totNy*totNx; i++) avgP += fac * nxtGuess[i];
+    for (size_t i = 0; i < totNy*totNx; ++i) avgP += fac * buffer[i];
     #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < totNy*totNx; i++) nxtGuess[i] -= avgP;
-    HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, buffer);
-    const size_t dofFix00 = stride*(totNy-2) +totNx-2;
-    pLast = buffer[dofFix00];
-    printf("Avg Pressure:%f\n", avgP);
+    for (size_t i = 0; i < totNy*totNx; ++i) buffer[i] -= avgP;
+    printf("Average pressure:%e\n", avgP);
   }
+
   sol2cub(BDST);
 
   sim.stopProfiler();
@@ -269,7 +226,11 @@ HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
   { // Matrix
     HYPRE_StructMatrixCreate(COMM, hypre_grid, hypre_stencil, &hypre_mat);
     HYPRE_StructMatrixInitialize(hypre_mat);
-    updateRHSandMAT(1.0, true);
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < totNy*totNx; ++i) {
+      matAry[i][0] = -4;
+      matAry[i][1] = 1; matAry[i][2] = 1; matAry[i][3] = 1; matAry[i][4] = 1;
+    }
   }
 
   // Rhs and initial guess
@@ -293,7 +254,7 @@ HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
     HYPRE_StructGMRESCreate(COMM, &hypre_solver);
     HYPRE_StructGMRESSetTol(hypre_solver, 1e-4);
     HYPRE_StructGMRESSetPrintLevel(hypre_solver, 2);
-    HYPRE_StructGMRESSetAbsoluteTol(hypre_solver, 1e-8);
+    HYPRE_StructGMRESSetAbsoluteTol(hypre_solver, 1e-4);
     HYPRE_StructGMRESSetMaxIter(hypre_solver, 100);
     HYPRE_StructGMRESSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   }
@@ -312,18 +273,20 @@ HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
     //HYPRE_StructSMGSetMemoryUse(hypre_solver, 0);
     HYPRE_StructSMGSetMaxIter(hypre_solver, 100);
     HYPRE_StructSMGSetTol(hypre_solver, 1e-3);
-    //HYPRE_StructSMGSetRelChange(hypre_solver, 0);
+    HYPRE_StructSMGSetRelChange(hypre_solver, 1e-4);
     HYPRE_StructSMGSetPrintLevel(hypre_solver, 3);
     HYPRE_StructSMGSetNumPreRelax(hypre_solver, 1);
     HYPRE_StructSMGSetNumPostRelax(hypre_solver, 1);
+    //HYPRE_StructSMGSetNonZeroGuess(hypre_solver);
 
     HYPRE_StructSMGSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   }
   else {
     printf("Using PCG solver\n");
     HYPRE_StructPCGCreate(COMM, &hypre_solver);
-    HYPRE_StructPCGSetMaxIter(hypre_solver, 1000);
-    HYPRE_StructPCGSetTol(hypre_solver, 1e-3);
+    HYPRE_StructPCGSetMaxIter(hypre_solver, 100);
+    HYPRE_StructPCGSetTol(hypre_solver, 1e-4);
+    HYPRE_StructPCGSetAbsoluteTol(hypre_solver, 1e-4);
     HYPRE_StructPCGSetPrintLevel(hypre_solver, 0);
     if(0) { // Use SMG preconditioner: BAD
       HYPRE_StructSMGCreate(COMM, &hypre_precond);
