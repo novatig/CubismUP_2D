@@ -66,11 +66,12 @@ void HYPREdirichletVarRho::updateRHSandMAT(const double dt, const bool updateMat
 
   #pragma omp parallel
   {
-    const Real h = sim.getH(), facDiv = 0.5*h/dt;
-    static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 2, 2, 1};
-    VectorLab velLab;  velLab.prepare( *(sim.vel),    stenBeg, stenEnd, 0);
-    VectorLab uDefLab; uDefLab.prepare(*(sim.uDef),   stenBeg, stenEnd, 0);
-    ScalarLab iRhoLab; iRhoLab.prepare(*(sim.invRho), stenBeg, stenEnd, 0);
+    const Real h = sim.getH(), facDiv = h/dt;
+    static constexpr int stenBeg [3] = {-1,-1, 0}, stenEnd [3] = { 2, 2, 1};
+    static constexpr int stenBegV[3] = { 0, 0, 0}, stenEndV[3] = { 2, 2, 1};
+    VectorLab velLab;  velLab.prepare( *(sim.vel),    stenBegV, stenEndV, 0);
+    VectorLab uDefLab; uDefLab.prepare(*(sim.uDef),   stenBeg , stenEnd , 0);
+    ScalarLab iRhoLab; iRhoLab.prepare(*(sim.invRho), stenBeg , stenEnd , 0);
 
     #pragma omp for schedule(static)
     for (size_t i=0; i < velInfo.size(); i++)
@@ -88,16 +89,15 @@ void HYPREdirichletVarRho::updateRHSandMAT(const double dt, const bool updateMat
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
         const size_t idx = blockStart + ix + stride*iy;
-        const Real divVx  = V(ix+1,iy).u[0]    - V(ix-1,iy).u[0];
-        const Real divVy  = V(ix,iy+1).u[1]    - V(ix,iy-1).u[1];
-        const Real divUSx = UDEF(ix+1,iy).u[0] - UDEF(ix-1,iy).u[0];
-        const Real divUSy = UDEF(ix,iy+1).u[1] - UDEF(ix,iy-1).u[1];
+        const Real divVx  =    V(ix+1,iy).u[0] -    V(ix,iy).u[0];
+        const Real divVy  =    V(ix,iy+1).u[1] -    V(ix,iy).u[1];
+        const Real divUSx = UDEF(ix+1,iy).u[0] - UDEF(ix,iy).u[0];
+        const Real divUSy = UDEF(ix,iy+1).u[1] - UDEF(ix,iy).u[1];
         dest[idx] = - facDiv*( divVx+divVy - CHI(ix,iy).s*(divUSx+divUSy) );
       }
       if(updateMat)
       {
-        iRhoLab.load(iRhoInfo[i], 0);
-        const ScalarLab  & __restrict__ IRHO= iRhoLab;
+        iRhoLab.load(iRhoInfo[i], 0); const auto & __restrict__ IRHO= iRhoLab;
         for(int iy=0; iy<VectorBlock::sizeY; ++iy)
         for(int ix=0; ix<VectorBlock::sizeX; ++ix)
         {

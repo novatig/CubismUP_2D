@@ -24,6 +24,7 @@ void SimulationData::allocateGrid()
 
   pRHS  = new ScalarGrid(bpdx, bpdy, 1, extent);
   invRho= new ScalarGrid(bpdx, bpdy, 1, extent);
+  rho   = new ScalarGrid(bpdx, bpdy, 1, extent);
 
   tmpV  = new VectorGrid(bpdx, bpdy, 1, extent);
   vFluid= new VectorGrid(bpdx, bpdy, 1, extent);
@@ -151,6 +152,7 @@ SimulationData::~SimulationData()
   if(pRHS not_eq nullptr) delete pRHS;
   if(tmpV not_eq nullptr) delete tmpV;
   if(invRho not_eq nullptr) delete invRho;
+  if(rho not_eq nullptr) delete rho;
   if(pOld not_eq nullptr) delete pOld;
   if(tmp not_eq nullptr) delete tmp;
   while( not shapes.empty() ) {

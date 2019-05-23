@@ -34,6 +34,7 @@ void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const
       const ScalarLab& __restrict__ SDIST = distlab;
       auto & __restrict__ CHI  = *(ScalarBlock*)    chiInfo[i].ptrBlock; // dest
       auto & __restrict__ IRHO = *(ScalarBlock*) invRhoInfo[i].ptrBlock;
+      auto & __restrict__ RHO = *(ScalarBlock*)    rhoInfo[i].ptrBlock;
       CHI_MAT & __restrict__ X = o.chi;
       const CHI_MAT & __restrict__ rho = o.rho;
       const CHI_MAT & __restrict__ sdf = o.dist;
@@ -75,6 +76,7 @@ void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const
         {
            CHI(ix,iy).s = X[iy][ix];
           IRHO(ix,iy).s = X[iy][ix]/rho[iy][ix] + (1-X[iy][ix])*IRHO(ix,iy).s;
+           RHO(ix,iy).s = X[iy][ix]*rho[iy][ix] + (1-X[iy][ix])*RHO(ix,iy).s;
         }
         if(X[iy][ix] > 0)
         {
@@ -101,8 +103,8 @@ void PutObjectsOnGrid::putObjectVelOnGrid(Shape * const shape) const
 {
   const std::vector<ObstacleBlock*>& OBLOCK = shape->obstacleBlocks;
   //const Real h = sim.getH();
-  const double u_s = shape->u, v_s = shape->v, omega_s = shape->omega;
-  const double Cx = shape->centerOfMass[0], Cy = shape->centerOfMass[1];
+  //const double u_s = shape->u, v_s = shape->v, omega_s = shape->omega;
+  //const double Cx = shape->centerOfMass[0], Cy = shape->centerOfMass[1];
 
   #pragma omp parallel for schedule(dynamic)
   for (size_t i=0; i < Nblocks; i++)
@@ -123,8 +125,8 @@ void PutObjectsOnGrid::putObjectVelOnGrid(Shape * const shape) const
     {
       if( chi[iy][ix] < CHI(ix,iy).s || chi[iy][ix] <= 0) continue;
       Real p[2]; uDefInfo[i].pos(p, ix, iy);
-      UDEF(ix, iy).u[0] += u_s - omega_s*(p[1]-Cy) + udef[iy][ix][0];
-      UDEF(ix, iy).u[1] += v_s + omega_s*(p[0]-Cx) + udef[iy][ix][1];
+      UDEF(ix, iy).u[0] += udef[iy][ix][0];
+      UDEF(ix, iy).u[1] += udef[iy][ix][1];
     }
     //if (TMP(ix,iy).s > -3*h) //( chi[iy][ix] > 0 )
     //{ //plus equal in case of overlapping objects
@@ -142,14 +144,11 @@ void PutObjectsOnGrid::operator()(const double dt)
   sim.startProfiler("ObjGrid_clear");
   #pragma omp parallel for schedule(static)
   for (size_t i=0; i < Nblocks; i++) {
-    ScalarBlock & CHI  = *(ScalarBlock*)   chiInfo[i].ptrBlock;
-    ScalarBlock & TMP  = *(ScalarBlock*)   tmpInfo[i].ptrBlock;
-    VectorBlock & UDEF = *(VectorBlock*)  uDefInfo[i].ptrBlock;
-    ScalarBlock & IRHO = *(ScalarBlock*)invRhoInfo[i].ptrBlock;
-    UDEF.clear();
-    CHI.clear();
-    TMP.set(-1);
-    IRHO.set(1);
+    ( (ScalarBlock*)   chiInfo[i].ptrBlock )->clear();
+    ( (ScalarBlock*)   tmpInfo[i].ptrBlock )->set(-1);
+    ( (VectorBlock*)  uDefInfo[i].ptrBlock )->clear();
+    ( (ScalarBlock*)invRhoInfo[i].ptrBlock )->set(1);
+    ( (ScalarBlock*)   rhoInfo[i].ptrBlock )->set(1);
   }
   sim.stopProfiler();
 
@@ -189,7 +188,9 @@ void PutObjectsOnGrid::operator()(const double dt)
   sim.startProfiler("ObjGrid_uobj");
   for(const auto& shape : sim.shapes) {
     shape->removeMoments(chiInfo); // now that we have CHI, remove moments
-    putObjectVelOnGrid( shape ); // put actual vel on the object vel grid
+    // put actual vel on the object vel grid
+    //if(sim.bStaggeredGrid) putObjectVelOnGridStaggered(shape); else
+    putObjectVelOnGrid(shape);
   }
   sim.stopProfiler();
 }

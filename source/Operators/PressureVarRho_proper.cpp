@@ -14,28 +14,30 @@ using namespace cubism;
 
 void PressureVarRho_proper::pressureCorrection(const double dt) const
 {
-  const Real h = sim.getH(), pFac = -0.5*dt/h;
+  const Real h = sim.getH(), pFac = -dt/h;
   const std::vector<BlockInfo>& iRhoInfo = sim.invRho->getBlocksInfo();
   const std::vector<BlockInfo>& presInfo  = sim.pres->getBlocksInfo();
 
   #pragma omp parallel
   {
-    static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 2, 2, 1};
+    static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 1, 1, 1};
     ScalarLab presLab; presLab.prepare(*(sim.pres), stenBeg, stenEnd, 0);
+    ScalarLab iRhoLab; iRhoLab.prepare(*(sim.invRho), stenBeg, stenEnd, 0);
 
     #pragma omp for schedule(static)
     for (size_t i=0; i < Nblocks; i++)
     {
-      presLab.load(presInfo[i],0);
-      const ScalarLab  &__restrict__   P = presLab;
-            VectorBlock&__restrict__   V = *(VectorBlock*) velInfo[i].ptrBlock;
-      const ScalarBlock&__restrict__ IRHO= *(ScalarBlock*)iRhoInfo[i].ptrBlock;
+      presLab.load(presInfo[i],0); const auto &__restrict__ P = presLab;
+      iRhoLab.load(iRhoInfo[i],0); const auto &__restrict__ IRHO = iRhoLab;
+      auto& __restrict__ V = *(VectorBlock*) velInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
         // update vel field after most recent force and pressure response:
-        V(ix,iy).u[0] += pFac*IRHO(ix,iy).s*(P(ix+1,iy).s - P(ix-1,iy).s);
-        V(ix,iy).u[1] += pFac*IRHO(ix,iy).s*(P(ix,iy+1).s - P(ix,iy-1).s);
+        const Real IRHOX = (IRHO(ix,iy).s + IRHO(ix-1,iy).s)/2;
+        const Real IRHOY = (IRHO(ix,iy).s + IRHO(ix,iy-1).s)/2;
+        V(ix,iy).u[0] += pFac * IRHOX * (P(ix,iy).s - P(ix-1,iy).s);
+        V(ix,iy).u[1] += pFac * IRHOY * (P(ix,iy).s - P(ix,iy-1).s);
       }
     }
   }
