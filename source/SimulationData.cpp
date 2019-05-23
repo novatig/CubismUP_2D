@@ -17,6 +17,7 @@ using namespace cubism;
 void SimulationData::allocateGrid()
 {
   chi   = new ScalarGrid(bpdx, bpdy, 1, extent);
+  omega = new ScalarGrid(bpdx, bpdy, 1, extent);
   vel   = new VectorGrid(bpdx, bpdy, 1, extent);
   pres  = new ScalarGrid(bpdx, bpdy, 1, extent);
   pOld  = new ScalarGrid(bpdx, bpdy, 1, extent);

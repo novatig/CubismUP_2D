@@ -22,7 +22,7 @@ class PressureVarRho_approx : public Operator
   void fadeoutBorder(const double dt) const;
   void updatePressureRHS(const double dt) const;
   void finalizePressure(const double dt) const;
-  Real penalize(const double dt, const int iter) const;
+  Real penalize(const double dt) const;
   void integrateMomenta(Shape * const shape) const;
   void pressureCorrectionInit(const double dt) const;
   Real pressureCorrection(const double dt) const;

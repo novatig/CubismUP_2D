@@ -46,6 +46,7 @@ void PressureVarRho_proper::operator()(const double dt)
   #ifdef HYPREFFT
     const std::vector<BlockInfo>& presInfo  = sim.pres->getBlocksInfo();
     pressureSolver->solve(presInfo, presInfo);
+    pressureSolver->bUpdateMat = false;
   #else
     printf("Class PressureVarRho_proper REQUIRES HYPRE\n");
     fflush(0); abort();

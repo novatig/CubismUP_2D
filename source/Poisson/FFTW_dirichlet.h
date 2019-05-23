@@ -51,7 +51,7 @@ class FFTW_dirichlet : public PoissonSolver
       const Real rkx = (i + (Real).5)*waveFactX, rky = (j + (Real).5)*waveFactY;
       const Real denomFD = 1 - COScoefX[i]/2 - COScoefY[j]/2;
       const Real denomSP = rkx*rkx + rky*rky;
-      in_out[j * MX + i] *=  - norm_factor / ( (denomFD + denomSP) / 2 );
+      in_out[j * MX + i] *=  - norm_factor / ( 0.9*denomFD + 0.1*denomSP );
     }
     in_out[0] = 0; //this is sparta! (part 2)
     ///*
