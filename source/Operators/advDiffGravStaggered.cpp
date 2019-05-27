@@ -33,30 +33,6 @@ void advDiffGravStaggered::operator()(const double dt)
   const int inflowSide = inflowDir==0? (UINF[0]>0? 0 : 1) : (UINF[1]>0? 0 : 1);
   sim.startProfiler("advDiffGrav");
 
-  //if(1) {
-    ////////////////////////////////////////////////////////////////////////////
-    Real ifUW = 0, ofUE=0, ifVS = 0, ofVN = 0;
-    #pragma omp parallel for schedule(dynamic) reduction(+: ifUW,ofUE,ifVS,ofVN)
-    for (size_t i=0; i < Nblocks; i++) {
-      VectorBlock& V = *(VectorBlock*)  velInfo[i].ptrBlock;
-      for(int iy=0; iy<BSY && isW(velInfo[i]); ++iy) ifUW += V(BX,iy).u[0];
-      for(int iy=0; iy<BSY && isE(velInfo[i]); ++iy) ofUE += V(EX,iy).u[0];
-      for(int ix=0; ix<BSX && isS(velInfo[i]); ++ix) ifVS += V(ix,BY).u[1];
-      for(int ix=0; ix<BSX && isN(velInfo[i]); ++ix) ofVN += V(ix,EY).u[1];
-    }
-    ////////////////////////////////////////////////////////////////////////////
-    const Real corrW = ifUW / (BSY * sim.bpdy), corrE = ofUE / (BSY * sim.bpdy);
-    const Real corrS = ifVS / (BSX * sim.bpdx), corrN = ofVN / (BSX * sim.bpdx);
-    //#pragma omp parallel for schedule(dynamic)
-    //for (size_t i=0; i < Nblocks; i++) {
-    //  VectorBlock& V = *(VectorBlock*)  velInfo[i].ptrBlock;
-    //  for(int iy=0; iy<BSY && isW(velInfo[i]); ++iy) V(BX,iy).u[0] -= corrW;
-    //  for(int iy=0; iy<BSY && isE(velInfo[i]); ++iy) V(EX,iy).u[0] -= corrE;
-    //  for(int ix=0; ix<BSX && isS(velInfo[i]); ++ix) V(ix,BY).u[1] -= corrS;
-    //  for(int ix=0; ix<BSX && isN(velInfo[i]); ++ix) V(ix,EY).u[1] -= corrN;
-    //}
-  //}
-
   #pragma omp parallel
   {
     VectorLab vellab; vellab.prepare(*(sim.vel), stenBegV, stenEndV, 1);
@@ -68,17 +44,15 @@ void advDiffGravStaggered::operator()(const double dt)
       vellab.load( velInfo[i], 0); auto & __restrict__ V = vellab;
       rholab.load(iRhoInfo[i], 0); auto & __restrict__ IRHO = rholab;
       auto& __restrict__ TMP = *(VectorBlock*) tmpVInfo[i].ptrBlock;
-      //const bool isW = velInfo[i].index[0] ==0;
-      //const bool isE = velInfo[i].index[0] == sim.bpdx-1;
-      //const bool isS = velInfo[i].index[1] ==0;
-      //const bool isN = velInfo[i].index[1] == sim.bpdy-1;
+
 
       if(isW(velInfo[i]))
       {
         if(inflowDir==0 && inflowSide==0) // zero inflow
         {
           for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
-            V(BX-1,iy).u[0] = 0; V(BX-1,iy).u[1] = 0; V(BX,iy).u[0] = 0;
+            V(BX-1,iy).u[0] = 0; V(BX-1,iy).u[1] = 0;
+            V(BX  ,iy).u[0] = 0; V(BX  ,iy).u[1] = 0;
           }
         }
         else
@@ -91,10 +65,10 @@ void advDiffGravStaggered::operator()(const double dt)
           }
           else
           {
-            for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
-              V(BX-1,iy).u[0] = V(BX  ,iy).u[0] - corrW; // no net inflow
-              V(BX  ,iy).u[0] = V(BX  ,iy).u[0] - corrW;
-            }
+            //for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
+            //  V(BX-1,iy).u[0] = V(BX  ,iy).u[0];
+            //  V(BX  ,iy).u[0] = V(BX  ,iy).u[0];
+            //}
           }
         }
       }
@@ -104,7 +78,8 @@ void advDiffGravStaggered::operator()(const double dt)
         if(inflowDir==1 && inflowSide==0) // zero inflow
         {
           for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
-            V(ix, BY-1).u[0] = 0; V(ix, BY-1).u[1] = 0; V(ix, BY).u[1] = 0;
+            V(ix, BY-1).u[0] = 0; V(ix, BY-1).u[1] = 0;
+            V(ix, BY  ).u[0] = 0; V(ix, BY  ).u[1] = 0;
           }
         }
         else
@@ -117,10 +92,10 @@ void advDiffGravStaggered::operator()(const double dt)
           }
           else
           {
-            for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
-              V(ix,BY-1).u[1] = V(ix,BY  ).u[1] - corrS; // no net inflow
-              V(ix,BY  ).u[1] = V(ix,BY  ).u[1] - corrS;
-            }
+            //for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
+            //  V(ix,BY-1).u[1] = V(ix,BY  ).u[1]; // no net inflow
+            //  V(ix,BY  ).u[1] = V(ix,BY  ).u[1];
+            //}
           }
         }
       }
@@ -130,8 +105,8 @@ void advDiffGravStaggered::operator()(const double dt)
         if(inflowDir==0 && inflowSide==1) // zero inflow
         {
           for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
-            V(EX+1,iy).u[0] = 0; V(EX,iy).u[0] = 0;
-            V(EX+1,iy).u[1] = 0; V(EX,iy).u[1] = 0;
+            V(EX+1,iy).u[0] = 0; V(EX+1,iy).u[1] = 0;
+            V(EX,iy).u[0] = 0; V(EX,iy).u[1] = 0;
           }
         }
         else
@@ -140,29 +115,23 @@ void advDiffGravStaggered::operator()(const double dt)
           {
             for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
               V(EX+1,iy).u[0] = 0; V(EX,iy).u[0] = 0; // no inflow side wall
-              V(EX+1,iy).u[1] = V(EX-1,iy).u[1];
-              V(EX  ,iy).u[1] = V(EX-1,iy).u[1];
+              //V(EX+1,iy).u[1] = V(EX-1,iy).u[1];
+              //V(EX  ,iy).u[1] = V(EX-1,iy).u[1];
             }
           }
           else
           {
-            for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
-              V(EX+1,iy).u[0] = V(EX  ,iy).u[0] - corrE;
-              V(EX  ,iy).u[0] = V(EX  ,iy).u[0] - corrE;
-              V(EX+1,iy).u[1] = V(EX-1,iy).u[1];
-              V(EX  ,iy).u[1] = V(EX-1,iy).u[1];
-            }
           }
         }
       }
 
       if(isN(velInfo[i]))
       {
-        if(inflowDir==1 && inflowSide==0) // zero inflow
+        if(inflowDir==1 && inflowSide==1) // zero inflow
         {
           for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
-            V(ix, EY+1).u[0] = 0; V(ix, EY).u[0] = 0;
-            V(ix, EY+1).u[1] = 0; V(ix, EY).u[1] = 0;
+            V(ix, EY+1).u[0] = 0; V(ix, EY+1).u[1] = 0;
+            V(ix, EY).u[0] = 0; V(ix, EY).u[1] = 0;
           }
         }
         else
@@ -171,20 +140,58 @@ void advDiffGravStaggered::operator()(const double dt)
           {
             for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
               V(ix,EY+1).u[1] = 0; V(ix, EY).u[1] = 0;
-              V(ix,EY+1).u[0] = V(ix, EY-1).u[0];
-              V(ix,EY  ).u[0] = V(ix, EY-1).u[0];
+              //V(ix,EY+1).u[0] = V(ix, EY-1).u[0];
+              //V(ix,EY  ).u[0] = V(ix, EY-1).u[0];
             }
           }
           else
           {
-            for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
-              V(ix,EY+1).u[1] = V(ix,EY).u[1] - corrN;
-              V(ix,EY  ).u[1] = V(ix,EY).u[1] - corrN;
-              V(ix,EY).u[0] = V(ix,EY).u[0];
-              V(ix,EY).u[0] = V(ix,EY).u[0];
-            }
           }
         }
+      }
+
+      for(int iy=-1; iy<=VectorBlock::sizeY && isE(velInfo[i]); ++iy) { // west
+        V(EX+1,iy).u[0] = V(EX  ,iy).u[0];
+        V(EX+1,iy).u[1] = V(EX-1,iy).u[1];
+        V(EX  ,iy).u[1] = V(EX-1,iy).u[1];
+      }
+
+      for(int ix=-1; ix<=VectorBlock::sizeX && isN(velInfo[i]); ++ix) { // north
+        V(ix,EY+1).u[1] = V(ix,EY  ).u[1];
+        V(ix,EY+1).u[0] = V(ix,EY-1).u[0];
+        V(ix,EY  ).u[0] = V(ix,EY-1).u[0];
+      }
+
+      if( isE(velInfo[i]) && isN(velInfo[i]) ) {
+        V(EX  ,EY  ).u[0] = V(EX,EY-1).u[0];
+        V(EX  ,EY+1).u[0] = V(EX,EY-1).u[0];
+        V(EX+1,EY  ).u[0] = V(EX,EY-1).u[0];
+        V(EX+1,EY+1).u[0] = V(EX,EY-1).u[0];
+
+        V(EX  ,EY  ).u[1] = V(EX-1,EY).u[1];
+        V(EX+1,EY  ).u[1] = V(EX-1,EY).u[1];
+        V(EX  ,EY+1).u[1] = V(EX-1,EY).u[1];
+        V(EX+1,EY+1).u[1] = V(EX-1,EY).u[1];
+      }
+      if( isW(velInfo[i]) && isN(velInfo[i]) ) {
+        V(BX  ,EY  ).u[0] = V(BX,EY-1).u[0];
+        V(BX  ,EY+1).u[0] = V(BX,EY-1).u[0];
+        V(BX-1,EY  ).u[0] = V(BX,EY-1).u[0];
+        V(BX-1,EY+1).u[0] = V(BX,EY-1).u[0];
+
+        V(BX-1,EY+1).u[1] = V(BX,EY).u[1];
+      }
+      if( isE(velInfo[i]) && isS(velInfo[i]) ) {
+        V(EX+1,BY-1).u[0] = V(EX,BY).u[0];
+
+        V(EX  ,BY  ).u[1] = V(EX-1,BY).u[1];
+        V(EX+1,BY  ).u[1] = V(EX-1,BY).u[1];
+        V(EX  ,BY-1).u[1] = V(EX-1,BY).u[1];
+        V(EX+1,BY-1).u[1] = V(EX-1,BY).u[1];
+      }
+      if( isW(velInfo[i]) && isS(velInfo[i]) ) {
+        V(BX-1,BY-1).u[0] = V(BX,BY).u[0];
+        V(BX-1,BY-1).u[1] = V(BX,BY).u[1];
       }
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
@@ -243,6 +250,135 @@ void advDiffGravStaggered::operator()(const double dt)
     V.copy(T);
   }
 
+  if (0)
+  {
+    ////////////////////////////////////////////////////////////////////////////
+    Real ifUW = 0, ofUE=0, ifVS = 0, ofVN = 0;
+    #pragma omp parallel for schedule(dynamic) reduction(+: ifUW,ofUE,ifVS,ofVN)
+    for (size_t i=0; i < Nblocks; i++) {
+      VectorBlock& V = *(VectorBlock*)  velInfo[i].ptrBlock;
+      for(int iy=0; iy<BSY && isW(velInfo[i]); ++iy) ifUW += V(BX,iy).u[0];
+      for(int iy=0; iy<BSY && isE(velInfo[i]); ++iy) ofUE += V(EX,iy).u[0];
+      for(int ix=0; ix<BSX && isS(velInfo[i]); ++ix) ifVS += V(ix,BY).u[1];
+      for(int ix=0; ix<BSX && isN(velInfo[i]); ++ix) ofVN += V(ix,EY).u[1];
+      if(isN(velInfo[i]) && isW(velInfo[i])) {
+        ifUW -= V(BX,EY).u[0];
+      }
+      if(isN(velInfo[i]) && isE(velInfo[i])) {
+        ofUE -= V(EX,EY).u[0];
+        ofVN -= V(EX,EY).u[1];
+      }
+      if(isS(velInfo[i]) && isE(velInfo[i])) {
+        ifVS -= V(EX,BY).u[1];
+      }
+    }
+    ////////////////////////////////////////////////////////////////////////////
+    const Real corrW = ifUW/(BSY*sim.bpdy -1), corrE = ofUE/(BSY*sim.bpdy -1);
+    const Real corrS = ifVS/(BSX*sim.bpdx -1), corrN = ofVN/(BSX*sim.bpdx -1);
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t i=0; i < Nblocks; i++) {
+      VectorBlock& V = *(VectorBlock*)  velInfo[i].ptrBlock;
+      for(int iy=0; iy<BSY && isW(velInfo[i]); ++iy) V(BX,iy).u[0] -= corrW;
+      for(int iy=0; iy<BSY && isE(velInfo[i]); ++iy) V(EX,iy).u[0] -= corrE;
+      for(int ix=0; ix<BSX && isS(velInfo[i]); ++ix) V(ix,BY).u[1] -= corrS;
+      for(int ix=0; ix<BSX && isN(velInfo[i]); ++ix) V(ix,EY).u[1] -= corrN;
+    }
+  }
+  else if (0)
+  {
+    ////////////////////////////////////////////////////////////////////////////
+    Real ifUW = 0, ofUE=0, ifVS = 0, ofVN = 0;
+    Real imUW = 0, omUE=0, imVS = 0, omVN = 0;
+    #pragma omp parallel for schedule(dynamic) reduction(+:ifUW,ofUE,ifVS,ofVN,\
+                                                           imUW,omUE,imVS,omVN)
+    for (size_t i=0; i < Nblocks; i++) {
+      VectorBlock& V = *(VectorBlock*)  velInfo[i].ptrBlock;
+      for(int iy=0; iy<BSY && isW(velInfo[i]); ++iy) {
+        ifUW += V(BX,iy).u[0]; imUW += std::fabs(V(BX,iy).u[0]);
+      }
+      for(int iy=0; iy<BSY && isE(velInfo[i]); ++iy) {
+        ofUE += V(EX,iy).u[0]; omUE += std::fabs(V(EX,iy).u[0]);
+      }
+      for(int ix=0; ix<BSX && isS(velInfo[i]); ++ix) {
+        ifVS += V(ix,BY).u[1]; imVS += std::fabs(V(ix,BY).u[1]);
+      }
+      for(int ix=0; ix<BSX && isN(velInfo[i]); ++ix) {
+        ofVN += V(ix,EY).u[1]; omVN += std::fabs(V(ix,EY).u[1]);
+      }
+      if( isN(velInfo[i]) && isW(velInfo[i]) ) {
+        ifUW -= V(BX,EY).u[0]; imUW -= std::fabs(V(BX,EY).u[0]);
+      }
+      if( isN(velInfo[i]) && isE(velInfo[i]) ) {
+        ofUE -= V(EX,EY).u[0]; omUE -= std::fabs(V(EX,EY).u[0]);
+        ofVN -= V(EX,EY).u[1]; omVN -= std::fabs(V(EX,EY).u[1]);
+      }
+      if( isS(velInfo[i]) && isE(velInfo[i]) ) {
+        ifVS -= V(EX,BY).u[1]; imVS -= std::fabs(V(EX,BY).u[1]);
+      }
+    }
+    ////////////////////////////////////////////////////////////////////////////
+    static constexpr double EPS = std::numeric_limits<Real>::epsilon();
+    const Real corrW = ifUW/std::max(imUW,EPS), corrE = ofUE/std::max(omUE,EPS);
+    const Real corrS = ifVS/std::max(imVS,EPS), corrN = ofVN/std::max(omVN,EPS);
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t i=0; i < Nblocks; i++) {
+      VectorBlock& V = *(VectorBlock*)  velInfo[i].ptrBlock;
+      for(int iy=0; iy<BSY && isW(velInfo[i]); ++iy)
+        V(BX,iy).u[0] -= corrW * std::fabs(V(BX,iy).u[0]);
+      for(int iy=0; iy<BSY && isE(velInfo[i]); ++iy)
+        V(EX,iy).u[0] -= corrE * std::fabs(V(EX,iy).u[0]);
+      for(int ix=0; ix<BSX && isS(velInfo[i]); ++ix)
+        V(ix,BY).u[1] -= corrS * std::fabs(V(ix,BY).u[1]);
+      for(int ix=0; ix<BSX && isN(velInfo[i]); ++ix)
+        V(ix,EY).u[1] -= corrN * std::fabs(V(ix,EY).u[1]);
+    }
+  }
+  else
+  {
+    ////////////////////////////////////////////////////////////////////////////
+    Real IF = 0, AF = 0;
+    #pragma omp parallel for schedule(dynamic) reduction(+ : IF, AF)
+    for (size_t i=0; i < Nblocks; i++) {
+      VectorBlock& V = *(VectorBlock*)  velInfo[i].ptrBlock;
+      for(int iy=0; iy<BSY && isW(velInfo[i]); ++iy) {
+        IF -= V(BX,iy).u[0]; AF += std::fabs(V(BX,iy).u[0]);
+      }
+      for(int iy=0; iy<BSY && isE(velInfo[i]); ++iy) {
+        IF += V(EX,iy).u[0]; AF += std::fabs(V(EX,iy).u[0]);
+      }
+      for(int ix=0; ix<BSX && isS(velInfo[i]); ++ix) {
+        IF -= V(ix,BY).u[1]; AF += std::fabs(V(ix,BY).u[1]);
+      }
+      for(int ix=0; ix<BSX && isN(velInfo[i]); ++ix) {
+        IF += V(ix,EY).u[1]; AF += std::fabs(V(ix,EY).u[1]);
+      }
+      if( isN(velInfo[i]) && isW(velInfo[i]) ) {
+        IF += V(BX,EY).u[0]; AF -= std::fabs(V(BX,EY).u[0]);
+      }
+      if( isN(velInfo[i]) && isE(velInfo[i]) ) {
+        IF -= V(EX,EY).u[0]; AF -= std::fabs(V(EX,EY).u[0]);
+        IF -= V(EX,EY).u[1]; AF -= std::fabs(V(EX,EY).u[1]);
+      }
+      if( isS(velInfo[i]) && isE(velInfo[i]) ) {
+        IF += V(EX,BY).u[1]; AF -= std::fabs(V(EX,BY).u[1]);
+      }
+    }
+    ////////////////////////////////////////////////////////////////////////////
+    //const Real corr = IF/std::max(AF, std::numeric_limits<Real>::epsilon());
+    const Real corr = IF/( 2*(BSY*sim.bpdy -1) + 2*(BSX*sim.bpdx -1) );
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t i=0; i < Nblocks; i++) {
+      VectorBlock& V = *(VectorBlock*)  velInfo[i].ptrBlock;
+      for(int iy=0; iy<BSY && isW(velInfo[i]); ++iy)
+        V(BX,iy).u[0] += corr; // * std::fabs(V(BX,iy).u[0]);
+      for(int iy=0; iy<BSY && isE(velInfo[i]); ++iy)
+        V(EX,iy).u[0] -= corr; // * std::fabs(V(EX,iy).u[0]);
+      for(int ix=0; ix<BSX && isS(velInfo[i]); ++ix)
+        V(ix,BY).u[1] += corr; // * std::fabs(V(ix,BY).u[1]);
+      for(int ix=0; ix<BSX && isN(velInfo[i]); ++ix)
+        V(ix,EY).u[1] -= corr; // * std::fabs(V(ix,EY).u[1]);
+    }
+  }
 
   sim.stopProfiler();
 }

@@ -59,7 +59,7 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
     }
 
     printf("Relative RHS correction:%e\n", sumRHS/std::max(EPS,sumABS) );
-    #if 0
+    #if 1
       const Real C = sumRHS / std::max(EPS, sumABS);
       #pragma omp parallel for schedule(static)
       for(size_t i=0; i<totNy*totNx; ++i) buffer[i] -= std::fabs(buffer[i]) * C;

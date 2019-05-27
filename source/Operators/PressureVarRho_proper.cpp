@@ -60,6 +60,8 @@ void PressureVarRho_proper::updatePressureRHS(const double dt) const
   const std::vector<BlockInfo>& pRhsInfo = sim.pRHS->getBlocksInfo();
   const std::vector<BlockInfo>& uDefInfo = sim.uDef->getBlocksInfo();
   HYPREdirichletVarRho::RowType* const mat = varRhoSolver->matAry;
+  const auto isE = [&](const BlockInfo&I) { return I.index[0] == sim.bpdx-1; };
+  const auto isN = [&](const BlockInfo&I) { return I.index[1] == sim.bpdy-1; };
 
   #pragma omp parallel
   {
@@ -108,6 +110,16 @@ void PressureVarRho_proper::updatePressureRHS(const double dt) const
         mat[idx][0] = - rN - rS - rE - rW;
         mat[idx][1] = rW; mat[idx][2] = rE; mat[idx][3] = rS; mat[idx][4] = rN;
       }
+
+
+      for(int iy=0; iy<VectorBlock::sizeY && isE(velInfo[i]); ++iy) {
+        TMP(VectorBlock::sizeX-1, iy).s = 0;
+        RHS(VectorBlock::sizeX-1, iy).s = 0;
+      }
+      for(int ix=0; ix<VectorBlock::sizeX && isN(velInfo[i]); ++ix) {
+        TMP(ix, VectorBlock::sizeY-1).s = 0;
+        RHS(ix, VectorBlock::sizeY-1).s = 0;
+      }
     }
   }
 }
@@ -149,6 +161,7 @@ void PressureVarRho_proper::operator()(const double dt)
   const std::vector<BlockInfo>& tmpInfo  = sim.tmp->getBlocksInfo();
   const std::vector<BlockInfo>& rhsInfo  = sim.pRHS->getBlocksInfo();
 
+  #if 0
   #pragma omp parallel for schedule(static)
   for (size_t i=0; i < Nblocks; i++) {
     const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
@@ -160,6 +173,16 @@ void PressureVarRho_proper::operator()(const double dt)
       Pold(ix,iy).s = pTold; Pcur(ix,iy).s += 0.2*(pTold - pTolder);
     }
   }
+  #elif 1
+  #pragma omp parallel for schedule(static)
+  for (size_t i=0; i < Nblocks; i++) {
+    const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
+    auto& __restrict__ Pcur = *(ScalarBlock*) presInfo[i].ptrBlock;
+    auto& __restrict__ Pold = *(ScalarBlock*) pOldInfo[i].ptrBlock;
+    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+    for(int ix=0; ix<VectorBlock::sizeX; ++ix) Pold(ix,iy).s = Pcur(ix,iy).s;
+  }
+  #endif
 
   sim.startProfiler("Prhs");
   updatePressureRHS(dt);
@@ -167,6 +190,18 @@ void PressureVarRho_proper::operator()(const double dt)
   sim.stopProfiler();
 
   unifRhoSolver->solve(rhsInfo, presInfo);
+
+  #if 1
+  #pragma omp parallel for schedule(static)
+  for (size_t i=0; i < Nblocks; i++) {
+    const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
+    auto& __restrict__ Pcur = *(ScalarBlock*) presInfo[i].ptrBlock;
+    auto& __restrict__ Pold = *(ScalarBlock*) pOldInfo[i].ptrBlock;
+    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+    for(int ix=0; ix<VectorBlock::sizeX; ++ix)
+      Pcur(ix,iy).s += 0.5*(Pold(ix,iy).s - Pcur(ix,iy).s);
+  }
+  #endif
 
   #ifdef HYPREFFT
     varRhoSolver->solve(tmpInfo, presInfo);
