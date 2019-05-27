@@ -59,9 +59,9 @@ void advDiffGravStaggered::operator()(const double dt)
         {
           if(inflowDir==1)
           {
-            for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
-              V(BX-1,iy).u[0] = 0; V(BX  ,iy).u[0] = 0; // no inflow side wall
-            }
+            //for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
+            //  V(BX-1,iy).u[0] = 0; V(BX  ,iy).u[0] = 0; // no inflow side wall
+            //}
           }
           else
           {
@@ -86,9 +86,9 @@ void advDiffGravStaggered::operator()(const double dt)
         {
           if(inflowDir==0)
           {
-            for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
-              V(ix,BY-1).u[1] = 0; V(ix, BY  ).u[1] = 0; // no inflow side wall
-            }
+            //for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
+            //  V(ix,BY-1).u[1] = 0; V(ix, BY  ).u[1] = 0; // no inflow side wall
+            //}
           }
           else
           {
@@ -113,11 +113,11 @@ void advDiffGravStaggered::operator()(const double dt)
         {
           if(inflowDir==1)
           {
-            for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
-              V(EX+1,iy).u[0] = 0; V(EX,iy).u[0] = 0; // no inflow side wall
+            //for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
+            //  V(EX+1,iy).u[0] = 0; V(EX,iy).u[0] = 0; // no inflow side wall
               //V(EX+1,iy).u[1] = V(EX-1,iy).u[1];
               //V(EX  ,iy).u[1] = V(EX-1,iy).u[1];
-            }
+            //}
           }
           else
           {
@@ -138,11 +138,11 @@ void advDiffGravStaggered::operator()(const double dt)
         {
           if(inflowDir==0)
           {
-            for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
-              V(ix,EY+1).u[1] = 0; V(ix, EY).u[1] = 0;
+            //for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
+            //  V(ix,EY+1).u[1] = 0; V(ix, EY).u[1] = 0;
               //V(ix,EY+1).u[0] = V(ix, EY-1).u[0];
               //V(ix,EY  ).u[0] = V(ix, EY-1).u[0];
-            }
+            //}
           }
           else
           {
@@ -364,19 +364,19 @@ void advDiffGravStaggered::operator()(const double dt)
       }
     }
     ////////////////////////////////////////////////////////////////////////////
-    //const Real corr = IF/std::max(AF, std::numeric_limits<Real>::epsilon());
-    const Real corr = IF/( 2*(BSY*sim.bpdy -1) + 2*(BSX*sim.bpdx -1) );
+    const Real corr = IF/std::max(AF, std::numeric_limits<Real>::epsilon());
+    //const Real corr = IF/( 2*(BSY*sim.bpdy -1) + 2*(BSX*sim.bpdx -1) );
     #pragma omp parallel for schedule(dynamic)
     for (size_t i=0; i < Nblocks; i++) {
       VectorBlock& V = *(VectorBlock*)  velInfo[i].ptrBlock;
       for(int iy=0; iy<BSY && isW(velInfo[i]); ++iy)
-        V(BX,iy).u[0] += corr; // * std::fabs(V(BX,iy).u[0]);
+        V(BX,iy).u[0] += corr * std::fabs(V(BX,iy).u[0]);
       for(int iy=0; iy<BSY && isE(velInfo[i]); ++iy)
-        V(EX,iy).u[0] -= corr; // * std::fabs(V(EX,iy).u[0]);
+        V(EX,iy).u[0] -= corr * std::fabs(V(EX,iy).u[0]);
       for(int ix=0; ix<BSX && isS(velInfo[i]); ++ix)
-        V(ix,BY).u[1] += corr; // * std::fabs(V(ix,BY).u[1]);
+        V(ix,BY).u[1] += corr * std::fabs(V(ix,BY).u[1]);
       for(int ix=0; ix<BSX && isN(velInfo[i]); ++ix)
-        V(ix,EY).u[1] -= corr; // * std::fabs(V(ix,EY).u[1]);
+        V(ix,EY).u[1] -= corr * std::fabs(V(ix,EY).u[1]);
     }
   }
 
