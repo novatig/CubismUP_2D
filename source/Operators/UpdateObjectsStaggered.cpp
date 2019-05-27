@@ -112,8 +112,13 @@ void UpdateObjectsStaggered::penalize(const double dt) const
         const Real CHIYO = (X[iy][ix]+(iy>0? X[iy-1][ix] : CHI(ix,iy-1).s) )/2;
         // What if multiple obstacles share a block? Do not penalize with this
         // obstacle if CHI stored on the grid is greater than obstacle's CHI.
-        const Real penX = CHIX>CHIXO || CHIX<=0 ? 1 : 1/(1 +lamdt*CHIX);
-        const Real penY = CHIY>CHIYO || CHIY<=0 ? 1 : 1/(1 +lamdt*CHIY);
+        #ifdef EXPL_INTEGRATE_MOM
+          const Real penX = CHIX>CHIXO || CHIX<=0 ? 1 : 1/(1 +lamdt*CHIX);
+          const Real penY = CHIY>CHIYO || CHIY<=0 ? 1 : 1/(1 +lamdt*CHIY);
+        #else
+          const Real penX = CHIX>CHIXO ? 1 : 1-CHIX;
+          const Real penY = CHIY>CHIYO ? 1 : 1-CHIY;
+        #endif
 
         Real p[2]; velInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;
         const Real UDEFX = (UDEF(ix,iy).u[0] + UDEF(ix-1,iy).u[0]) / 2;

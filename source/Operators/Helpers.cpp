@@ -162,7 +162,7 @@ Real findMaxU::run() const
       totM += facMom;
     }
   }
-  printf("Integral of momenta X:%e Y:%e mass:%e\n", momX, momY, totM);
+  //printf("Integral of momenta X:%e Y:%e mass:%e\n", momX, momY, totM);
   const Real DU = momX / totM, DV = momY / totM;
   //*/
   Real U = 0, V = 0, u = 0, v = 0;

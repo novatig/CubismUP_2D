@@ -83,8 +83,7 @@ void PoissonSolver::cub2rhs(const std::vector<BlockInfo>& BSRC)
   }
 
   #if 0
-    const Real C = sumRHS/std::max(std::numeric_limits<Real>::epsilon(),sumABS);
-    //printf("Relative RHS correction:%e\n", C);
+    const Real C = sumRHS/std::max(EPS,sumABS);
     #pragma omp parallel for schedule(static)
     for (size_t iy = 0; iy < totNy; iy++)
     for (size_t ix = 0; ix < totNx; ix++)
@@ -139,7 +138,7 @@ void PoissonSolver::cub2rhs(const std::vector<BlockInfo>& BSRC)
     }
   #endif
 
-  #if 1 // ndef NDEBUG
+  #ifndef NDEBUG
     Real sumRHSpost = 0;
     #pragma omp parallel for schedule(static) reduction(+ : sumRHSpost)
     for(size_t iy = 0; iy < totNy; iy++)

@@ -40,7 +40,7 @@ void Shape::updateVelocity(double dt)
     A[1][0] = 0;              A[1][2] = 0; b[1] = penalM * forcedv;
   }
   if(bBlockang) {
-    A[2][0] = 0; A[2][1] = 0;              b[2] = 0;
+    A[2][0] = 0; A[2][1] = 0;              b[2] = penalJ * forcedomega;
   }
 
   gsl_matrix_view Agsl = gsl_matrix_view_array (&A[0][0], 3, 3);
@@ -347,7 +347,8 @@ Shape::Shape( SimulationData& s, ArgumentParser& p, double C[2] ) :
   bForcedy(  p("-bForcedy").asBool(bForced)),
   bBlockang( p("-bBlockAng").asBool(bForcedx || bForcedy) ),
   forcedu( - p("-xvel").asDouble(0) ),
-  forcedv( - p("-yvel").asDouble(0) ) {  }
+  forcedv( - p("-yvel").asDouble(0) ),
+  forcedomega( - p("-angvel").asDouble(0) ) {  }
 
 Shape::~Shape()
 {

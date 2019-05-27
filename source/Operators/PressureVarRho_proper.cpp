@@ -149,6 +149,18 @@ void PressureVarRho_proper::operator()(const double dt)
   const std::vector<BlockInfo>& tmpInfo  = sim.tmp->getBlocksInfo();
   const std::vector<BlockInfo>& rhsInfo  = sim.pRHS->getBlocksInfo();
 
+  #pragma omp parallel for schedule(static)
+  for (size_t i=0; i < Nblocks; i++) {
+    const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
+    auto& __restrict__ Pcur = *(ScalarBlock*) presInfo[i].ptrBlock;
+    auto& __restrict__ Pold = *(ScalarBlock*) pOldInfo[i].ptrBlock;
+    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+    for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
+      const Real pTold = Pcur(ix,iy).s, pTolder = Pold(ix,iy).s;
+      Pold(ix,iy).s = pTold; Pcur(ix,iy).s += 0.2*(pTold - pTolder);
+    }
+  }
+
   sim.startProfiler("Prhs");
   updatePressureRHS(dt);
   fadeoutBorder(dt);

@@ -30,44 +30,41 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
   // 6) if user modified matrix, make sure it respects neumann BC
   // 7) if user modified matrix, reassemble it so that hypre updates precond
   {
-    Real sumRHS = 0, sumABS = 0;
-    #pragma omp parallel for schedule(static) reduction(+ : sumRHS,sumABS)
+    #pragma omp parallel for schedule(static)
     for(size_t i=0; i<nBlocks; ++i)
     {
       const size_t blocki = VectorBlock::sizeX * BSRC[i].index[0];
       const size_t blockj = VectorBlock::sizeY * BSRC[i].index[1];
-      const ScalarBlock& RHS = *(ScalarBlock*) BSRC[i].ptrBlock;
       const ScalarBlock& P = *(ScalarBlock*) BDST[i].ptrBlock;
       const size_t blockStart = blocki + stride * blockj;
-
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-      for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix)
         buffer[blockStart + ix + stride*iy] = P(ix,iy).s; // 1)
-        sumABS += std::fabs(RHS(ix,iy).s); // 2)
-        sumRHS +=           RHS(ix,iy).s;  // 2)
-      }
     }
     HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, buffer); // 3)
 
-    #pragma omp parallel for schedule(static)
+    Real sumRHS = 0, sumABS = 0;
+    #pragma omp parallel for schedule(static) reduction(+ : sumRHS, sumABS)
     for(size_t i=0; i<nBlocks; ++i) {
       const size_t blocki = VectorBlock::sizeX * BSRC[i].index[0];
       const size_t blockj = VectorBlock::sizeY * BSRC[i].index[1];
       const ScalarBlock& RHS = *(ScalarBlock*) BSRC[i].ptrBlock;
       const size_t start = blocki + stride * blockj;
-
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-      for(int ix=0; ix<VectorBlock::sizeX; ++ix) // 4)
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix) { // 4)
         buffer[start +ix +stride*iy] = RHS(ix,iy).s;
+        sumRHS +=           RHS(ix,iy).s;  // 2)
+        sumABS += std::fabs(RHS(ix,iy).s); // 2)
+      }
     }
 
+    printf("Relative RHS correction:%e\n", sumRHS/std::max(EPS,sumABS) );
     #if 0
       const Real C = sumRHS / std::max(EPS, sumABS);
-      printf("Relative RHS correction:%e\n", C);
       #pragma omp parallel for schedule(static)
       for(size_t i=0; i<totNy*totNx; ++i) buffer[i] -= std::fabs(buffer[i]) * C;
     #elif 0
-      const Real C = sumRHS/totNy/totNx; printf("RHS correction:%e\n", C);
+      const Real C = sumRHS/totNy/totNx; //printf("RHS correction:%e\n", C);
       #pragma omp parallel for schedule(static)
       for(size_t i=0; i<totNy*totNx; ++i) buffer[i] -= C;
     #else
@@ -116,7 +113,6 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
     HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, buffer); // 5)
   }
 
-
   if(not bPeriodic && bUpdateMat) // 6)
   {
     #pragma omp parallel for schedule(static)
@@ -158,13 +154,14 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
 
   sim.startProfiler("HYPRE_solve");
   if (solver == "gmres")
-    HYPRE_StructGMRESSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
+    HYPRE_StructLGMRESSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   else if (solver == "bicgstab")
     HYPRE_StructBiCGSTABSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
-  else if (solver == "smg")
-    HYPRE_StructSMGSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
-  else
+  else if (solver == "pfmg")
+    HYPRE_StructPFMGSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
+  else if (solver == "pcg")
     HYPRE_StructPCGSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
+  else HYPRE_StructHybridSolve(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   sim.stopProfiler();
 
   sim.startProfiler("HYPRE_getBoxV");
@@ -173,7 +170,7 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
 
   sim.startProfiler("HYPRE_sol2cub");
 
-  if(1) // remove mean pressure
+  if(0) // remove mean pressure
   {
     Real avgP = 0;
     const Real fac = 1.0 / (totNx * totNy);
@@ -192,7 +189,7 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
 #define STRIDE s.vel->getBlocksPerDimension(0) * VectorBlock::sizeX
 
 HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
-  PoissonSolver(s, STRIDE), solver("bicgstab")
+  PoissonSolver(s, STRIDE), solver("gmres")
 {
   printf("Employing VarRho HYPRE-based Poisson solver with Dirichlet BCs.\n");
   buffer = new Real[totNy * totNx];
@@ -251,37 +248,48 @@ HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
 
   if (solver == "gmres") {
     printf("Using GMRES solver\n");
-    HYPRE_StructGMRESCreate(COMM, &hypre_solver);
-    HYPRE_StructGMRESSetTol(hypre_solver, 1e-4);
-    HYPRE_StructGMRESSetPrintLevel(hypre_solver, 2);
-    HYPRE_StructGMRESSetAbsoluteTol(hypre_solver, 1e-4);
-    HYPRE_StructGMRESSetMaxIter(hypre_solver, 100);
-    HYPRE_StructGMRESSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
+    HYPRE_StructLGMRESCreate(COMM, &hypre_solver);
+    HYPRE_StructLGMRESSetTol(hypre_solver, 1e-3);
+    HYPRE_StructLGMRESSetPrintLevel(hypre_solver, 0);
+    HYPRE_StructLGMRESSetAbsoluteTol(hypre_solver, 1e-3);
+    HYPRE_StructLGMRESSetMaxIter(hypre_solver, 50);
+    HYPRE_StructLGMRESSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   }
   else if (solver == "bicgstab") {
     printf("Using BiCGSTAB solver\n");
     HYPRE_StructBiCGSTABCreate(COMM, &hypre_solver);
-    HYPRE_StructBiCGSTABSetMaxIter(hypre_solver, 100);
-    HYPRE_StructBiCGSTABSetTol(hypre_solver, 1e-4);
+    HYPRE_StructBiCGSTABSetMaxIter(hypre_solver, 50);
+    HYPRE_StructBiCGSTABSetTol(hypre_solver, 1e-3);
     HYPRE_StructBiCGSTABSetAbsoluteTol(hypre_solver, 1e-3);
     HYPRE_StructBiCGSTABSetPrintLevel(hypre_solver, 0);
+    if(0) { // Use SMG preconditioner: BAD
+      HYPRE_StructPFMGCreate(COMM, &hypre_precond);
+      HYPRE_StructPFMGSetMaxIter(hypre_precond, 50);
+      HYPRE_StructPFMGSetTol(hypre_precond, 1e-3);
+      HYPRE_StructPFMGSetRelChange(hypre_precond, 1e-3);
+      HYPRE_StructPFMGSetPrintLevel(hypre_precond, 3);
+      HYPRE_StructSMGSetNumPreRelax(hypre_precond, 1);
+      HYPRE_StructSMGSetNumPostRelax(hypre_precond, 1);
+      HYPRE_StructBiCGSTABSetPrecond(hypre_solver, HYPRE_StructPFMGSolve,
+                                     HYPRE_StructPFMGSetup, hypre_precond);
+    }
     HYPRE_StructBiCGSTABSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   }
-  else if (solver == "smg") {
+  else if (solver == "pfmg") {
     printf("Using SMG solver\n");
-    HYPRE_StructSMGCreate(COMM, &hypre_solver);
+    HYPRE_StructPFMGCreate(COMM, &hypre_solver);
     //HYPRE_StructSMGSetMemoryUse(hypre_solver, 0);
-    HYPRE_StructSMGSetMaxIter(hypre_solver, 100);
-    HYPRE_StructSMGSetTol(hypre_solver, 1e-3);
-    HYPRE_StructSMGSetRelChange(hypre_solver, 1e-4);
-    HYPRE_StructSMGSetPrintLevel(hypre_solver, 3);
-    HYPRE_StructSMGSetNumPreRelax(hypre_solver, 1);
-    HYPRE_StructSMGSetNumPostRelax(hypre_solver, 1);
+    HYPRE_StructPFMGSetMaxIter(hypre_solver, 100);
+    HYPRE_StructPFMGSetTol(hypre_solver, 1e-3);
+    HYPRE_StructPFMGSetRelChange(hypre_solver, 1e-4);
+    HYPRE_StructPFMGSetPrintLevel(hypre_solver, 3);
+    HYPRE_StructPFMGSetNumPreRelax(hypre_solver, 1);
+    HYPRE_StructPFMGSetNumPostRelax(hypre_solver, 1);
     //HYPRE_StructSMGSetNonZeroGuess(hypre_solver);
 
-    HYPRE_StructSMGSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
+    HYPRE_StructPFMGSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   }
-  else {
+  else if (solver == "pcg") {
     printf("Using PCG solver\n");
     HYPRE_StructPCGCreate(COMM, &hypre_solver);
     HYPRE_StructPCGSetMaxIter(hypre_solver, 100);
@@ -299,6 +307,19 @@ HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
     }
     HYPRE_StructPCGSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   }
+  else {
+    printf("Using Hybrid solver\n");
+    HYPRE_StructHybridCreate(COMM, &hypre_solver);
+    HYPRE_StructHybridSetTol(hypre_solver, 1e-3);
+    //HYPRE_StructHybridSetAbsoluteTol(hypre_solver, 1e-3);
+    HYPRE_StructHybridSetConvergenceTol(hypre_solver, 1e-3);
+    HYPRE_StructHybridSetDSCGMaxIter(hypre_solver, 50);
+    HYPRE_StructHybridSetPCGMaxIter(hypre_solver, 50);
+    HYPRE_StructHybridSetSolverType(hypre_solver, 2);
+    //HYPRE_StructHybridSetKDim(hypre_solver, dim);
+    HYPRE_StructHybridSetPrintLevel(hypre_solver, 0);
+    HYPRE_StructHybridSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
+  }
 }
 // let's relinquish STRIDE which was only added for clarity:
 #undef STRIDE
@@ -306,13 +327,15 @@ HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
 HYPREdirichletVarRho::~HYPREdirichletVarRho()
 {
   if (solver == "gmres")
-    HYPRE_StructGMRESDestroy(hypre_solver);
+    HYPRE_StructLGMRESDestroy(hypre_solver);
   else if (solver == "bicgstab")
     HYPRE_StructBiCGSTABDestroy(hypre_solver);
-  else if (solver == "smg")
-    HYPRE_StructSMGDestroy(hypre_solver);
-  else
+  else if (solver == "pfmg")
+    HYPRE_StructPFMGDestroy(hypre_solver);
+  else if (solver == "pcg")
     HYPRE_StructPCGDestroy(hypre_solver);
+  else HYPRE_StructHybridDestroy(hypre_solver);
+
   HYPRE_StructGridDestroy(hypre_grid);
   HYPRE_StructStencilDestroy(hypre_stencil);
   HYPRE_StructMatrixDestroy(hypre_mat);

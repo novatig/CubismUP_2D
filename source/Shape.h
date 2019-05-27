@@ -24,7 +24,7 @@ class Shape
   double centerOfMass[2];
   double d_gm[2] = {0,0}; // distance of center of geometry to center of mass
   double labCenterOfMass[2] = {0,0};
-  double orientation;
+  double orientation = origAng;
 
   const double rhoS;
   const bool bFixed;
@@ -36,12 +36,13 @@ class Shape
   const bool bBlockang;
   const double forcedu;
   const double forcedv;
+  const double forcedomega;
 
   double M = 0;
   double J = 0;
   double u = forcedu; // in lab frame, not sim frame
   double v = forcedv; // in lab frame, not sim frame
-  double omega = 0;
+  double omega = forcedomega;
   double fluidAngMom = 0;
   double fluidMomX = 0;
   double fluidMomY = 0;
@@ -71,7 +72,7 @@ class Shape
     J = 0;
     u = forcedu;
     v = forcedv;
-    omega = 0;
+    omega = forcedomega;
     fluidMomX = 0;
     fluidMomY = 0;
     fluidAngMom = 0;
