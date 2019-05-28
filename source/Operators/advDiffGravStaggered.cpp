@@ -8,7 +8,7 @@
 
 
 #include "advDiffGravStaggered.h"
-#define NOINFLOW
+//#define NOINFLOW
 
 using namespace cubism;
 //static constexpr double EPS = std::numeric_limits<Real>::epsilon();
