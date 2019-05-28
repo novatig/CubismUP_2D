@@ -173,7 +173,7 @@ void PressureVarRho_proper::operator()(const double dt)
       Pold(ix,iy).s = pTold; Pcur(ix,iy).s += 0.2*(pTold - pTolder);
     }
   }
-  #elif 1
+  #elif 0
   #pragma omp parallel for schedule(static)
   for (size_t i=0; i < Nblocks; i++) {
     const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
@@ -189,6 +189,7 @@ void PressureVarRho_proper::operator()(const double dt)
   fadeoutBorder(dt);
   sim.stopProfiler();
 
+  #if 0
   unifRhoSolver->solve(rhsInfo, presInfo);
 
   #if 1
@@ -199,8 +200,9 @@ void PressureVarRho_proper::operator()(const double dt)
     auto& __restrict__ Pold = *(ScalarBlock*) pOldInfo[i].ptrBlock;
     for(int iy=0; iy<VectorBlock::sizeY; ++iy)
     for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-      Pcur(ix,iy).s += 0.5*(Pold(ix,iy).s - Pcur(ix,iy).s);
+      Pcur(ix,iy).s += 0.9*(Pold(ix,iy).s - Pcur(ix,iy).s);
   }
+  #endif
   #endif
 
   #ifdef HYPREFFT

@@ -8,6 +8,7 @@
 
 
 #include "advDiffGravStaggered.h"
+#define NOINFLOW
 
 using namespace cubism;
 //static constexpr double EPS = std::numeric_limits<Real>::epsilon();
@@ -59,16 +60,20 @@ void advDiffGravStaggered::operator()(const double dt)
         {
           if(inflowDir==1)
           {
-            //for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
-            //  V(BX-1,iy).u[0] = 0; V(BX  ,iy).u[0] = 0; // no inflow side wall
-            //}
+            #ifdef NOINFLOW
+              for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
+                V(BX-1,iy).u[0] = 0; V(BX  ,iy).u[0] = 0; //no inflow side wall
+              }
+            #endif
           }
           else
           {
-            //for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
-            //  V(BX-1,iy).u[0] = V(BX  ,iy).u[0];
-            //  V(BX  ,iy).u[0] = V(BX  ,iy).u[0];
-            //}
+            #ifdef NOINFLOW
+              for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
+                V(BX-1,iy).u[0] = 0;// V(BX  ,iy).u[0];
+                //V(BX  ,iy).u[0] = V(BX  ,iy).u[0];
+              }
+            #endif
           }
         }
       }
@@ -86,16 +91,20 @@ void advDiffGravStaggered::operator()(const double dt)
         {
           if(inflowDir==0)
           {
-            //for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
-            //  V(ix,BY-1).u[1] = 0; V(ix, BY  ).u[1] = 0; // no inflow side wall
-            //}
+            #ifdef NOINFLOW
+              for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
+                V(ix,BY-1).u[1] = 0; V(ix, BY  ).u[1] = 0; //no inflow side wall
+              }
+            #endif
           }
           else
           {
-            //for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
-            //  V(ix,BY-1).u[1] = V(ix,BY  ).u[1]; // no net inflow
-            //  V(ix,BY  ).u[1] = V(ix,BY  ).u[1];
-            //}
+            #ifdef NOINFLOW
+              for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
+                V(ix,BY-1).u[1] = 0;//V(ix,BY  ).u[1]; // no net inflow
+                //V(ix,BY  ).u[1] = V(ix,BY  ).u[1];
+              }
+            #endif
           }
         }
       }
@@ -113,14 +122,21 @@ void advDiffGravStaggered::operator()(const double dt)
         {
           if(inflowDir==1)
           {
-            //for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
-            //  V(EX+1,iy).u[0] = 0; V(EX,iy).u[0] = 0; // no inflow side wall
-              //V(EX+1,iy).u[1] = V(EX-1,iy).u[1];
-              //V(EX  ,iy).u[1] = V(EX-1,iy).u[1];
-            //}
+            #ifdef NOINFLOW
+              for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
+                V(EX+1,iy).u[0] = 0; V(EX,iy).u[0] = 0; // no inflow side wall
+                //V(EX+1,iy).u[1] = V(EX-1,iy).u[1];
+                //V(EX  ,iy).u[1] = V(EX-1,iy).u[1];
+              }
+            #endif
           }
           else
           {
+            #ifdef NOINFLOW
+              for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
+                V(EX+1,iy).u[0] = 0;
+              }
+            #endif
           }
         }
       }
@@ -138,14 +154,21 @@ void advDiffGravStaggered::operator()(const double dt)
         {
           if(inflowDir==0)
           {
-            //for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
-            //  V(ix,EY+1).u[1] = 0; V(ix, EY).u[1] = 0;
-              //V(ix,EY+1).u[0] = V(ix, EY-1).u[0];
-              //V(ix,EY  ).u[0] = V(ix, EY-1).u[0];
-            //}
+            #ifdef NOINFLOW
+              for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
+                V(ix,EY+1).u[1] = 0; V(ix, EY).u[1] = 0;
+                //V(ix,EY+1).u[0] = V(ix, EY-1).u[0];
+                //V(ix,EY  ).u[0] = V(ix, EY-1).u[0];
+              }
+            #endif
           }
           else
           {
+            #ifdef NOINFLOW
+              for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
+                V(ix,EY+1).u[1] = 0;
+              }
+            #endif
           }
         }
       }

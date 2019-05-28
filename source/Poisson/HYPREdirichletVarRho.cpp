@@ -189,7 +189,7 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
 #define STRIDE s.vel->getBlocksPerDimension(0) * VectorBlock::sizeX
 
 HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
-  PoissonSolver(s, STRIDE), solver("gmres")
+  PoissonSolver(s, STRIDE), solver("gmres") //
 {
   printf("Employing VarRho HYPRE-based Poisson solver with Dirichlet BCs.\n");
   buffer = new Real[totNy * totNx];
@@ -250,9 +250,11 @@ HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
     printf("Using GMRES solver\n");
     HYPRE_StructLGMRESCreate(COMM, &hypre_solver);
     HYPRE_StructLGMRESSetTol(hypre_solver, 1e-3);
-    HYPRE_StructLGMRESSetPrintLevel(hypre_solver, 0);
+    HYPRE_StructLGMRESSetPrintLevel(hypre_solver, 1);
     HYPRE_StructLGMRESSetAbsoluteTol(hypre_solver, 1e-3);
     HYPRE_StructLGMRESSetMaxIter(hypre_solver, 50);
+    HYPRE_StructLGMRESSetAugDim(hypre_solver, 2);
+    HYPRE_StructLGMRESSetKDim(hypre_solver, 16);
     HYPRE_StructLGMRESSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   }
   else if (solver == "bicgstab") {
