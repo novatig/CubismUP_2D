@@ -189,8 +189,9 @@ void PressureVarRho_proper::operator()(const double dt)
   fadeoutBorder(dt);
   sim.stopProfiler();
 
+  if(sim.step < 10)
+    unifRhoSolver->solve(rhsInfo, presInfo);
   #if 0
-  unifRhoSolver->solve(rhsInfo, presInfo);
 
   #if 1
   #pragma omp parallel for schedule(static)

@@ -115,7 +115,7 @@ void advDiffGravStaggered::operator()(const double dt)
         {
           for(int iy=-1; iy<=VectorBlock::sizeY; ++iy) { // west
             V(EX+1,iy).u[0] = 0; V(EX+1,iy).u[1] = 0;
-            V(EX,iy).u[0] = 0; V(EX,iy).u[1] = 0;
+            V(EX  ,iy).u[0] = 0; V(EX  ,iy).u[1] = 0;
           }
         }
         else
@@ -147,7 +147,7 @@ void advDiffGravStaggered::operator()(const double dt)
         {
           for(int ix=-1; ix<=VectorBlock::sizeX; ++ix) { // south
             V(ix, EY+1).u[0] = 0; V(ix, EY+1).u[1] = 0;
-            V(ix, EY).u[0] = 0; V(ix, EY).u[1] = 0;
+            V(ix, EY  ).u[0] = 0; V(ix, EY  ).u[1] = 0;
           }
         }
         else
