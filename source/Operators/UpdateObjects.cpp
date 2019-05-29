@@ -73,7 +73,6 @@ void UpdateObjects::integrateMomenta(Shape * const shape) const
 
 void UpdateObjects::penalize(const double dt) const
 {
-  const Real lamdt = sim.lambda * dt;
   #pragma omp parallel for schedule(dynamic, 1)
   for (size_t i=0; i < Nblocks; i++)
   for (Shape * const shape : sim.shapes)
@@ -100,7 +99,7 @@ void UpdateObjects::penalize(const double dt) const
 
       Real p[2]; velInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;
       #ifndef EXPL_INTEGRATE_MOM
-        const Real alpha = 1/(1 + lamdt * X[iy][ix]);
+        const Real alpha = 1/(1 + sim.lambda * dt * X[iy][ix]);
       #else
         const Real alpha = 1 - X[iy][ix];
       #endif

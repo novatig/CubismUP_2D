@@ -148,8 +148,8 @@ Real findMaxU::run() const
 {
   const Real UINF = sim.uinfx, VINF = sim.uinfy;
   ///*
-  const std::vector<BlockInfo>& iRhoInfo  = sim.invRho->getBlocksInfo();
   #ifdef ZERO_TOTAL_MOM
+  const std::vector<BlockInfo>& iRhoInfo  = sim.invRho->getBlocksInfo();
   Real momX = 0, momY = 0, totM = 0; const Real h = sim.getH();
   #pragma omp parallel for schedule(static) reduction(+ : momX, momY, totM)
   for (size_t i=0; i < Nblocks; i++) {
