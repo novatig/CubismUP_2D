@@ -99,7 +99,12 @@ void UpdateObjects::penalize(const double dt) const
       if(X[iy][ix] <= 0) continue; // no need to do anything
 
       Real p[2]; velInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;
-      const Real alpha = 1/(1 + lamdt * X[iy][ix]);
+      #ifndef EXPL_INTEGRATE_MOM
+        const Real alpha = 1/(1 + lamdt * X[iy][ix]);
+      #else
+        const Real alpha = 1 - X[iy][ix];
+      #endif
+
       const Real US = u_s - omega_s * p[1] + UDEF[iy][ix][0];
       const Real VS = v_s + omega_s * p[0] + UDEF[iy][ix][1];
       V(ix,iy).u[0] = alpha*V(ix,iy).u[0] + (1-alpha)*US;

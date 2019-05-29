@@ -215,8 +215,8 @@ void Simulation::init()
     if(sim.iterativePenalization)
       pipeline.push_back( new PressureIterator_unif(sim) );
     else {
-      pipeline.push_back( new PressureSingle(sim) );
       pipeline.push_back( new UpdateObjects(sim) );
+      pipeline.push_back( new PressureSingle(sim) );
     }
     //pipeline.push_back( new FadeOut(sim) );
   }

@@ -161,50 +161,35 @@ void PressureVarRho_proper::operator()(const double dt)
   const std::vector<BlockInfo>& tmpInfo  = sim.tmp->getBlocksInfo();
   const std::vector<BlockInfo>& rhsInfo  = sim.pRHS->getBlocksInfo();
 
-  #if 0
-  #pragma omp parallel for schedule(static)
-  for (size_t i=0; i < Nblocks; i++) {
-    const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
-    auto& __restrict__ Pcur = *(ScalarBlock*) presInfo[i].ptrBlock;
-    auto& __restrict__ Pold = *(ScalarBlock*) pOldInfo[i].ptrBlock;
-    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-    for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-      const Real pTold = Pcur(ix,iy).s, pTolder = Pold(ix,iy).s;
-      Pold(ix,iy).s = pTold; Pcur(ix,iy).s += 0.2*(pTold - pTolder);
+  if(sim.step < 20) {
+    #pragma omp parallel for schedule(static)
+    for (size_t i=0; i < Nblocks; i++) {
+      const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
+      auto& __restrict__ Pcur = *(ScalarBlock*) presInfo[i].ptrBlock;
+      auto& __restrict__ Pold = *(ScalarBlock*) pOldInfo[i].ptrBlock;
+      for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix) Pold(ix,iy).s = Pcur(ix,iy).s;
     }
   }
-  #elif 0
-  #pragma omp parallel for schedule(static)
-  for (size_t i=0; i < Nblocks; i++) {
-    const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
-    auto& __restrict__ Pcur = *(ScalarBlock*) presInfo[i].ptrBlock;
-    auto& __restrict__ Pold = *(ScalarBlock*) pOldInfo[i].ptrBlock;
-    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-    for(int ix=0; ix<VectorBlock::sizeX; ++ix) Pold(ix,iy).s = Pcur(ix,iy).s;
-  }
-  #endif
 
   sim.startProfiler("Prhs");
   updatePressureRHS(dt);
   fadeoutBorder(dt);
   sim.stopProfiler();
 
-  if(sim.step < 10)
+  if(sim.step < 20) {
+    const Real fac = 1 - sim.step / 20.0;
     unifRhoSolver->solve(rhsInfo, presInfo);
-  #if 0
-
-  #if 1
-  #pragma omp parallel for schedule(static)
-  for (size_t i=0; i < Nblocks; i++) {
-    const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
-    auto& __restrict__ Pcur = *(ScalarBlock*) presInfo[i].ptrBlock;
-    auto& __restrict__ Pold = *(ScalarBlock*) pOldInfo[i].ptrBlock;
-    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-    for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-      Pcur(ix,iy).s += 0.9*(Pold(ix,iy).s - Pcur(ix,iy).s);
+    #pragma omp parallel for schedule(static)
+    for (size_t i=0; i < Nblocks; i++) {
+      const std::vector<BlockInfo>& pOldInfo = sim.pOld->getBlocksInfo();
+      auto& __restrict__ Pcur = *(ScalarBlock*) presInfo[i].ptrBlock;
+      auto& __restrict__ Pold = *(ScalarBlock*) pOldInfo[i].ptrBlock;
+      for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix)
+        Pcur(ix,iy).s += fac * (Pold(ix,iy).s - Pcur(ix,iy).s);
+    }
   }
-  #endif
-  #endif
 
   #ifdef HYPREFFT
     varRhoSolver->solve(tmpInfo, presInfo);

@@ -59,7 +59,7 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
     }
 
     printf("Relative RHS correction:%e\n", sumRHS/std::max(EPS,sumABS) );
-    #if 1
+    #if 0
       const Real C = sumRHS / std::max(EPS, sumABS);
       #pragma omp parallel for schedule(static)
       for(size_t i=0; i<totNy*totNx; ++i) buffer[i] -= std::fabs(buffer[i]) * C;
@@ -67,7 +67,7 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
       const Real C = sumRHS/totNy/totNx; //printf("RHS correction:%e\n", C);
       #pragma omp parallel for schedule(static)
       for(size_t i=0; i<totNy*totNx; ++i) buffer[i] -= C;
-    #else
+    #elif 0
       const auto& extent = sim.extents;
       const Real fadeLenX = sim.fadeLenX, fadeLenY = sim.fadeLenY;
       const Real invFadeX = 1/std::max(fadeLenX,EPS);
@@ -113,29 +113,46 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
     HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, buffer); // 5)
   }
 
-  if(not bPeriodic && bUpdateMat) // 6)
+  if(not bPeriodic && 1) // 6)
   {
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < totNx; ++i) {
+    #if 0
+     #pragma omp parallel for schedule(static)
+     for (size_t i = 0; i < totNx; ++i) {
+      // first south row
+      matAry[stride*(0)       +i][3]  = 0; // south
+      // first north row
+      matAry[stride*(totNy-1) +i][4]  = 0; // north
+     }
+     #pragma omp parallel for schedule(static)
+     for (size_t j = 0; j < totNy; ++j) {
+      // first west col
+      matAry[stride * j +      0][1]  = 0; // west
+      // first east col
+      matAry[stride * j +totNx-1][2]  = 0; // east
+     }
+    #else
+     #pragma omp parallel for schedule(static)
+     for (size_t i = 0; i < totNx; ++i) {
       // first south row
       matAry[stride*(0)       +i][0] += matAry[stride*(0)       +i][3]; // cc
       matAry[stride*(0)       +i][3]  = 0; // south
       // first north row
       matAry[stride*(totNy-1) +i][0] += matAry[stride*(totNy-1) +i][4]; // cc
       matAry[stride*(totNy-1) +i][4]  = 0; // north
-    }
-    #pragma omp parallel for schedule(static)
-    for (size_t j = 0; j < totNy; ++j) {
+     }
+     #pragma omp parallel for schedule(static)
+     for (size_t j = 0; j < totNy; ++j) {
       // first west col
       matAry[stride * j +      0][0] += matAry[stride*j +       0][1]; // center
       matAry[stride * j +      0][1]  = 0; // west
       // first east col
       matAry[stride * j +totNx-1][0] += matAry[stride*j + totNx-1][2]; // center
       matAry[stride * j +totNx-1][2]  = 0; // east
-    }
+     }
+    #endif
   }
 
-  if(bUpdateMat) // 7)
+  if(1) // 7)
   {
     Real * const linV = (Real*) matAry;
     // These indices must match to those in the offset array:
