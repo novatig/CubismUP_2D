@@ -15,6 +15,7 @@ class PoissonSolver;
 class PressureIterator_unif : public Operator
 {
   int oldNsteps = 10000;
+  Real targetRelError = 1e-4;
   const Real rho0 = sim.minRho();
   PoissonSolver * const pressureSolver;
 

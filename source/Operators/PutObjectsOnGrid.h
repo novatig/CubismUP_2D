@@ -17,7 +17,6 @@ class PutObjectsOnGrid : public Operator
 {
   const std::vector<cubism::BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
   const std::vector<cubism::BlockInfo>& chiInfo   = sim.chi->getBlocksInfo();
-  const std::vector<cubism::BlockInfo>& rhoInfo   = sim.rho->getBlocksInfo();
   const std::vector<cubism::BlockInfo>& invRhoInfo= sim.invRho->getBlocksInfo();
   const std::vector<cubism::BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
 

@@ -58,58 +58,7 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
       }
     }
 
-    printf("Relative RHS correction:%e\n", sumRHS/std::max(EPS,sumABS) );
-    #if 0
-      const Real C = sumRHS / std::max(EPS, sumABS);
-      #pragma omp parallel for schedule(static)
-      for(size_t i=0; i<totNy*totNx; ++i) buffer[i] -= std::fabs(buffer[i]) * C;
-    #elif 0
-      const Real C = sumRHS/totNy/totNx; //printf("RHS correction:%e\n", C);
-      #pragma omp parallel for schedule(static)
-      for(size_t i=0; i<totNy*totNx; ++i) buffer[i] -= C;
-    #elif 0
-      const auto& extent = sim.extents;
-      const Real fadeLenX = sim.fadeLenX, fadeLenY = sim.fadeLenY;
-      const Real invFadeX = 1/std::max(fadeLenX,EPS);
-      const Real invFadeY = 1/std::max(fadeLenY,EPS);
-      const Real nInnX = totNx*(extent[0] - 2*fadeLenX)/extent[0];
-      const Real nInnY = totNy*(extent[1] - 2*fadeLenY)/extent[1];
-      const Real nOutX = (totNx-nInnX)/2, nOutY = (totNy-nInnY)/2;
-      const Real C = sumRHS/(nInnX*nOutY + nInnY*nOutX + 4*nOutX*nOutY);
-      const auto _is_touching = [&] (const BlockInfo& i) {
-        Real min_pos[2], max_pos[2]; i.pos(min_pos, 0, 0);
-        i.pos(max_pos, VectorBlock::sizeX-1, VectorBlock::sizeY-1);
-        const bool touchW = fadeLenX >= min_pos[0];
-        const bool touchE = fadeLenX >= extent[0] - max_pos[0];
-        const bool touchS = fadeLenY >= min_pos[1];
-        const bool touchN = fadeLenY >= extent[1] - max_pos[1];
-        return touchN || touchE || touchS || touchW;
-      };
-      #pragma omp parallel for schedule(dynamic)
-      for (size_t i=0; i < nBlocks; i++)
-      {
-        if( not _is_touching(BSRC[i]) ) continue;
-        const size_t blocki = VectorBlock::sizeX * BSRC[i].index[0];
-        const size_t blockj = VectorBlock::sizeY * BSRC[i].index[1];
-        const size_t start = blocki + stride * blockj;
-
-        for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-        for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-        {
-          Real p[2]; BSRC[i].pos(p, ix, iy);
-          const Real yt = invFadeY*std::max(Real(0), fadeLenY -extent[1]+p[1] );
-          const Real yb = invFadeY*std::max(Real(0), fadeLenY -p[1] );
-          const Real xt = invFadeX*std::max(Real(0), fadeLenX -extent[0]+p[0] );
-          const Real xb = invFadeX*std::max(Real(0), fadeLenX -p[0] );
-          if(yt*xt>0 || yt*xb>0 || yb*xt>0 || yb*xb>0) {
-            buffer[start + ix + stride*iy] -= C;
-          } else {
-            const Real fadeArg = std::min(std::max({yt, yb, xt, xb}), (Real)1);
-            buffer[start + ix + stride*iy] -= C * fadeArg;
-          }
-        }
-      }
-    #endif
+    //printf("Relative RHS correction:%e\n", sumRHS/std::max(EPS,sumABS) );
     HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, buffer); // 5)
   }
 
@@ -187,7 +136,7 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
 
   sim.startProfiler("HYPRE_sol2cub");
 
-  if(0) // remove mean pressure
+  if(1) // remove mean pressure
   {
     Real avgP = 0;
     const Real fac = 1.0 / (totNx * totNy);

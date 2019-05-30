@@ -159,13 +159,13 @@ void PressureIterator_unif::integrateMomenta(Shape * const shape) const
     }
   }
 
-  shape->fluidAngMom = AM;
-  shape->fluidMomX = UM;
-  shape->fluidMomY = VM;
-  shape->penalDX = PX;
-  shape->penalDY = PY;
-  shape->penalM = PM;
-  shape->penalJ = PJ;
+  #ifdef EXPL_INTEGRATE_MOM
+  shape->fluidAngMom = AM; shape->fluidMomX = UM; shape->fluidMomY = VM;
+  shape->penalDX=0; shape->penalDY=0; shape->penalM=PM; shape->penalJ=PJ;
+  #else
+  shape->fluidAngMom = AM; shape->fluidMomX = UM; shape->fluidMomY = VM;
+  shape->penalDX=PX; shape->penalDY=PY; shape->penalM=PM; shape->penalJ=PJ;
+  #endif
 }
 
 Real PressureIterator_unif::penalize(const double dt) const
@@ -268,13 +268,31 @@ void PressureIterator_unif::operator()(const double dt)
   bool bConverged = false;
   for(iter = 0; iter < 1000; iter++)
   {
+    sim.startProfiler("PCorrect");
+    pressureCorrection(dt);
+    sim.stopProfiler();
+
+    sim.startProfiler("Obj_force");
+    for(Shape * const shape : sim.shapes)
+    {
+      // integrate vel in velocity after PP
+      integrateMomenta(shape);
+      shape->updateVelocity(dt);
+    }
+
+     // finally update vel with penalization but without pressure
+    relDF = penalize(dt);
+    sim.stopProfiler();
+
     // pressure solver is going to use as RHS = div VEL - \chi div UDEF
     sim.startProfiler("Prhs");
     updatePressureRHS(dt);
-    fadeoutBorder(dt);
     sim.stopProfiler();
 
     pressureSolver->solve(tmpInfo, presInfo);
+
+    printf("iter:%02d - max relative error: %e\n", iter, relDF);
+    bConverged = relDF<targetRelError || iter>100 || iter>2*oldNsteps;
 
     if(bConverged)
     {
@@ -283,30 +301,13 @@ void PressureIterator_unif::operator()(const double dt)
       sim.stopProfiler();
       break;
     }
-    else
-    {
-      sim.startProfiler("PCorrect");
-      pressureCorrection(dt);
-      sim.stopProfiler();
-
-      sim.startProfiler("Obj_force");
-      for(Shape * const shape : sim.shapes)
-      {
-        // integrate vel in velocity after PP
-        integrateMomenta(shape);
-        shape->updateVelocity(dt);
-      }
-
-       // finally update vel with penalization but without pressure
-      relDF = penalize(dt);
-      sim.stopProfiler();
-      printf("iter:%02d - max relative error: %f\n", iter, relDF);
-      bConverged = relDF<0.001 || iter>2*oldNsteps;
-      // if penalization force converged, do one more Poisson solve
-    }
   }
 
   oldNsteps = iter+1;
+  if(oldNsteps > 30) targetRelError = std::max({relDF, targetRelError});
+  if(oldNsteps > 10) targetRelError *= 1.01;
+  if(oldNsteps <= 2) targetRelError *= 0.99;
+  targetRelError = std::min(1e-3, std::max(1e-5, targetRelError));
 
   if(not sim.muteAll)
   {

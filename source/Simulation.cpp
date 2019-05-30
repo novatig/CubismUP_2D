@@ -192,9 +192,11 @@ void Simulation::init()
     pipeline.push_back( new PutObjectsOnGrid(sim) );
     //pipeline.push_back( new FadeOut(sim) );
     if(sim.iterativePenalization) {
+      sim.bStaggeredGrid = false;
       pipeline.push_back( new advDiffGrav(sim) );
       pipeline.push_back( new PressureVarRho_approx(sim) );
     } else {
+      sim.bStaggeredGrid = true;
       pipeline.push_back( new advDiffGravStaggered(sim) );
       pipeline.push_back( new UpdateObjectsStaggered(sim) );
       //pipeline.push_back( new PressureSingleStaggered(sim) );
@@ -207,6 +209,7 @@ void Simulation::init()
   }
   else
   {
+    sim.bStaggeredGrid = false;
     pipeline.push_back( new PutObjectsOnGrid(sim) );
     pipeline.push_back( new advDiff(sim) );
     //pipeline.push_back( new FadeOut(sim) );

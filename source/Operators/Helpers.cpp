@@ -13,38 +13,27 @@
 
 using namespace cubism;
 
-
-std::array<double, 4> FadeOut::solveMatrix(const double W, const double E,
-                                           const double S, const double N) const
+void computeVorticity::run() const
 {
-  static constexpr int BSX = VectorBlock::sizeX, BSY = VectorBlock::sizeY;
-  const double NX = sim.bpdx * BSX, NY = sim.bpdy * BSY;
-  double A[4][4] = {
-      {  NY, 0.0, 1.0, 1.0},
-      { 0.0,  NY, 1.0, 1.0},
-      { 1.0, 1.0,  NX, 0.0},
-      { 1.0, 1.0, 0.0,  NX}
-  };
+  const Real invH = 1.0 / sim.getH();
+  const std::vector<BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
+  #pragma omp parallel
+  {
+    static constexpr int stenBeg [3] = {-1,-1, 0}, stenEnd [3] = { 1, 1, 1};
+    VectorLab velLab;   velLab.prepare(*(sim.vel), stenBeg, stenEnd, 0);
 
-  double b[4] = { W, E, S, N };
+    #pragma omp for schedule(static)
+    for (size_t i=0; i < Nblocks; i++)
+    {
+      velLab.load( velInfo[i], 0); const auto & __restrict__ V   = velLab;
+      auto& __restrict__ O = *(ScalarBlock*)  tmpInfo[i].ptrBlock;
 
-  gsl_matrix_view Agsl = gsl_matrix_view_array (&A[0][0], 4, 4);
-  gsl_vector_view bgsl = gsl_vector_view_array (b, 4);
-  gsl_vector *xgsl = gsl_vector_alloc (4);
-  int sgsl;
-  gsl_permutation * permgsl = gsl_permutation_alloc (4);
-  gsl_linalg_LU_decomp (& Agsl.matrix, permgsl, & sgsl);
-  gsl_linalg_LU_solve ( & Agsl.matrix, permgsl, & bgsl.vector, xgsl);
-
-  std::array<double, 4> ret = {gsl_vector_get(xgsl, 0),
-                               gsl_vector_get(xgsl, 1),
-                               gsl_vector_get(xgsl, 2),
-                               gsl_vector_get(xgsl, 3)};
-  gsl_permutation_free (permgsl);
-  gsl_vector_free (xgsl);
-  return ret;
+      for(int y=0; y<VectorBlock::sizeY; ++y)
+      for(int x=0; x<VectorBlock::sizeX; ++x)
+      O(x,y).s = invH * (V(x,y-1).u[0]-V(x,y).u[0] + V(x,y).u[1]-V(x-1,y).u[1]);
+    }
+  }
 }
-
 
 void IC::operator()(const double dt)
 {

@@ -126,6 +126,7 @@ void advDiff::operator()(const double dt)
     }
     ////////////////////////////////////////////////////////////////////////////
     const Real corr = IF/std::max(AF, EPS);
+    printf("Relative inflow correction %e\n",corr);
     //const Real corr = IF/( 2*(BSY*sim.bpdy -1) + 2*(BSX*sim.bpdx -1) );
     #pragma omp parallel for schedule(dynamic)
     for (size_t i=0; i < Nblocks; i++) {

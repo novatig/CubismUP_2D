@@ -82,9 +82,9 @@ void PressureVarRho_approx::fadeoutBorder(const double dt) const
 {
   const std::vector<BlockInfo>&  tmpInfo = sim.tmp->getBlocksInfo();
   const auto& extent = sim.extents;
-  //const Real fadeLenX = sim.fadeLenX, fadeLenY = sim.fadeLenY;
+  const Real fadeLenX = sim.fadeLenX, fadeLenY = sim.fadeLenY;
   //const Real fadeLenX = 8*sim.getH(), fadeLenY = 8*sim.getH();
-  const Real fadeLenX = extent[0]*0.05, fadeLenY = extent[1]*0.05;
+  //const Real fadeLenX = extent[0]*0.05, fadeLenY = extent[1]*0.05;
   const Real invFadeX = 1/(fadeLenX+EPS), invFadeY = 1/(fadeLenY+EPS);
   const auto _is_touching = [&] (const BlockInfo& i) {
     Real min_pos[2], max_pos[2]; i.pos(min_pos, 0, 0);
@@ -184,7 +184,7 @@ Real PressureVarRho_approx::pressureCorrection(const double dt) const
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
-        #if 1
+        #if 0
           const Real dUdiv = finDiffX(Pcur,ix,iy) * IRHO(ix,iy).s, dUpre = 0;
           const Real dVdiv = finDiffY(Pcur,ix,iy) * IRHO(ix,iy).s, dVpre = 0;
         #else
@@ -252,21 +252,11 @@ void PressureVarRho_approx::integrateMomenta(Shape * const shape) const
   }
   //printf("%e %e %e %e %e %e %e\n",AM,UM,VM,PX,PY,PM,PJ);
   #ifdef EXPL_INTEGRATE_MOM
-  shape->fluidAngMom = AM;
-  shape->fluidMomX = UM;
-  shape->fluidMomY = VM;
-  shape->penalDX = 0;
-  shape->penalDY = 0;
-  shape->penalM = PM;
-  shape->penalJ = PJ;
+  shape->fluidAngMom = AM; shape->fluidMomX = UM; shape->fluidMomY = VM;
+  shape->penalDX=0; shape->penalDY=0; shape->penalM=PM; shape->penalJ=PJ;
   #else
-  shape->fluidAngMom = AM;
-  shape->fluidMomX = UM;
-  shape->fluidMomY = VM;
-  shape->penalDX = PX;
-  shape->penalDY = PY;
-  shape->penalM = PM;
-  shape->penalJ = PJ;
+  shape->fluidAngMom = AM; shape->fluidMomX = UM; shape->fluidMomY = VM;
+  shape->penalDX=PX; shape->penalDY=PY; shape->penalM=PM; shape->penalJ=PJ;
   #endif
 }
 
@@ -320,25 +310,14 @@ Real PressureVarRho_approx::penalize(const double dt, const int iter) const
       #endif
       const Real oldF[2] = {F(ix,iy).u[0], F(ix,iy).u[1]};
 
-      #if 0
+      #if 1
       const Real newF[2] = {pFac*(US-UF(ix,iy).u[0]), pFac*(VS-UF(ix,iy).u[1])};
         F(ix,iy).u[0] = newF[0]; F(ix,iy).u[1] = newF[1];
-      #elif 1
+      #else
         const Real A = iter? 0.9 : 1, B = iter? 0.1 : 0;
         F(ix,iy).u[0] = A*pFac*(US-UF(ix,iy).u[0]) - B*oldF[0];
         F(ix,iy).u[1] = A*pFac*(VS-UF(ix,iy).u[1]) - B*oldF[1];
         const Real newF[2] = {F(ix,iy).u[0], F(ix,iy).u[1]};
-      #else
-      const Real newF[2] = {pFac*(US-UF(ix,iy).u[0]), pFac*(VS-UF(ix,iy).u[1])};
-        const Real olrF[2] = {olF(ix,iy).u[0], olF(ix,iy).u[1]};
-        const Real dUold = oldF[0]-olrF[0], dUnew = newF[0]-oldF[0];
-        const Real dVold = oldF[1]-olrF[1], dVnew = newF[1]-oldF[1];
-        if(dUold*dUnew>=0) F(ix,iy).u[0] = 1.2*newF[0] - 0.2*oldF[0];
-        else F(ix,iy).u[0] = 0.9*newF[0] - 0.1*oldF[0];
-        if(dVold*dVnew>=0) F(ix,iy).u[1] = 1.2*newF[1] - 0.2*oldF[1];
-        else F(ix,iy).u[1] = 0.9*newF[1] - 0.1*oldF[1];
-        olF(ix,iy).u[0] = oldF[0];
-        olF(ix,iy).u[1] = oldF[1];
       #endif
 
       MX += std::pow(newF[0], 2); DMX += std::pow(newF[0]-oldF[0], 2);
@@ -400,7 +379,7 @@ void PressureVarRho_approx::updatePressureRHS(const double dt) const
 void PressureVarRho_approx::finalizePressure(const double dt) const
 {
   const Real h = sim.getH(), pFac = -dt/h;
-  //const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
+  const std::vector<BlockInfo>& presInfo = sim.pres->getBlocksInfo();
   const std::vector<BlockInfo>& iRhoInfo = sim.invRho->getBlocksInfo();
   const std::vector<BlockInfo>&  tmpInfo = sim.tmp->getBlocksInfo();
   const std::vector<BlockInfo>& tmpVInfo = sim.tmpV->getBlocksInfo();
@@ -408,13 +387,13 @@ void PressureVarRho_approx::finalizePressure(const double dt) const
   #pragma omp parallel
   {
     ScalarLab  tmpLab;  tmpLab.prepare(*(sim.tmp ), stenBeg, stenEnd, 0);
-    //ScalarLab presLab; presLab.prepare(*(sim.pres), stenBeg, stenEnd, 0);
+    ScalarLab presLab; presLab.prepare(*(sim.pres), stenBeg, stenEnd, 0);
 
     #pragma omp for schedule(static)
     for (size_t i=0; i < Nblocks; i++)
     {
        tmpLab.load( tmpInfo[i],0); const ScalarLab&__restrict__ Pcur =  tmpLab;
-      //presLab.load(presInfo[i],0); const ScalarLab&__restrict__ Pold = presLab;
+      presLab.load(presInfo[i],0); const ScalarLab&__restrict__ Pold = presLab;
             VectorBlock&__restrict__   V = *(VectorBlock*)  velInfo[i].ptrBlock;
       const VectorBlock&__restrict__   F = *(VectorBlock*) tmpVInfo[i].ptrBlock;
       const ScalarBlock&__restrict__ IRHO= *(ScalarBlock*) iRhoInfo[i].ptrBlock;
@@ -422,7 +401,7 @@ void PressureVarRho_approx::finalizePressure(const double dt) const
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
-        #if 1
+        #if 0
           const Real dUdiv = finDiffX(Pcur,ix,iy) * IRHO(ix,iy).s, dUpre = 0;
           const Real dVdiv = finDiffY(Pcur,ix,iy) * IRHO(ix,iy).s, dVpre = 0;
         #else
@@ -467,37 +446,20 @@ void PressureVarRho_approx::operator()(const double dt)
     // pressure solver is going to use as RHS = div VEL - \chi div UDEF
     sim.startProfiler("Prhs");
     updatePressureRHS(dt);
-    fadeoutBorder(dt);
     sim.stopProfiler();
 
-    if(0)//sim.step % 1000 == 0)
-    {
-      char fname[512]; sprintf(fname, "RHS_%06d_%03d", sim.step, iter);
-      sim.dumpTmp2( std::string(fname) );
-    }
-
     pressureSolver->solve(tmpInfo, tmpInfo);
-
-    if(0)//sim.step % 1000 == 0)
-    {
-      char fname[512]; sprintf(fname, "P_%06d_%03d", sim.step, iter);
-      sim.dumpTmp2( std::string(fname) );
-    }
 
     sim.startProfiler("PCorrect");
     relDP = pressureCorrection(dt);
     sim.stopProfiler();
 
-    printf("iter:%02d - rel. err penal:%e press:%e vel={%e %e}\n",
-      iter, relDF, relDP, sim.shapes[0]->u, sim.shapes[0]->v);
+    printf("iter:%02d - rel. err penal:%e press:%e\n", iter, relDF, relDP);
     const Real newErr = std::max(relDF, relDP);
-    bConverged =               newErr<targetRelError;
-    bConverged = bConverged || iter>2*oldNsteps;
-    bConverged = bConverged || iter>100;
-    //bConverged = bConverged || (oldErr-newErr)/newErr < 0.01;
-    //oldErr = newErr;
+    bConverged = newErr<targetRelError || iter>2*oldNsteps  || iter>100;
 
-    if(bConverged) {
+    if(bConverged)
+    {
       sim.startProfiler("PCorrect");
       finalizePressure(dt);
       sim.stopProfiler();
@@ -510,7 +472,7 @@ void PressureVarRho_approx::operator()(const double dt)
       const auto& __restrict__ Pnew = *(ScalarBlock*)  tmpInfo[i].ptrBlock;
             auto& __restrict__ Pcur = *(ScalarBlock*) presInfo[i].ptrBlock;
             auto& __restrict__ Pold = *(ScalarBlock*) pOldInfo[i].ptrBlock;
-      #if 1
+      #if 0
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
@@ -530,12 +492,6 @@ void PressureVarRho_approx::operator()(const double dt)
     }
     //printf("nInter:%lu nExtra:%lu\n",nInter,nExtra);
     if(bConverged) break;
-  }
-
-  if(0)
-  {
-    char fname[512]; sprintf(fname, "P_%06d", sim.step);
-    sim.dumpTmp2( std::string(fname) );
   }
 
   oldNsteps = iter+1;

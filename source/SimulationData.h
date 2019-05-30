@@ -19,14 +19,12 @@ struct SimulationData
   cubism::Profiler * profiler = new cubism::Profiler();
 
   ScalarGrid * chi   = nullptr;
-  ScalarGrid * omega   = nullptr;
   VectorGrid * vel   = nullptr;
 
   ScalarGrid * pres  = nullptr;
   ScalarGrid * pOld  = nullptr;
   ScalarGrid * pRHS  = nullptr;
   ScalarGrid * invRho= nullptr;
-  ScalarGrid * rho   = nullptr;
 
   VectorGrid * tmpV  = nullptr;
   VectorGrid * vFluid= nullptr;

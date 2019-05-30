@@ -17,14 +17,12 @@ using namespace cubism;
 void SimulationData::allocateGrid()
 {
   chi   = new ScalarGrid(bpdx, bpdy, 1, extent);
-  omega = new ScalarGrid(bpdx, bpdy, 1, extent);
   vel   = new VectorGrid(bpdx, bpdy, 1, extent);
   pres  = new ScalarGrid(bpdx, bpdy, 1, extent);
   pOld  = new ScalarGrid(bpdx, bpdy, 1, extent);
 
   pRHS  = new ScalarGrid(bpdx, bpdy, 1, extent);
   invRho= new ScalarGrid(bpdx, bpdy, 1, extent);
-  rho   = new ScalarGrid(bpdx, bpdy, 1, extent);
 
   tmpV  = new VectorGrid(bpdx, bpdy, 1, extent);
   vFluid= new VectorGrid(bpdx, bpdy, 1, extent);
@@ -152,7 +150,6 @@ SimulationData::~SimulationData()
   if(pRHS not_eq nullptr) delete pRHS;
   if(tmpV not_eq nullptr) delete tmpV;
   if(invRho not_eq nullptr) delete invRho;
-  if(rho not_eq nullptr) delete rho;
   if(pOld not_eq nullptr) delete pOld;
   if(tmp not_eq nullptr) delete tmp;
   while( not shapes.empty() ) {
@@ -199,24 +196,34 @@ void SimulationData::printResetProfiler()
 
 void SimulationData::dumpAll(std::string name)
 {
-  const std::vector<BlockInfo>& chiInfo = chi->getBlocksInfo();
-  const std::vector<BlockInfo>& velInfo = vel->getBlocksInfo();
-  const std::vector<BlockInfo>& dmpInfo =dump->getBlocksInfo();
-  #pragma omp parallel for schedule(static)
-  for (size_t i=0; i < velInfo.size(); i++)
+  if(bStaggeredGrid)
   {
-    VectorBlock* VEL = (VectorBlock*) velInfo[i].ptrBlock;
-    ScalarBlock* CHI = (ScalarBlock*) chiInfo[i].ptrBlock;
-    VelChiGlueBlock& DMP = * (VelChiGlueBlock*) dmpInfo[i].ptrBlock;
-    DMP.assign(CHI, VEL); // TODO USER MIGHT WANT TO HAVE invRho instead of chi?
+    const auto K = computeVorticity(*this); K.run();
+    dumpPres (name);
+    dumpInvRho (name);
+    dumpTmp (name);
   }
-  //dumpChi  (name); // glued together: skip
-  //dumpVel  (name); // glued together: skip
-  dumpGlue(name);
-  dumpPres (name);
-  dumpInvRho (name);
-  //dumpTmp  (name); // usually signed dist is here
-  //dumpUobj (name);
-  //dumpForce(name);
-  //dumpTmpV (name); // probably useless
+  else
+  {
+    const std::vector<BlockInfo>& chiInfo = chi->getBlocksInfo();
+    const std::vector<BlockInfo>& velInfo = vel->getBlocksInfo();
+    const std::vector<BlockInfo>& dmpInfo =dump->getBlocksInfo();
+    #pragma omp parallel for schedule(static)
+    for (size_t i=0; i < velInfo.size(); i++)
+    {
+      VectorBlock* VEL = (VectorBlock*) velInfo[i].ptrBlock;
+      ScalarBlock* CHI = (ScalarBlock*) chiInfo[i].ptrBlock;
+      VelChiGlueBlock& DMP = * (VelChiGlueBlock*) dmpInfo[i].ptrBlock;
+      DMP.assign(CHI, VEL);
+    }
+    //dumpChi  (name); // glued together: skip
+    //dumpVel  (name); // glued together: skip
+    dumpGlue(name);
+    dumpPres (name);
+    dumpInvRho (name);
+    //dumpTmp  (name); // usually signed dist is here
+    //dumpUobj (name);
+    //dumpForce(name);
+    //dumpTmpV (name); // probably useless
+  }
 }
