@@ -79,8 +79,8 @@ void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const
         if(X[iy][ix] > 0)
         {
           double p[2]; chiInfo[i].pos(p, ix, iy);
-          _x += rho[iy][ix] * X[iy][ix] * h*h * p[0];
-          _y += rho[iy][ix] * X[iy][ix] * h*h * p[1];
+          _x += rho[iy][ix] * X[iy][ix] * h*h * (p[0] - shape->centerOfMass[0]);
+          _y += rho[iy][ix] * X[iy][ix] * h*h * (p[1] - shape->centerOfMass[1]);
           _m += rho[iy][ix] * X[iy][ix] * h*h;
         }
       }
@@ -88,8 +88,8 @@ void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const
   }
 
   if(_m > EPS) {
-    shape->centerOfMass[0] = _x/_m;
-    shape->centerOfMass[1] = _y/_m;
+    shape->centerOfMass[0] += _x/_m;
+    shape->centerOfMass[1] += _y/_m;
     shape->M = _m;
   } else {
     printf("PutObjectsOnGrid _m is too small!\n");
