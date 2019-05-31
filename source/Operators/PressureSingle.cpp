@@ -9,9 +9,10 @@
 
 #include "PressureSingle.h"
 #include "../Poisson/PoissonSolver.h"
+#include "../Shape.h"
 
 using namespace cubism;
-
+using CHI_MAT = Real[VectorBlock::sizeY][VectorBlock::sizeX];
 static constexpr double EPS = std::numeric_limits<double>::epsilon();
 
 void PressureSingle::fadeoutBorder(const double dt) const
@@ -51,28 +52,86 @@ void PressureSingle::fadeoutBorder(const double dt) const
 void PressureSingle::updatePressureRHS(const double dt) const
 {
   const Real h = sim.getH(), facDiv = 0.5*h/dt;
+  static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 2, 2, 1};
+  const size_t nShapes = sim.shapes.size();
+  Real * sumRHS, * absRHS;
+  sumRHS = (Real*) calloc(nShapes, sizeof(Real));
+  absRHS = (Real*) calloc(nShapes, sizeof(Real));
 
-  #pragma omp parallel
+  #pragma omp parallel reduction(+: sumRHS[:nShapes], absRHS[:nShapes])
   {
-    static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 2, 2, 1};
-    VectorLab velLab;  velLab.prepare( *(sim.vel),  stenBeg, stenEnd, 0);
     VectorLab uDefLab; uDefLab.prepare(*(sim.uDef), stenBeg, stenEnd, 0);
     #pragma omp for schedule(static)
     for (size_t i=0; i < Nblocks; i++)
     {
-      velLab.load(velInfo[i], 0); uDefLab.load(uDefInfo[i], 0);
-      const VectorLab  & __restrict__ V   = velLab;
+      ( (ScalarBlock*)   tmpInfo[i].ptrBlock )->clear();
+    for (size_t j=0; j < nShapes; j++)
+    {
+      const Shape * const shape = sim.shapes[j];
+      const std::vector<ObstacleBlock*>& OBLOCK = shape->obstacleBlocks;
+      const ObstacleBlock*const o = OBLOCK[uDefInfo[i].blockID];
+      if (o == nullptr) continue;
+
+      uDefLab.load(uDefInfo[i], 0);
       const VectorLab  & __restrict__ UDEF= uDefLab;
-      const ScalarBlock& __restrict__ CHI = *(ScalarBlock*)chiInfo[i].ptrBlock;
+      const CHI_MAT & __restrict__ chi = o->chi;
+      ScalarBlock& __restrict__ TMP = *(ScalarBlock*) tmpInfo[i].ptrBlock;
+      const ScalarBlock& __restrict__ CHI = *(ScalarBlock*) chiInfo[i].ptrBlock;
+
+      for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix)
+      {
+        if (chi[iy][ix] <= 0) continue;
+        if(CHI(ix,iy).s > chi[iy][ix]) continue;
+        const Real divUSx = UDEF(ix+1,iy).u[0] - UDEF(ix-1,iy).u[0];
+        const Real divUSy = UDEF(ix,iy+1).u[1] - UDEF(ix,iy-1).u[1];
+        const Real udefSrc = facDiv * chi[iy][ix] * (divUSx + divUSy);
+        sumRHS[j] += udefSrc; absRHS[j] += std::fabs(udefSrc);
+        TMP(ix, iy).s += facDiv * udefSrc;
+      }
+    }
+    }
+  }
+
+  #pragma omp parallel for schedule(static)
+  for (size_t i=0; i < Nblocks; i++)
+  for (size_t j=0; j < nShapes; j++)
+  {
+    const Shape * const shape = sim.shapes[j];
+    const Real corr = sumRHS[j] / std::max(absRHS[j], EPS);
+    const std::vector<ObstacleBlock*>& OBLOCK = shape->obstacleBlocks;
+    const ObstacleBlock*const o = OBLOCK[uDefInfo[i].blockID];
+    if (o == nullptr) continue;
+
+    const CHI_MAT & __restrict__ chi = o->chi;
+    ScalarBlock& __restrict__ TMP = *(ScalarBlock*) tmpInfo[i].ptrBlock;
+    const ScalarBlock& __restrict__ CHI = *(ScalarBlock*) chiInfo[i].ptrBlock;
+
+    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+    for(int ix=0; ix<VectorBlock::sizeX; ++ix)
+    {
+      if (chi[iy][ix] <= 0) continue;
+      if(CHI(ix,iy).s > chi[iy][ix]) continue;
+      TMP(ix, iy).s -= corr*std::fabs(TMP(ix, iy).s);
+    }
+  }
+
+  free (sumRHS); free (absRHS);
+
+  #pragma omp parallel
+  {
+    VectorLab velLab;  velLab.prepare( *(sim.vel),  stenBeg, stenEnd, 0);
+    #pragma omp for schedule(static)
+    for (size_t i=0; i < Nblocks; i++)
+    {
+      velLab.load(velInfo[i], 0); const VectorLab  & __restrict__ V   = velLab;
             ScalarBlock& __restrict__ TMP = *(ScalarBlock*)tmpInfo[i].ptrBlock;
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
         const Real divVx  = V(ix+1,iy).u[0]    - V(ix-1,iy).u[0];
         const Real divVy  = V(ix,iy+1).u[1]    - V(ix,iy-1).u[1];
-        const Real divUSx = UDEF(ix+1,iy).u[0] - UDEF(ix-1,iy).u[0];
-        const Real divUSy = UDEF(ix,iy+1).u[1] - UDEF(ix,iy-1).u[1];
-        TMP(ix, iy).s = facDiv*(divVx+divVy - CHI(ix,iy).s*(divUSx+divUSy));
+        TMP(ix, iy).s += facDiv*(divVx+divVy);
       }
     }
   }
@@ -109,7 +168,7 @@ void PressureSingle::operator()(const double dt)
 {
   sim.startProfiler("Prhs");
   updatePressureRHS(dt);
-  fadeoutBorder(dt);
+  //fadeoutBorder(dt);
   sim.stopProfiler();
 
   pressureSolver->solve(tmpInfo, presInfo);

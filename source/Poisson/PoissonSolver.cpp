@@ -81,7 +81,6 @@ void PoissonSolver::cub2rhs(const std::vector<BlockInfo>& BSRC)
       sumRHS +=           b(ix,iy).s;
     }
   }
-
   if(0)
   {
     const Real C = sumRHS/std::max(EPS,sumABS);
