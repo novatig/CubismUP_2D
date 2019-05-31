@@ -48,10 +48,11 @@ void advDiff::operator()(const double dt)
   //const Real G[]= {sim.gravity[0],sim.gravity[1]};
   const Real dfac = (sim.nu/h)*(dt/h), afac = -0.5*dt/h;
   const Real norUinf = std::max({std::fabs(UINF[0]), std::fabs(UINF[1]), EPS});
-  const Real fadeXW = 1 - std::pow( std::max(UINF[0],(Real) 0) / norUinf, 2);
-  const Real fadeYS = 1 - std::pow( std::max(UINF[1],(Real) 0) / norUinf, 2);
-  const Real fadeXE = 1 - std::pow( std::min(UINF[0],(Real) 0) / norUinf, 2);
-  const Real fadeYN = 1 - std::pow( std::min(UINF[1],(Real) 0) / norUinf, 2);
+  const Real fadeW= 1-std::pow(std::max(UINF[0],(Real)0)/norUinf,2)/BC_KILL_FAC;
+  const Real fadeS= 1-std::pow(std::max(UINF[1],(Real)0)/norUinf,2)/BC_KILL_FAC;
+  const Real fadeE= 1-std::pow(std::min(UINF[0],(Real)0)/norUinf,2)/BC_KILL_FAC;
+  const Real fadeN= 1-std::pow(std::min(UINF[1],(Real)0)/norUinf,2)/BC_KILL_FAC;
+  const auto fade = [&](VectorElement&B,const Real F) { B.u[0]*=F; B.u[1]*=F; };
 
   #pragma omp parallel
   {
@@ -64,30 +65,10 @@ void advDiff::operator()(const double dt)
       vellab.load(velInfo[i], 0); VectorLab & __restrict__ V = vellab;
       VectorBlock & __restrict__ TMP = *(VectorBlock*) tmpVInfo[i].ptrBlock;
 
-      for(int iy=-1; iy<=BSY && isW(velInfo[i]); ++iy) { // west
-        V(BX-1,iy).u[0] *= fadeXW; V(BX-1,iy).u[1] *= fadeXW;
-        //V(BX  ,iy).u[0] *= fadeXW; //V(BX  ,iy).u[1] *= fadeXW;
-      }
-
-      for(int ix=-1; ix<=BSX && isS(velInfo[i]); ++ix) { // south
-        V(ix, BY-1).u[0] *= fadeYS; V(ix, BY-1).u[1] *= fadeYS;
-        //V(ix, BY  ).u[0] *= fadeYS;
-        //V(ix, BY  ).u[1] *= fadeYS;
-      }
-
-      for(int iy=-1; iy<=BSY && isE(velInfo[i]); ++iy) { // west
-        V(EX+1,iy).u[0] *= fadeXE; V(EX+1,iy).u[1] *= fadeXE;
-        // //V(EX  ,iy).u[0] *= fadeXE;
-        // V(EX  ,iy).u[1] *= fadeXE;
-        // //V(EX-1,iy).u[1] *= fadeXE;
-      }
-
-      for(int ix=-1; ix<=BSX && isN(velInfo[i]); ++ix) { // south
-        V(ix, EY+1).u[0] *= fadeYN; V(ix, EY+1).u[1] *= fadeYN;
-        // V(ix, EY  ).u[0] *= fadeYN;
-        // //V(ix, EY  ).u[1] *= fadeYN;
-        // //V(ix, EY-1).u[0] *= fadeXN;
-      }
+      for(int iy=-1; iy<=BSY && isW(velInfo[i]); ++iy) fade(V(BX-1,iy), fadeW);
+      for(int ix=-1; ix<=BSX && isS(velInfo[i]); ++ix) fade(V(ix,BY-1), fadeS);
+      for(int iy=-1; iy<=BSY && isE(velInfo[i]); ++iy) fade(V(EX+1,iy), fadeE);
+      for(int ix=-1; ix<=BSX && isN(velInfo[i]); ++ix) fade(V(ix,EY+1), fadeN);
 
       for(int iy=0; iy<BSY; ++iy) for(int ix=0; ix<BSX; ++ix)
       {

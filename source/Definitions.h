@@ -35,6 +35,8 @@ using Real = float;
 #define _DIM_ 2
 #endif//_BS_
 
+#define BC_KILL_FAC 100
+
 struct ScalarElement
 {
   using RealType = Real;

@@ -30,10 +30,12 @@ void advDiffGravStaggered::operator()(const double dt)
   const Real G[2]= { dt*sim.gravity[0], dt*sim.gravity[1] };
   const Real dfac = (sim.nu/h)*(dt/h), afac = -0.5*dt/h;
   const Real norUinf = std::max({std::fabs(UINF[0]), std::fabs(UINF[1]), EPS});
-  const Real fadeXW = 1 - std::pow( std::max(UINF[0],(Real) 0) / norUinf, 2);
-  const Real fadeYS = 1 - std::pow( std::max(UINF[1],(Real) 0) / norUinf, 2);
-  const Real fadeXE = 1 - std::pow( std::min(UINF[0],(Real) 0) / norUinf, 2);
-  const Real fadeYN = 1 - std::pow( std::min(UINF[1],(Real) 0) / norUinf, 2);
+  const Real fadeW= 1-std::pow(std::max(UINF[0],(Real)0)/norUinf,2)/BC_KILL_FAC;
+  const Real fadeS= 1-std::pow(std::max(UINF[1],(Real)0)/norUinf,2)/BC_KILL_FAC;
+  const Real fadeE= 1-std::pow(std::min(UINF[0],(Real)0)/norUinf,2)/BC_KILL_FAC;
+  const Real fadeN= 1-std::pow(std::min(UINF[1],(Real)0)/norUinf,2)/BC_KILL_FAC;
+  const auto fade = [&](VectorElement&B,const Real F) { B.u[0]*=F; B.u[1]*=F; };
+
   sim.startProfiler("advDiffGrav");
 
   #pragma omp parallel
@@ -92,30 +94,10 @@ void advDiffGravStaggered::operator()(const double dt)
         V(BX-1,BY-1).u[1] = V(BX,BY).u[1];
       }
 
-      for(int iy=-1; iy<=VectorBlock::sizeY && isW(velInfo[i]); ++iy) { // west
-        V(BX-1,iy).u[0] *= fadeXW; V(BX-1,iy).u[1] *= fadeXW;
-        //V(BX  ,iy).u[0] *= fadeXW; //V(BX  ,iy).u[1] *= fadeXW;
-      }
-
-      for(int ix=-1; ix<=VectorBlock::sizeX && isS(velInfo[i]); ++ix) { //south
-        V(ix, BY-1).u[0] *= fadeYS; V(ix, BY-1).u[1] *= fadeYS;
-        //V(ix, BY  ).u[0] *= fadeYS;
-        //V(ix, BY  ).u[1] *= fadeYS;
-      }
-
-      for(int iy=-1; iy<=VectorBlock::sizeY && isE(velInfo[i]); ++iy) { // west
-        V(EX+1,iy).u[0] *= fadeXE; V(EX+1,iy).u[1] *= fadeXE;
-        // //V(EX  ,iy).u[0] *= fadeXE;
-        // V(EX  ,iy).u[1] *= fadeXE;
-        // //V(EX-1,iy).u[1] *= fadeXE;
-      }
-
-      for(int ix=-1; ix<=VectorBlock::sizeX && isN(velInfo[i]); ++ix) { //south
-        V(ix, EY+1).u[0] *= fadeYN; V(ix, EY+1).u[1] *= fadeYN;
-        // V(ix, EY  ).u[0] *= fadeYN;
-        // //V(ix, EY  ).u[1] *= fadeYN;
-        // //V(ix, EY-1).u[0] *= fadeXN;
-      }
+      for(int iy=-1; iy<=BSY && isW(velInfo[i]); ++iy) fade(V(BX-1,iy), fadeW);
+      for(int ix=-1; ix<=BSX && isS(velInfo[i]); ++ix) fade(V(ix,BY-1), fadeS);
+      for(int iy=-1; iy<=BSY && isE(velInfo[i]); ++iy) fade(V(EX+1,iy), fadeE);
+      for(int ix=-1; ix<=BSX && isN(velInfo[i]); ++ix) fade(V(ix,EY+1), fadeN);
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
@@ -173,7 +155,6 @@ void advDiffGravStaggered::operator()(const double dt)
     V.copy(T);
   }
 
-
   if (1)
   {
     ////////////////////////////////////////////////////////////////////////////
@@ -227,108 +208,58 @@ void advDiffGravStaggered::operator()(const double dt)
 
 /*
 
-if(isW && isS) {
-  const Real u = V(BX,BY).u[0]+UINF[0], v = V(BX,BY).u[1]+UINF[1];
-  V(BX-1,BY).u[1] = u>0? 0 : V(BX-1,BY).u[1];
-  V(BX,BY-1).u[0] = v>0? 0 : V(BX,BY-1).u[0];
-  V(BX-1,BY-1).u[0] = 0; V(BX-1,BY-1).u[1] = 0;
-}
-if(isE && isS) {
-  const Real u = V(EX,BY).u[0]+UINF[0], v = V(EX,BY).u[1]+UINF[1];
-  V(EX+1,BY).u[1] = u<0? 0 : V(EX+1,BY).u[1];
-  V(EX,BY-1).u[0] = v>0? 0 : V(EX,BY-1).u[0];
-}
-if(isW && isN) {
-  const Real u = V(BX,EY).u[0]+UINF[0], v = V(BX,EY).u[1]+UINF[1];
-  V(BX-1,EY).u[1] = u>0? 0 : V(BX-1,EY).u[1];
-  //V(BX  ,EY).u[1] = u>0? 0 : V(BX  ,EY).u[1];
-  V(BX,EY+1).u[0] = v<0? 0 : V(BX,EY+1).u[0];
-  //V(BX,EY  ).u[0] = v<0? 0 : V(BX,EY  ).u[0];
-}
-if(isE && isN) {
-  const Real u = V(EX,EY).u[0]+UINF[0], v = V(EX,EY).u[1]+UINF[1];
-  V(EX+1,EY).u[1] = u<0? 0 : V(EX+1,EY).u[1];
-  //V(EX  ,EY).u[1] = u<0? 0 : V(EX  ,EY).u[1];
-  V(EX,EY+1).u[0] = v<0? 0 : V(EX,EY+1).u[0];
-  //V(EX,EY  ).u[0] = v<0? 0 : V(EX,EY  ).u[0];
-}
+  Real MX[2] = {0}, AX[2] = {0}, MY[2] = {0}, AY[2] = {0};
+  #pragma omp parallel for schedule(dynamic) reduction(+ : MX[:2], AX[:2], \
+                                                           MY[:2], AY[:2])
+  for (size_t i=0; i < Nblocks; i++) {
+    VectorBlock& V = *(VectorBlock*)  velInfo[i].ptrBlock;
+    // handle corners outside of staggered grid, will be overwritten later
+    if(isN(velInfo[i]) && isW(velInfo[i])) V(BX,EY).u[0] = 0;
+    if(isN(velInfo[i]) && isE(velInfo[i])) { V(EX,EY).u[0]=0; V(EX,EY).u[1]=0; }
+    if(isS(velInfo[i]) && isE(velInfo[i])) V(EX,BY).u[1] = 0;
 
-for(int iy=0; iy<=VectorBlock::sizeY && isW; ++iy) { // west
-  const Real uAdvV = (V(BX,iy).u[0] + V(BX,iy-1).u[0])/2 +UINF[0];
-  V(BX-1, iy).u[1] = uAdvV>0? 0 : V(BX-1, iy).u[1];
-  //V(BX  , iy).u[1] = uAdvV>0? 0 : V(BX  , iy).u[1];
-}
-for(int ix=0; ix<=VectorBlock::sizeX && isS; ++ix) { //south
-  const Real vAdvU = (V(ix,BY).u[1] + V(ix-1,BY).u[1])/2 +UINF[1];
-  V(ix, BY-1).u[0] = vAdvU>0? 0 : V(ix, BY-1).u[0];
-  //V(ix, BY  ).u[0] = vAdvU>0? 0 : V(ix, BY  ).u[0];
-}
-for(int iy=0; iy<=VectorBlock::sizeY && isE; ++iy) { //east
-  const Real uAdvV = (V(EX+1, iy).u[0] + V(EX+1, iy-1).u[0])/2 +UINF[0];
-  V(EX+1, iy).u[1] = uAdvV<0? 0 : V(EX+1, iy).u[1];
-  //V(EX  , iy).u[1] = uAdvV<0? 0 : V(EX  , iy).u[1];
-}
-for(int ix=0; ix<=VectorBlock::sizeX && isN; ++ix) { //north
-  const Real vAdvU = (V(ix, EY+1).u[1] + V(ix-1, EY+1).u[1])/2 +UINF[1];
-  V(ix, EY+1).u[0] = vAdvU<0? 0 : V(ix, EY+1).u[0];
-  //V(ix, EY  ).u[0] = vAdvU<0? 0 : V(ix, EY  ).u[0];
-}
-
-if(inflowDir == 0) // kill inflow from the y sides:
-{
-  if(inflowSide==0)
-  {
-    for(int iy=-1; iy<=VectorBlock::sizeY && isE; ++iy) { // east
-      V(EX+1,iy).u[0] = V(EX,iy).u[0] - corrE;
-      V(EX,iy).u[0]   = V(EX,iy).u[0] - corrE;
+    for(int iy=0; iy<BSY && isW(velInfo[i]); ++iy) {
+      MX[0] += V(BX,iy).u[0]; AX[0] += std::fabs( V(BX,iy).u[0] );
+      MX[1] += V(BX,iy).u[1]; AX[1] += std::fabs( V(BX,iy).u[1] );
     }
-    for(int iy=-1; iy<=VectorBlock::sizeY && isW; ++iy) { // west
-      V(BX-1,iy).u[0] = 0; V(BX  ,iy).u[0] = 0;
-      V(BX-1,iy).u[1] = 0; V(BX  ,iy).u[1] = 0;
+    for(int iy=0; iy<BSY && isE(velInfo[i]); ++iy) {
+      MX[0] += V(EX,iy).u[0]; AX[0] += std::fabs( V(EX,iy).u[0] );
+      MX[1] += V(EX,iy).u[1]; AX[1] += std::fabs( V(EX,iy).u[1] );
+    }
+    for(int ix=0; ix<BSX && isS(velInfo[i]); ++ix) {
+      MY[0] += V(ix,BY).u[0]; AY[0] += std::fabs( V(ix,BY).u[0] );
+      MY[1] += V(ix,BY).u[1]; AY[1] += std::fabs( V(ix,BY).u[1] );
+    }
+    for(int ix=0; ix<BSX && isN(velInfo[i]); ++ix) {
+      MY[0] += V(ix,EY).u[0]; AY[0] += std::fabs( V(ix,EY).u[0] );
+      MY[1] += V(ix,EY).u[1]; AY[1] += std::fabs( V(ix,EY).u[1] );
     }
   }
-  else
-  {
-    for(int iy=-1; iy<=VectorBlock::sizeY && isE; ++iy) { // east
-      V(EX+1,iy).u[0] = 0; V(EX,iy).u[0]   = 0;
-      V(EX+1,iy).u[1] = 0; V(EX,iy).u[1]   = 0;
-    }
-    for(int iy=-1; iy<=VectorBlock::sizeY && isW; ++iy) { // west
-      V(BX-1,iy).u[0] = V(BX,iy).u[0] - corrW;
-      V(BX  ,iy).u[0] = V(BX,iy).u[0] - corrW;
-    }
-  }
+  AX[0] = std::max(EPS, AX[0]); AX[1] = std::max(EPS, AX[1]);
+  AY[0] = std::max(EPS, AY[0]); AY[1] = std::max(EPS, AY[1]);
+  const Real norUinf = std::max({std::fabs(UINF[0]), std::fabs(UINF[1]), EPS});
+  const Real fadeW = std::pow( std::max(UINF[0],(Real) 0) / norUinf, 2);
+  const Real fadeS = std::pow( std::max(UINF[1],(Real) 0) / norUinf, 2);
+  const Real fadeE = std::pow( std::min(UINF[0],(Real) 0) / norUinf, 2);
+  const Real fadeN = std::pow( std::min(UINF[1],(Real) 0) / norUinf, 2);
+  const Real fadeXW = fadeW * MX[0] / AX[0], fadeYW = fadeW * MX[1] / AX[1];
+  const Real fadeXE = fadeE * MX[0] / AX[0], fadeYE = fadeE * MX[1] / AX[1];
+  const Real fadeXS = fadeS * MY[0] / AY[0], fadeYS = fadeS * MY[1] / AY[1];
+  const Real fadeXN = fadeN * MY[0] / AY[0], fadeYN = fadeN * MY[1] / AY[1];
+  printf("fade %e %e - %e %e - %e %e - %e %e\n",fadeXW,fadeYW,fadeXE,fadeYE,fadeXS,fadeYS,fadeXN,fadeYN);
+  const auto fade = [&] (VectorElement&B, const Real fadeX, const Real fadeY) {
+    B.u[0] -= fadeX * std::fabs(B.u[0]); B.u[1] -= fadeY * std::fabs(B.u[1]);
+  };
 
-  for(int ix=-1; ix<=VectorBlock::sizeX && isS; ++ix) { // south
-    V(ix, BY-1).u[1] = 0;
-    V(ix, BY  ).u[1] = 0;
-  }
-  for(int ix=-1; ix<=VectorBlock::sizeX && isN; ++ix) { // north
-    V(ix, EY+1).u[1] = 0;
-  }
-}
-else
-{
-  for(int ix=-1; ix<=VectorBlock::sizeX && isS; ++ix) { // S
-    V(ix,BY-1).u[1]= (V(ix,BY).u[1]+UINF[1]>0? 0: V(ix,BY-1).u[1]);
-    V(ix,BY  ).u[1]= (V(ix,BY).u[1]+UINF[1]>0? 0: V(ix,BY  ).u[1]);
-  }
-  for(int ix=-1; ix<=VectorBlock::sizeX && isN; ++ix) { // N
-    V(ix,EY+1).u[1]= (V(ix,EY).u[1]+UINF[1]<0? 0: V(ix,EY+1).u[1]);
-  }
-}
+  for(int iy=-1; iy<=BSY && isW(velInfo[i]); ++iy)
+    fade(V(BX-1,iy), fadeXW, fadeYW);
 
-if(inflowDir == 1) // kill inflow from the x sides:
-{
-  for(int iy=-1; iy<=VectorBlock::sizeY && isW; ++iy) { // west
-    V(BX-1, iy).u[0] = 0; V(BX  , iy).u[0] = 0;
-  }
-  for(int iy=-1; iy<=VectorBlock::sizeY && isE; ++iy) { // east
-    V(EX, iy).u[0] = 0; V(EX+1, iy).u[0] = 0;
-  }
-}
-else
-{
+  for(int ix=-1; ix<=BSX && isS(velInfo[i]); ++ix)
+    fade(V(ix,BY-1), fadeXS, fadeYS);
 
-}
+  for(int iy=-1; iy<=BSY && isE(velInfo[i]); ++iy)
+    fade(V(EX+1,iy), fadeXE, fadeYE);
+
+  for(int ix=-1; ix<=BSX && isN(velInfo[i]); ++ix)
+    fade(V(ix,EY+1), fadeXN, fadeYN);
 */
