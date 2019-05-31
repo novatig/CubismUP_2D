@@ -62,13 +62,8 @@ void UpdateObjects::integrateMomenta(Shape * const shape) const
     }
   }
 
-  shape->fluidAngMom = AM;
-  shape->fluidMomX = UM;
-  shape->fluidMomY = VM;
-  shape->penalDX = PX;
-  shape->penalDY = PY;
-  shape->penalM = PM;
-  shape->penalJ = PJ;
+  shape->fluidAngMom = AM; shape->fluidMomX = UM; shape->fluidMomY = VM;
+  shape->penalDX=PX; shape->penalDY=PY; shape->penalM=PM; shape->penalJ=PJ;
 }
 
 void UpdateObjects::penalize(const double dt) const

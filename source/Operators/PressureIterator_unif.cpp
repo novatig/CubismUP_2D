@@ -14,8 +14,7 @@
 
 using namespace cubism;
 
-// #define EXPL_INTEGRATE_MOM
-
+#define EXPL_INTEGRATE_MOM
 using CHI_MAT = Real[VectorBlock::sizeY][VectorBlock::sizeX];
 using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];
 static constexpr double EPS = std::numeric_limits<double>::epsilon();

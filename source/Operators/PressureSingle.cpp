@@ -87,7 +87,7 @@ void PressureSingle::updatePressureRHS(const double dt) const
         const Real divUSy = UDEF(ix,iy+1).u[1] - UDEF(ix,iy-1).u[1];
         const Real udefSrc = facDiv * chi[iy][ix] * (divUSx + divUSy);
         sumRHS[j] += udefSrc; absRHS[j] += std::fabs(udefSrc);
-        TMP(ix, iy).s += facDiv * udefSrc;
+        TMP(ix, iy).s += udefSrc;
       }
     }
     }
