@@ -13,12 +13,8 @@
 //#include <ZBinDumper.h>
 
 #include "Operators/Helpers.h"
-#include "Operators/PressureIterator.h"
 #include "Operators/PressureSingle.h"
-#include "Operators/PressureSingleStaggered.h"
-#include "Operators/PressureVarRho.h"
 #include "Operators/PressureVarRho_proper.h"
-#include "Operators/Penalization.h"
 #include "Operators/PressureIterator_unif.h"
 #include "Operators/PressureIterator_approx.h"
 #include "Operators/PutObjectsOnGrid.h"
@@ -26,10 +22,8 @@
 #include "Operators/UpdateObjectsStaggered.h"
 #include "Operators/advDiffGrav.h"
 #include "Operators/advDiffGravStaggered.h"
-//#include "Operators/advDiff_RK.h"
 #include "Operators/advDiff.h"
 
-#include "Operators/presRHS_step1.h"
 #include "Utils/FactoryFileLineParser.h"
 
 #include "Obstacles/ShapesSimple.h"
