@@ -12,6 +12,7 @@
 #include "../Operator.h"
 
 class PoissonSolver;
+class Shape;
 
 class PressureSingle : public Operator
 {
@@ -25,6 +26,8 @@ class PressureSingle : public Operator
   void fadeoutBorder(const double dt) const;
   void pressureCorrection(const double dt) const;
   void updatePressureRHS(const double dt) const;
+  void integrateMomenta(Shape * const shape) const;
+  void penalize(const double dt) const;
 
  public:
   void operator()(const double dt);
