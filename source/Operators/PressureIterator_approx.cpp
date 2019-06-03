@@ -250,14 +250,8 @@ void PressureVarRho_approx::integrateMomenta(Shape * const shape) const
       AM += F * (p[0]*udiff[1] - p[1]*udiff[0]);
     }
   }
-  //printf("%e %e %e %e %e %e %e\n",AM,UM,VM,PX,PY,PM,PJ);
-  #ifdef EXPL_INTEGRATE_MOM
-  shape->fluidAngMom = AM; shape->fluidMomX = UM; shape->fluidMomY = VM;
-  shape->penalDX=0; shape->penalDY=0; shape->penalM=PM; shape->penalJ=PJ;
-  #else
   shape->fluidAngMom = AM; shape->fluidMomX = UM; shape->fluidMomY = VM;
   shape->penalDX=PX; shape->penalDY=PY; shape->penalM=PM; shape->penalJ=PJ;
-  #endif
 }
 
 Real PressureVarRho_approx::penalize(const double dt, const int iter) const

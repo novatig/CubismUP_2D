@@ -126,10 +126,14 @@ void CurvatureFish::computeMidline(const Real time, const Real dt)
       (Real)0.82014*_1oL, (Real)1.46515*_1oL, (Real)2.57136*_1oL,
       (Real)3.75425*_1oL, (Real)5.09147*_1oL, (Real)5.70449*_1oL
   };
+  #if 1
   const std::array<Real,6> curvature_zeros = std::array<Real, 6>();
   curvScheduler.transition(0,0, Tperiod, curvature_zeros, curvature_values);
+  #else // no rampup for debug
+  curvScheduler.transition(time,0,Tperiod,curvature_values,curvature_values);
+  #endif
   //const std::array<Real ,6> curvature_values = std::array<Real, 6>();
-  //curvScheduler.transition(time,0,Tperiod,curvature_values,curvature_values);
+  //
   // query the schedulers for current values
   //std::stringstream curvCout;
   //curvCout << "Profile t:"<<time<<" t0:"<<baseScheduler.t0;

@@ -186,20 +186,20 @@ void advDiffGravStaggered::operator()(const double dt)
       }
     }
     ////////////////////////////////////////////////////////////////////////////
-    const Real corr = IF/std::max(AF, EPS);
+    //const Real corr = IF/std::max(AF, EPS);
+    const Real corr = IF/( 2*(BSY*sim.bpdy -1) + 2*(BSX*sim.bpdx -1) );
     printf("Relative inflow correction %e\n",corr);
-    //const Real corr = IF/( 2*(BSY*sim.bpdy -1) + 2*(BSX*sim.bpdx -1) );
     #pragma omp parallel for schedule(dynamic)
     for (size_t i=0; i < Nblocks; i++) {
       VectorBlock& V = *(VectorBlock*)  velInfo[i].ptrBlock;
       for(int iy=0; iy<BSY && isW(velInfo[i]); ++iy)
-        V(BX,iy).u[0] += corr * std::fabs(V(BX,iy).u[0]);
+        V(BX,iy).u[0] += corr ;//* std::fabs(V(BX,iy).u[0]);
       for(int iy=0; iy<BSY && isE(velInfo[i]); ++iy)
-        V(EX,iy).u[0] -= corr * std::fabs(V(EX,iy).u[0]);
+        V(EX,iy).u[0] -= corr ;//* std::fabs(V(EX,iy).u[0]);
       for(int ix=0; ix<BSX && isS(velInfo[i]); ++ix)
-        V(ix,BY).u[1] += corr * std::fabs(V(ix,BY).u[1]);
+        V(ix,BY).u[1] += corr ;//* std::fabs(V(ix,BY).u[1]);
       for(int ix=0; ix<BSX && isN(velInfo[i]); ++ix)
-        V(ix,EY).u[1] -= corr * std::fabs(V(ix,EY).u[1]);
+        V(ix,EY).u[1] -= corr ;//* std::fabs(V(ix,EY).u[1]);
     }
   }
 

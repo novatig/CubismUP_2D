@@ -18,13 +18,14 @@ void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const
 {
   const std::vector<ObstacleBlock*>& OBLOCK = shape->obstacleBlocks;
   double _x=0, _y=0, _m=0;
+  double udefoutflow=0, udefoutnorm=0; // , udefoutflow, udefoutnorm
   const Real h = sim.getH(), i2h = 0.5/h, fac = 0.5*h; // fac explained down
-  #pragma omp parallel
+  #pragma omp parallel reduction(+ : _x, _y, _m)
   {
     static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 2, 2, 1};
     ScalarLab distlab; distlab.prepare(*(sim.tmp), stenBeg, stenEnd, 0);
 
-    #pragma omp for schedule(dynamic, 1) reduction(+ : _x, _y, _m)
+    #pragma omp for schedule(dynamic, 1)
     for (size_t i=0; i < Nblocks; i++)
     {
       if(OBLOCK[chiInfo[i].blockID] == nullptr) continue; //obst not in block
@@ -37,6 +38,7 @@ void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const
       CHI_MAT & __restrict__ X = o.chi;
       const CHI_MAT & __restrict__ rho = o.rho;
       const CHI_MAT & __restrict__ sdf = o.dist;
+      UDEFMAT & __restrict__ udef = o.udef;
 
       for(int iy=0; iy<VectorBlock::sizeY; iy++)
       for(int ix=0; ix<VectorBlock::sizeX; ix++)
@@ -53,21 +55,12 @@ void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const
           const double IplusX = distPx<0? 0:distPx, IminuX = distMx<0? 0:distMx;
           const double IplusY = distPy<0? 0:distPy, IminuY = distMy<0? 0:distMy;
 
-          const auto HplusX = std::fabs(distPx)<EPS? (double).5 :(distPx<0?0:1);
-          const auto HminuX = std::fabs(distMx)<EPS? (double).5 :(distMx<0?0:1);
-          const auto HplusY = std::fabs(distPy)<EPS? (double).5 :(distPy<0?0:1);
-          const auto HminuY = std::fabs(distMy)<EPS? (double).5 :(distMy<0?0:1);
-
           const double gradIX= i2h*(IplusX-IminuX), gradIY= i2h*(IplusY-IminuY);
           const double gradUX= i2h*(distPx-distMx), gradUY= i2h*(distPy-distMy);
-          const double gradHX=     (HplusX-HminuX), gradHY=     (HplusY-HminuY);
 
           const double gradUSq = gradUX * gradUX + gradUY * gradUY;
           const double denum = 1 / ( gradUSq<EPS ? EPS : gradUSq );
           X[iy][ix] = (gradIX*gradUX + gradIY*gradUY) * denum;
-          //fac is 1/2h of gradH times h^2 to make \int_v D*gradU = \int_s norm
-          const double D = fac*(gradHX*gradUX + gradHY*gradUY) * denum;
-          o.write(ix, iy, D, gradUX, gradUY);
         }
 
         // an other partial
@@ -83,6 +76,39 @@ void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const
           _y += rho[iy][ix] * X[iy][ix] * h*h * (p[1] - shape->centerOfMass[1]);
           _m += rho[iy][ix] * X[iy][ix] * h*h;
         }
+
+        // allows shifting the SDF outside the body:
+        //const Real shift = h;
+        static constexpr Real shift = 0;
+        const Real ssdf = sdf[iy][ix] + shift; // negative outside
+        if (ssdf > +2*h || ssdf < -2*h) continue; // no need to compute gradChi
+
+        {
+          const double distPx = SDIST(ix+1,iy  ).s + shift;
+          const double distMx = SDIST(ix-1,iy  ).s + shift;
+          const double distPy = SDIST(ix  ,iy+1).s + shift;
+          const double distMy = SDIST(ix  ,iy-1).s + shift;
+
+          const auto HplusX = std::fabs(distPx)<EPS? (double).5 :(distPx<0?0:1);
+          const auto HminuX = std::fabs(distMx)<EPS? (double).5 :(distMx<0?0:1);
+          const auto HplusY = std::fabs(distPy)<EPS? (double).5 :(distPy<0?0:1);
+          const auto HminuY = std::fabs(distMy)<EPS? (double).5 :(distMy<0?0:1);
+
+          const double gradUX= i2h*(distPx-distMx), gradUY= i2h*(distPy-distMy);
+          const double gradHX=     (HplusX-HminuX), gradHY=     (HplusY-HminuY);
+
+          const double gradUSq = gradUX * gradUX + gradUY * gradUY;
+          const double denum = 1 / ( gradUSq<EPS ? EPS : gradUSq );
+          //fac is 1/2h of gradH times h^2 to make \int_v D*gradU = \int_s norm
+          const double D = fac*(gradHX*gradUX + gradHY*gradUY) * denum;
+          o.write(ix, iy, D, gradUX, gradUY);
+          //if(D>0) { //
+          //  const double norx = -D*gradUX, nory = -D*gradUY;
+          //  assert(std::sqrt(norx*norx + nory*nory) <= 1);
+          //  udefoutflow += udef[iy][ix][0]*norx + udef[iy][ix][1]*nory;
+          //  udefoutnorm += norx*norx + nory*nory;
+          //}
+        }
       }
     }
   }
@@ -91,10 +117,31 @@ void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const
     shape->centerOfMass[0] += _x/_m;
     shape->centerOfMass[1] += _y/_m;
     shape->M = _m;
-  } else {
-    printf("PutObjectsOnGrid _m is too small!\n");
-  }
+  } else printf("PutObjectsOnGrid _m is too small!\n");
+
   for (auto & o : OBLOCK) if(o not_eq nullptr) o->allocate_surface();
+
+  /*
+  const Real outflowCorr = udefoutflow / std::max(udefoutnorm, EPS);
+  double udefoutpost = 0;
+  #pragma omp parallel for schedule(dynamic, 1) reduction(+ : udefoutpost)
+  for (size_t j=0; j < Nblocks; ++j)
+  {
+    if(OBLOCK[chiInfo[j].blockID] == nullptr) continue; //obst not in block
+    ObstacleBlock& o = * OBLOCK[chiInfo[j].blockID];
+    UDEFMAT & __restrict__ udef = o.udef;
+
+    for(size_t i=0; i < o.n_surfPoints; ++i)
+    {
+      const int ix = o.surface[i]->ix, iy = o.surface[i]->iy;
+      const Real norx = o.surface[i]->dchidx, nory = o.surface[i]->dchidy;
+      udef[iy][ix][0] -= outflowCorr * norx; //h^2 already premultiplied
+      udef[iy][ix][1] -= outflowCorr * nory; //    in dchidx/dchidy
+      udefoutpost += udef[iy][ix][0]*norx + udef[iy][ix][1]*nory;
+    }
+  }
+  //printf("udefoutflow %e udefoutpost %e \n", udefoutflow,udefoutpost);
+  */
 }
 
 void PutObjectsOnGrid::putObjectVelOnGrid(Shape * const shape) const

@@ -15,7 +15,7 @@ using namespace cubism;
 using CHI_MAT = Real[VectorBlock::sizeY][VectorBlock::sizeX];
 using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];
 
-#define EXPL_INTEGRATE_MOM
+//#define EXPL_INTEGRATE_MOM
 
 void UpdateObjects::integrateMomenta(Shape * const shape) const
 {
@@ -32,32 +32,29 @@ void UpdateObjects::integrateMomenta(Shape * const shape) const
     if(OBLOCK[velInfo[i].blockID] == nullptr) continue;
     const CHI_MAT & __restrict__ rho = OBLOCK[velInfo[i].blockID]->rho;
     const CHI_MAT & __restrict__ chi = OBLOCK[velInfo[i].blockID]->chi;
+    const UDEFMAT & __restrict__ udef = OBLOCK[velInfo[i].blockID]->udef;
     #ifndef EXPL_INTEGRATE_MOM
       const Real lambdt = sim.lambda * sim.dt;
-      const UDEFMAT & __restrict__ udef = OBLOCK[velInfo[i].blockID]->udef;
     #endif
 
     for(int iy=0; iy<VectorBlock::sizeY; ++iy)
     for(int ix=0; ix<VectorBlock::sizeX; ++ix)
     {
       if (chi[iy][ix] <= 0) continue;
+      const Real udiff[2] = {
+        VEL(ix,iy).u[0] - udef[iy][ix][0], VEL(ix,iy).u[1] - udef[iy][ix][1]
+      };
       #ifdef EXPL_INTEGRATE_MOM
         const Real F = hsq * rho[iy][ix] * chi[iy][ix];
-        const Real udiff[2] = { VEL(ix,iy).u[0], VEL(ix,iy).u[1] };
       #else
         const Real Xlamdt = chi[iy][ix] * lambdt;
         const Real F = hsq * rho[iy][ix] * Xlamdt / (1 + Xlamdt);
-        const Real udiff[2] = {
-          VEL(ix,iy).u[0] - udef[iy][ix][0], VEL(ix,iy).u[1] - udef[iy][ix][1]
-        };
       #endif
       double p[2]; velInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;
       PM += F;
       PJ += F * (p[0]*p[0] + p[1]*p[1]);
-      PX += F * p[0];
-      PY += F * p[1];
-      UM += F * udiff[0];
-      VM += F * udiff[1];
+      PX += F * p[0];  PY += F * p[1];
+      UM += F * udiff[0]; VM += F * udiff[1];
       AM += F * (p[0]*udiff[1] - p[1]*udiff[0]);
     }
   }
