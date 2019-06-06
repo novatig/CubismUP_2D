@@ -19,41 +19,6 @@ using CHI_MAT = Real[VectorBlock::sizeY][VectorBlock::sizeX];
 using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];
 static constexpr double EPS = std::numeric_limits<double>::epsilon();
 
-void PressureIterator_unif::fadeoutBorder(const double dt) const
-{
-  const std::vector<BlockInfo>&  tmpInfo = sim.tmp->getBlocksInfo();
-  const Real fadeLenX = sim.fadeLenX, fadeLenY = sim.fadeLenY;
-  const Real invFadeX = 1/(fadeLenX+EPS), invFadeY = 1/(fadeLenY+EPS);
-  const auto& extent = sim.extents;
-  const auto _is_touching = [&] (const BlockInfo& i) {
-    Real min_pos[2], max_pos[2];
-    i.pos(max_pos, VectorBlock::sizeX-1, VectorBlock::sizeY-1);
-    i.pos(min_pos, 0, 0);
-    const bool touchW = fadeLenX >= min_pos[0];
-    const bool touchE = fadeLenX >= extent[0] - max_pos[0];
-    const bool touchS = fadeLenY >= min_pos[1];
-    const bool touchN = fadeLenY >= extent[1] - max_pos[1];
-    return touchN || touchE || touchS || touchW;
-  };
-
-  #pragma omp parallel for schedule(dynamic)
-  for (size_t i=0; i < Nblocks; i++)
-  {
-    if( not _is_touching(tmpInfo[i]) ) continue;
-    ScalarBlock& __restrict__ RHS = *(ScalarBlock*)tmpInfo[i].ptrBlock;
-    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-    for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-    {
-      Real p[2]; tmpInfo[i].pos(p, ix, iy);
-      const Real yt = invFadeY*std::max(Real(0), fadeLenY - extent[1] + p[1] );
-      const Real yb = invFadeY*std::max(Real(0), fadeLenY - p[1] );
-      const Real xt = invFadeX*std::max(Real(0), fadeLenX - extent[0] + p[0] );
-      const Real xb = invFadeX*std::max(Real(0), fadeLenX - p[0] );
-      RHS(ix,iy).s *= 1-std::pow(std::min(std::max({yt,yb,xt,xb}), (Real)1), 2);
-    }
-  }
-};
-
 void PressureIterator_unif::updatePressureRHS(const double dt) const
 {
   const Real h = sim.getH(), facDiv = 0.5*h/dt;

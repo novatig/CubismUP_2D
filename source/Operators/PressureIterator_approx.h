@@ -19,7 +19,6 @@ class PressureVarRho_approx : public Operator
   const Real rho0 = sim.minRho(), iRho0 = 1 / rho0;
   PoissonSolver * const pressureSolver;
 
-  void fadeoutBorder(const double dt) const;
   void updatePressureRHS(const double dt) const;
   void finalizePressure(const double dt) const;
   Real penalize(const double dt, const int iter) const;

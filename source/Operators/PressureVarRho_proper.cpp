@@ -13,42 +13,6 @@
 using namespace cubism;
 static constexpr double EPS = std::numeric_limits<double>::epsilon();
 
-void PressureVarRho_proper::fadeoutBorder(const double dt) const
-{
-  const auto& extent = sim.extents;
-  const std::vector<BlockInfo>&  tmpInfo = sim.tmp->getBlocksInfo();
-  const std::vector<BlockInfo>& pRhsInfo = sim.pRHS->getBlocksInfo();
-  const Real fadeLenX = sim.fadeLenX, fadeLenY = sim.fadeLenY;
-  const Real invFadeX = 1/(fadeLenX+EPS), invFadeY = 1/(fadeLenY+EPS);
-  const auto _is_touching = [&] (const BlockInfo& i) {
-    Real min_pos[2], max_pos[2]; i.pos(min_pos, 0, 0);
-    i.pos(max_pos, VectorBlock::sizeX-1, VectorBlock::sizeY-1);
-    const bool touchW = fadeLenX >= min_pos[0];
-    const bool touchE = fadeLenX >= extent[0] - max_pos[0];
-    const bool touchS = fadeLenY >= min_pos[1];
-    const bool touchN = fadeLenY >= extent[1] - max_pos[1];
-    return touchN || touchE || touchS || touchW;
-  };
-
-  #pragma omp parallel for schedule(dynamic)
-  for (size_t i=0; i < Nblocks; i++) {
-    if( not _is_touching(tmpInfo[i]) ) continue;
-    auto& __restrict__ TMP = *(ScalarBlock*)  tmpInfo[i].ptrBlock;
-    auto& __restrict__ RHS = *(ScalarBlock*) pRhsInfo[i].ptrBlock;
-    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-    for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-      Real p[2]; tmpInfo[i].pos(p, ix, iy);
-      const Real yt = invFadeY*std::max(Real(0), fadeLenY - extent[1] + p[1] );
-      const Real yb = invFadeY*std::max(Real(0), fadeLenY - p[1] );
-      const Real xt = invFadeX*std::max(Real(0), fadeLenX - extent[0] + p[0] );
-      const Real xb = invFadeX*std::max(Real(0), fadeLenX - p[0] );
-      const Real fadeArg = std::min( std::max({yt, yb, xt, xb}), (Real)1 );
-      RHS(ix,iy).s *= 1 - std::pow(fadeArg, 2);
-      TMP(ix,iy).s *= 1 - std::pow(fadeArg, 2);
-    }
-  }
-};
-
 void PressureVarRho_proper::updatePressureRHS(const double dt) const
 {
   const Real h = sim.getH(), facDiv = h/dt;
@@ -174,7 +138,6 @@ void PressureVarRho_proper::operator()(const double dt)
 
   sim.startProfiler("Prhs");
   updatePressureRHS(dt);
-  fadeoutBorder(dt);
   sim.stopProfiler();
 
   if(sim.step < 20) {

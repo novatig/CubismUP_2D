@@ -19,7 +19,6 @@ class PressureIterator_unif : public Operator
   const Real rho0 = sim.minRho();
   PoissonSolver * const pressureSolver;
 
-  void fadeoutBorder(const double dt) const;
   void updatePressureRHS(const double dt) const;
   void finalizePressure(const double dt) const;
   Real penalize(const double dt) const;
