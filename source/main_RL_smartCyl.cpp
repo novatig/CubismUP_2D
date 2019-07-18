@@ -6,11 +6,8 @@
 //  Created by Guido Novati (novatig@ethz.ch).
 //
 
-#include <iostream>
-#include <string>
-#include <vector>
-#include <cmath>
-#include <sstream>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "Communicators/Communicator_MPI.h"
 #include "Simulation.h"
@@ -29,7 +26,7 @@ using namespace cubism;
 #define FREQ_ACTIONS 1
 
 inline void resetIC(
-  SmartCylinder*const a, Shape*const p, Communicator*const c)
+  SmartCylinder*const a, Shape*const p, smarties::Communicator*const c)
 {
   std::uniform_real_distribution<double> dis(-0.5, 0.5);
   //const double SX = c->isTraining()? dis(c->getPRNG()) : 0;

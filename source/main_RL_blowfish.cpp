@@ -6,14 +6,8 @@
 //  Created by Guido Novati (novatig@ethz.ch).
 //
 
-
-#include <iostream>
-#include <string>
-#include <vector>
-#include <cmath>
-#include <limits>
-#include <sstream>
-//#include <random>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "Communicators/Communicator_MPI.h"
 #include "Simulation.h"
@@ -30,17 +24,22 @@ using namespace cubism;
 // max number of actions per simulation
 // range of angles in initial conditions
 
-inline void resetIC(BlowFish* const agent, Communicator*const c) {
+inline void resetIC(BlowFish* const agent, smarties::Communicator*const c)
+{
   const Real A = 5*M_PI/180; // start between -5 and 5 degrees
   std::uniform_real_distribution<Real> dis(-A, A);
   const auto SA = c->isTraining() ? dis(c->getPRNG()) : 0.00;
   agent->setOrientation(SA);
 }
-inline void setAction(BlowFish* const agent, const std::vector<double> act) {
+
+inline void setAction(BlowFish* const agent, const std::vector<double> act)
+{
   agent->flapAcc_R = act[0]/agent->timescale/agent->timescale;
   agent->flapAcc_L = act[1]/agent->timescale/agent->timescale;
 }
-inline std::vector<double> getState(const BlowFish* const agent) {
+
+inline std::vector<double> getState(const BlowFish* const agent)
+{
   const double velscale = agent->radius / agent->timescale;
   const double w = agent->omega * agent->timescale;
   const double angle = agent->orientation;
@@ -55,7 +54,9 @@ inline std::vector<double> getState(const BlowFish* const agent) {
   printf("Sending [%f %f %f %f %f %f %f %f]\n", U,V,w,angle,AR,AL,WR,WL);
   return states;
 }
-inline double getReward(const BlowFish* const agent) {
+
+inline double getReward(const BlowFish* const agent)
+{
   const double velscale = agent->radius / agent->timescale;
   const double u = agent->u / velscale, v = agent->v / velscale;
   const double cosAng = std::cos(agent->orientation);
@@ -63,9 +64,12 @@ inline double getReward(const BlowFish* const agent) {
   const double reward = ended ? -10 : cosAng -std::sqrt(u*u+v*v);
   return reward;
 }
-inline bool isTerminal(const BlowFish* const agent) {
+
+inline bool isTerminal(const BlowFish* const agent)
+{
   return std::cos(agent->orientation)<0;
 }
+
 inline bool checkNaN(std::vector<double>& state, double& reward)
 {
   bool bTrouble = false;
@@ -79,7 +83,9 @@ inline bool checkNaN(std::vector<double>& state, double& reward)
   }
   return bTrouble;
 }
-inline double getTimeToNextAct(const BlowFish* const agent, const double t) {
+
+inline double getTimeToNextAct(const BlowFish* const agent, const double t)
+{
   return t + agent->timescale / 4;
 }
 
@@ -90,7 +96,8 @@ int app_main(
 ) {
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
   const int nActions = 2, nStates = 8;
-  const unsigned maxLearnStepPerSim = 500 : std::numeric_limits<int>::max();
+  const unsigned maxLearnStepPerSim = comm->isTraining()? 500
+                                     : std::numeric_limits<int>::max();
 
   comm->set_state_action_dims(nStates, nActions);
 

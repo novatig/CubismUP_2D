@@ -6,12 +6,8 @@
 //  Created by Guido Novati (novatig@ethz.ch).
 //
 
-
-#include <iostream>
-#include <string>
-#include <vector>
-#include <cmath>
-#include <sstream>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "Communicators/Communicator_MPI.h"
 #include "Simulation.h"
@@ -28,7 +24,9 @@ using namespace cubism;
 // max number of actions per simulation
 // range of angles in initial conditions
 
-inline void resetIC(StefanFish* const a, Shape*const p, Communicator*const c) {
+inline void resetIC(StefanFish* const a, Shape*const p,
+                    smarties::Communicator*const c)
+{
   std::uniform_real_distribution<double> disA(-20./180.*M_PI, 20./180.*M_PI);
   std::uniform_real_distribution<double> disX(0, 0.5),  disY(-0.25, 0.25);
   const double SX = c->isTraining()? disX(c->getPRNG()) : 0.25;
@@ -41,12 +39,16 @@ inline void resetIC(StefanFish* const a, Shape*const p, Communicator*const c) {
   a->setCenterOfMass(C);
   a->setOrientation(SA);
 }
+
 inline void setAction(StefanFish* const agent,
-  const std::vector<double> act, const double t) {
+  const std::vector<double> act, const double t)
+{
   agent->act(t, act);
 }
+
 inline std::vector<double> getState(
-  const StefanFish* const a, const Shape*const p, const double t) {
+  const StefanFish* const a, const Shape*const p, const double t)
+{
   const double X = ( a->center[0] - p->center[0] )/ a->length;
   const double Y = ( a->center[1] - p->center[1] )/ a->length;
   const double A = a->getOrientation(), T = a->getPhase(t);
@@ -62,16 +64,19 @@ inline std::vector<double> getState(
   printf("S:[%f %f %f %f %f %f %f %f %f %f]\n",X,Y,A,T,U,V,W,lastT,lastC,oldrC);
   return S;
 }
+
 inline bool isTerminal(const StefanFish*const a, const Shape*const p) {
   const double X = ( a->center[0] - p->center[0] )/ a->length;
   const double Y = ( a->center[1] - p->center[1] )/ a->length;
   assert(X>0);
   return std::fabs(Y)>1 || X<0.5 || X>3;
 }
+
 inline double getReward(const StefanFish* const a, const Shape*const p) {
   //double efficiency = a->reward(); version using member-function (PW)
   return isTerminal(a, p)? -10 : a->EffPDefBnd; //efficiency;
 }
+
 inline bool checkNaN(std::vector<double>& state, double& reward)
 {
   bool bTrouble = false;
@@ -85,6 +90,7 @@ inline bool checkNaN(std::vector<double>& state, double& reward)
   }
   return bTrouble;
 }
+
 inline double getTimeToNextAct(const StefanFish* const agent, const double t) {
   return t + agent->getLearnTPeriod() / 2;
 }

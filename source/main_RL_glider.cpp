@@ -6,12 +6,8 @@
 //  Created by Guido Novati (novatig@ethz.ch).
 //
 
-
-#include <iostream>
-#include <string>
-#include <vector>
-#include <cmath>
-#include <sstream>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "Communicators/Communicator_MPI.h"
 #include "Simulation.h"
@@ -19,14 +15,17 @@
 
 using namespace cubism;
 
-inline void resetIC(Glider* const agent, Communicator*const c) {
+inline void resetIC(Glider* const agent,
+                    smarties::Communicator*const c)
+{
   const Real A = 5*M_PI/180; // start between -5 and 5 degrees
   std::uniform_real_distribution<Real> dis(-A, A);
   const auto SA = c->isTraining() ? dis(c->getPRNG()) : 0;
   agent->setOrientation(SA);
 }
 
-inline bool checkNaN(std::vector<double>& state, double& reward) {
+inline bool checkNaN(std::vector<double>& state, double& reward)
+{
   bool bTrouble = false;
   if(std::isnan(reward)) bTrouble = true;
   for(size_t i=0; i<state.size(); i++) if(std::isnan(state[i])) bTrouble = true;

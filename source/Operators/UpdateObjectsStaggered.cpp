@@ -79,7 +79,10 @@ void UpdateObjectsStaggered::integrateMomenta(Shape * const shape) const
 void UpdateObjectsStaggered::penalize(const double dt) const
 {
   const std::vector<BlockInfo>& uDefInfo  = sim.uDef->getBlocksInfo();
-  const Real lamdt = sim.lambda * dt;//, dh = velInfo[0].h_gridpoint/2;
+  #ifndef EXPL_INTEGRATE_MOM
+    const Real lamdt = sim.lambda * dt;//, dh = velInfo[0].h_gridpoint/2;
+  #endif
+
   #pragma omp parallel
   {
     static constexpr int stenBeg[3] = {-1,-1,0}, stenEnd[3] = {1,1,1};
