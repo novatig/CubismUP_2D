@@ -101,7 +101,7 @@ LIBS += -lgsl -lgslcblas
 
 ifneq "$(smarties)" "false"
 	SMARTIESDIR ?= ../../smarties/source/
-	CPPFLAGS += -I$(SMARTIESDIR)/Communicators/ -DSMARTIES_APP
+	CPPFLAGS += -I$(SMARTIESDIR)/
 endif
 
 ifneq "$(hdf5)" "false"

@@ -11,14 +11,14 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <limits>
 #include <sstream>
 //#include <random>
 
-#include "Communicator.h"
+#include "Communicators/Communicator_MPI.h"
 #include "Simulation.h"
 #include "Obstacles/BlowFish.h"
 
-#include "mpi.h"
 using namespace cubism;
 //
 // All these functions are defined here and not in object itself because
@@ -66,22 +66,33 @@ inline double getReward(const BlowFish* const agent) {
 inline bool isTerminal(const BlowFish* const agent) {
   return std::cos(agent->orientation)<0;
 }
+inline bool checkNaN(std::vector<double>& state, double& reward)
+{
+  bool bTrouble = false;
+  if(std::isnan(reward)) bTrouble = true;
+  for(size_t i=0; i<state.size(); i++) if(std::isnan(state[i])) bTrouble = true;
+  if ( bTrouble )
+  {
+    reward = -100;
+    printf("Caught a nan!\n");
+    state = std::vector<double>(state.size(), 0);
+  }
+  return bTrouble;
+}
 inline double getTimeToNextAct(const BlowFish* const agent, const double t) {
   return t + agent->timescale / 4;
 }
 
 int app_main(
-  Communicator*const comm, // communicator with smarties
-  MPI_Comm mpicom,         // mpi_comm that mpi-based apps can use
-  int argc, char**argv,    // arguments read from app's runtime settings file
-  const unsigned numSteps  // number of time steps to run before exit
+  smarties::Communicator*const comm, // communicator with smarties
+  MPI_Comm mpicom,                  // mpi_comm that mpi-based apps can use
+  int argc, char**argv             // args read from app's runtime settings file
 ) {
-  printf("Simulating for %u steps accoding to settings:\n", numSteps);
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
   const int nActions = 2, nStates = 8;
-  const unsigned maxLearnStepPerSim = comm->isTraining()? 500 : numSteps;
+  const unsigned maxLearnStepPerSim = 500 : std::numeric_limits<int>::max();
 
-  comm->update_state_action_dims(nStates, nActions);
+  comm->set_state_action_dims(nStates, nActions);
 
   Simulation sim(argc, argv);
   sim.init();
@@ -92,16 +103,20 @@ int app_main(
     sim.sim.verbose = true; sim.sim.muteAll = false;
     sim.sim.dumpTime = agent->timescale / 20;
   }
-  char dirname[1024]; dirname[1023] = '\0';
   unsigned sim_id = 0, tot_steps = 0;
 
   // Terminate loop if reached max number of time steps. Never terminate if 0
-  while( numSteps == 0 || tot_steps<numSteps ) // train loop
+  while( 1 ) // train loop
   {
-    sprintf(dirname, "run_%08u/", sim_id);
-    printf("Starting a new sim in directory %s\n", dirname);
-    mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    chdir(dirname);
+    if(comm->isTraining() == false)
+    {
+      char dirname[1024]; dirname[1023] = '\0';
+      sprintf(dirname, "run_%08u/", sim_id);
+      printf("Starting a new sim in directory %s\n", dirname);
+      mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+      chdir(dirname);
+    }
+
     sim.reset();
     resetIC(agent, comm); // randomize initial conditions
 
@@ -131,10 +146,10 @@ int app_main(
       }
       step++;
       tot_steps++;
-      const std::vector<double> state = getState(agent);
-      const double reward = getReward(agent);
+      std::vector<double> state = getState(agent);
+      double reward = getReward(agent);
 
-      if (agentOver) {
+      if ( agentOver || checkNaN(state, reward) ) {
         printf("Agent failed\n"); fflush(0);
         comm->sendTermState(state, reward);
         break;
@@ -142,13 +157,16 @@ int app_main(
       else
       if (step >= maxLearnStepPerSim) {
         printf("Sim ended\n"); fflush(0);
-        comm->truncateSeq(state, reward);
+        comm->sendLastState(state, reward);
         break;
       }
       else comm->sendState(state, reward);
     } // simulation is done
-    chdir("../");
+
+    if(comm->isTraining() == false) chdir("../");
     sim_id++;
+
+    if (comm->terminateTraining()) return 0; // exit program
   }
 
   return 0;

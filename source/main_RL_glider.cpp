@@ -12,13 +12,11 @@
 #include <vector>
 #include <cmath>
 #include <sstream>
-//#include <random>
 
-#include "Communicator.h"
+#include "Communicators/Communicator_MPI.h"
 #include "Simulation.h"
 #include "Obstacles/Glider.h"
 
-#include "mpi.h"
 using namespace cubism;
 
 inline void resetIC(Glider* const agent, Communicator*const c) {
@@ -28,22 +26,32 @@ inline void resetIC(Glider* const agent, Communicator*const c) {
   agent->setOrientation(SA);
 }
 
+inline bool checkNaN(std::vector<double>& state, double& reward) {
+  bool bTrouble = false;
+  if(std::isnan(reward)) bTrouble = true;
+  for(size_t i=0; i<state.size(); i++) if(std::isnan(state[i])) bTrouble = true;
+  if ( bTrouble ) {
+    reward = -100;
+    printf("Caught a nan!\n");
+    state = std::vector<double>(state.size(), 0);
+  }
+  return bTrouble;
+}
+
 int app_main(
-  Communicator*const comm, // communicator with smarties
-  MPI_Comm mpicom,         // mpi_comm that mpi-based apps can use
-  int argc, char**argv,    // arguments read from app's runtime settings file
-  const unsigned numSteps  // number of time steps to run before exit
+  smarties::Communicator*const comm, // communicator with smarties
+  MPI_Comm mpicom,                  // mpi_comm that mpi-based apps can use
+  int argc, char**argv             // args read from app's runtime settings file
 )
 {
-  printf("Simulating for %u steps accoding to settings:\n", numSteps);
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
   const int nActions = 1, nStates = 10;
-  comm->update_state_action_dims(nStates, nActions);
+  comm->set_state_action_dims(nStates, nActions);
   std::vector<double> upper_action_bound{1}, lower_action_bound{-1};
   comm->set_action_scales(upper_action_bound, lower_action_bound, true);
   std::vector<bool> b_observable = {1, 1, 1, 1, 1, 1, 1, 0, 0, 0};
   comm->set_state_observable(b_observable);
-  const unsigned maxLearnStepPerSim = numSteps;
+  const unsigned maxLearnStepPerSim = 9000000;
 
   Simulation sim(argc, argv);
   sim.init();
@@ -57,7 +65,7 @@ int app_main(
   unsigned sim_id = 0, tot_steps = 0;
 
   // Terminate loop if reached max number of time steps. Never terminate if 0
-  while( numSteps == 0 || tot_steps<numSteps ) // train loop
+  while( true ) // train loop
   {
     if(comm->isTraining() == false)
     {
@@ -97,10 +105,10 @@ int app_main(
       }
       step++;
       tot_steps++;
-      const std::vector<double> state = agent->state();
-      const double reward= agentOver? agent->terminalReward() : agent->reward();
+      std::vector<double> state = agent->state();
+      double reward= agentOver? agent->terminalReward() : agent->reward();
 
-      if (agentOver) {
+      if ( agentOver || checkNaN(state, reward) ) {
         printf("Agent failed\n"); fflush(0);
         comm->sendTermState(state, reward);
         break;
@@ -108,7 +116,7 @@ int app_main(
       else
       if (step >= maxLearnStepPerSim) {
         printf("Sim ended, should not happen for this env\n"); fflush(0);
-        comm->truncateSeq(state, reward);
+        comm->sendLastState(state, reward);
         break;
       }
       else comm->sendState(state, reward);
@@ -116,6 +124,8 @@ int app_main(
 
     if(comm->isTraining() == false) chdir("../");
     sim_id++;
+
+    if (comm->terminateTraining()) return 0; // exit program
   }
 
   return 0;

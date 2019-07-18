@@ -113,7 +113,7 @@ template<typename BlockType,
          template<typename X> class allocator = std::allocator>
 class BlockLabOpen: public cubism::BlockLab<BlockType, allocator>
 {
- public:
+public:
   using ElementType = typename BlockType::ElementType;
   static constexpr int sizeX = BlockType::sizeX;
   static constexpr int sizeY = BlockType::sizeY;
@@ -186,12 +186,12 @@ struct StreamerVector
   static constexpr int NCHANNELS = 3;
 
   template <typename TBlock, typename T>
-  static inline void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS]) {
+  static void operate(const TBlock& b, const int ix, const int iy, const int iz, T output[NCHANNELS]) {
       for (int i = 0; i < _DIM_; i++) output[i] = b(ix,iy,iz).u[i];
   }
 
   template <typename TBlock, typename T>
-  static inline void operate(TBlock& b, const T input[NCHANNELS], const int ix, const int iy, const int iz) {
+  static void operate(TBlock& b, const T input[NCHANNELS], const int ix, const int iy, const int iz) {
       for (int i = 0; i < _DIM_; i++) b(ix,iy,iz).u[i] = input[i];
   }
   static std::string prefix() { return std::string(""); }

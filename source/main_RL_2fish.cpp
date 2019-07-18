@@ -13,11 +13,10 @@
 #include <cmath>
 #include <sstream>
 
-#include "Communicator.h"
+#include "Communicators/Communicator_MPI.h"
 #include "Simulation.h"
 #include "Obstacles/StefanFish.h"
 
-#include "mpi.h"
 using namespace cubism;
 //
 // All these functions are defined here and not in object itself because
@@ -36,7 +35,7 @@ inline void resetIC(StefanFish* const a, Shape*const p, Communicator*const c) {
   const double SY = c->isTraining()? disY(c->getPRNG()) : 0.00;
   const double SA = c->isTraining()? disA(c->getPRNG()) : 0.00;
   double C[2] = { p->center[0] + (1+SX)*a->length,
-                  p->center[1]     + SY*a->length };  
+                  p->center[1]     + SY*a->length };
   p->centerOfMass[1] = p->center[1] - ( C[1] - p->center[1] );
   p->center[1] = p->center[1] - ( C[1] - p->center[1] );
   a->setCenterOfMass(C);
@@ -91,16 +90,15 @@ inline double getTimeToNextAct(const StefanFish* const agent, const double t) {
 }
 
 int app_main(
-  Communicator*const comm, // communicator with smarties
-  MPI_Comm mpicom,         // mpi_comm that mpi-based apps can use
-  int argc, char**argv,    // arguments read from app's runtime settings file
-  const unsigned numSteps  // number of time steps to run before exit
+  smarties::Communicator*const comm, // communicator with smarties
+  MPI_Comm mpicom,                  // mpi_comm that mpi-based apps can use
+  int argc, char**argv             // args read from app's runtime settings file
 ) {
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
   const int nActions = 2, nStates = 10;
   const unsigned maxLearnStepPerSim = 200; // random number... TODO
 
-  comm->update_state_action_dims(nStates, nActions);
+  comm->set_state_action_dims(nStates, nActions);
   // Tell smarties that action space should be bounded.
   // First action modifies curvature, only makes sense between -1 and 1
   // Second action affects Tp = (1+act[1])*Tperiod_0 (eg. halved if act[1]=-.5).
@@ -120,16 +118,20 @@ int app_main(
     sim.sim.verbose = true; sim.sim.muteAll = false;
     sim.sim.dumpTime = agent->Tperiod / 20;
   }
-  char dirname[1024]; dirname[1023] = '\0';
   unsigned sim_id = 0, tot_steps = 0;
 
   // Terminate loop if reached max number of time steps. Never terminate if 0
-  while( numSteps == 0 || tot_steps<numSteps ) // train loop
+  while( true ) // train loop
   {
-    sprintf(dirname, "run_%08u/", sim_id);
-    printf("Starting a new sim in directory %s\n", dirname);
-    mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    chdir(dirname);
+    if(comm->isTraining() == false)
+    {
+      char dirname[1024]; dirname[1023] = '\0';
+      sprintf(dirname, "run_%08u/", sim_id);
+      printf("Starting a new sim in directory %s\n", dirname);
+      mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+      chdir(dirname);
+    }
+
     sim.reset();
     resetIC(agent, object, comm); // randomize initial conditions
 
@@ -170,13 +172,16 @@ int app_main(
       else
       if (step >= maxLearnStepPerSim) {
         printf("Sim ended\n"); fflush(0);
-        comm->truncateSeq(state, reward);
+        comm->sendLastState(state, reward);
         break;
       }
       else comm->sendState(state, reward);
     } // simulation is done
-    chdir("../");
+
+    if(comm->isTraining() == false) chdir("../");
     sim_id++;
+
+    if (comm->terminateTraining()) return 0; // exit program
   }
 
   return 0;
