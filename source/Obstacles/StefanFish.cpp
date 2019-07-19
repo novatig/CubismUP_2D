@@ -327,6 +327,7 @@ std::vector<double> StefanFish::state(Shape*const p) const
     assert(iHeadSide>0);
 
     std::array<Real,2> tipShear, lowShear, topShear;
+    const std::vector<cubism::BlockInfo>& velInfo = sim.vel->getBlocksInfo();
     #pragma omp parallel for schedule(dynamic)
     for(size_t i=0; i<velInfo.size(); ++i)
     {
@@ -345,17 +346,17 @@ std::vector<double> StefanFish::state(Shape*const p) const
         Real org[2]; velInfo[i].pos(org, 0, 0);
         const int indx = (int) std::round((sensX - org[0])*invh);
         const int indy = (int) std::round((sensY - org[1])*invh);
-        const int clipIndX = std::min( std::max(0, indx), VectorBlock::sizeX-1);
-        const int clipIndY = std::min( std::max(0, indy), VectorBlock::sizeY-1);
+        const int ix = std::min( std::max(0, indx), VectorBlock::sizeX-1);
+        const int iy = std::min( std::max(0, indy), VectorBlock::sizeY-1);
         const VectorBlock& b = * (const VectorBlock*) velInfo[i].ptrBlock;
         const auto&__restrict__ udef = obstacleBlocks[velInfo[i].blockID]->udef;
         const Real uSkin = u - omega*(skinX-centerOfMass[0]) + udef[iy][ix][0];
         const Real vSkin = v + omega*(skinY-centerOfMass[1]) + udef[iy][ix][1];
-        tipShear[0] = (b(clipIndX, clipIndY).u[0] - uSkin) * invh/2;
-        tipShear[1] = (b(clipIndX, clipIndY).u[1] - vSkin) * invh/2;
+        tipShear[0] = (b(ix, iy).u[0] - uSkin) * invh/2;
+        tipShear[1] = (b(ix, iy).u[1] - vSkin) * invh/2;
 
         printf("tip sensor:[%f %f]->[%f %f] ind:[%d %d] val:%f %f\n",
-        skinX, skinY, p[0], p[1], indx, indy, tipShear[0], tipShear[1]);
+        skinX, skinY, org[0], org[1], ix, iy, tipShear[0], tipShear[1]);
       }
       for(int a = 0; a<2; ++a)
       {
@@ -373,16 +374,16 @@ std::vector<double> StefanFish::state(Shape*const p) const
         Real org[2]; velInfo[i].pos(org, 0, 0);
         const int indx = (int) std::round((sensX - org[0])*invh);
         const int indy = (int) std::round((sensY - org[1])*invh);
-        const int clipIndX = std::min( std::max(0, indx), VectorBlock::sizeX-1);
-        const int clipIndY = std::min( std::max(0, indy), VectorBlock::sizeY-1);
+        const int ix = std::min( std::max(0, indx), VectorBlock::sizeX-1);
+        const int iy = std::min( std::max(0, indy), VectorBlock::sizeY-1);
         const VectorBlock& b = * (const VectorBlock*) velInfo[i].ptrBlock;
         const auto&__restrict__ udef = obstacleBlocks[velInfo[i].blockID]->udef;
         const Real uSkin = u - omega*(skinX-centerOfMass[0]) + udef[iy][ix][0];
         const Real vSkin = v + omega*(skinY-centerOfMass[1]) + udef[iy][ix][1];
-        const Real shearX = (b(clipIndX, clipIndY).u[0] - uSkin) * invh/2;
-        const Real shearY = (b(clipIndX, clipIndY).u[1] - vSkin) * invh/2;
-        const Real dX = D->xSurf[iHeadSide+1] - D->xSurf[iHeadSide];
-        const Real dY = D->ySurf[iHeadSide+1] - D->ySurf[iHeadSide];
+        const Real shearX = (b(ix, iy).u[0] - uSkin) * invh/2;
+        const Real shearY = (b(ix, iy).u[1] - vSkin) * invh/2;
+        const Real dX = D.xSurf[iHeadSide+1] - D.xSurf[iHeadSide];
+        const Real dY = D.ySurf[iHeadSide+1] - D.ySurf[iHeadSide];
         const Real proj = dX * normX - dY * normY;
         const Real tangX = proj>0?  normX : -normX;
         const Real tangY = proj>0? -normY :  normY;
@@ -390,10 +391,10 @@ std::vector<double> StefanFish::state(Shape*const p) const
         (a==0? topShear[1] : lowShear[1]) = shearX * tangX + shearY * tangY;
         if(a==0)
           printf("top sensor:[%f %f]->[%f %f] ind:[%d %d] val:%f %f\n",
-          skinX, skinY, p[0], p[1], indx, indy, topShear[0], topShear[1]);
+          skinX, skinY, org[0], org[1], ix, iy, topShear[0], topShear[1]);
         else
           printf("bot sensor:[%f %f]->[%f %f] ind:[%d %d] val:%f %f\n",
-          skinX, skinY, p[0], p[1], indx, indy, lowShear[0], lowShear[1]);
+          skinX, skinY, org[0], org[1], ix, iy, lowShear[0], lowShear[1]);
       }
     }
 
@@ -408,8 +409,3 @@ std::vector<double> StefanFish::state(Shape*const p) const
   #endif
 }
 
-double StefanFish::reward() const{
-  //double efficiency = EffPDefBnd;
-  return EffPDefBnd;
-}
-*/
