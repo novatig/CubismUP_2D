@@ -46,25 +46,6 @@ inline void setAction(StefanFish* const agent,
   agent->act(t, act);
 }
 
-inline std::vector<double> getState(
-  const StefanFish* const a, const Shape*const p, const double t)
-{
-  const double X = ( a->center[0] - p->center[0] )/ a->length;
-  const double Y = ( a->center[1] - p->center[1] )/ a->length;
-  const double A = a->getOrientation(), T = a->getPhase(t);
-  const double U = a->getU() * a->Tperiod / a->length;
-  const double V = a->getV() * a->Tperiod / a->length;
-  const double W = a->getW() * a->Tperiod;
-  const double lastT = a->lastTact, lastC = a->lastCurv, oldrC = a->oldrCurv;
-  const	std::vector<double> S = { X, Y, A, T, U, V, W, lastT, lastC, oldrC };
-/* version using member-function (PW)
-  std::vector<double> S = a->state(p->center[0], p->center[1], t);
-  printf("S:[%f %f %f %f %f %f %f %f %f %f]\n",S[0], S[1], S[2], S[3], S[4], S[5], S[6], S[7], S[8], S[9]);
-*/
-  printf("S:[%f %f %f %f %f %f %f %f %f %f]\n",X,Y,A,T,U,V,W,lastT,lastC,oldrC);
-  return S;
-}
-
 inline bool isTerminal(const StefanFish*const a, const Shape*const p) {
   const double X = ( a->center[0] - p->center[0] )/ a->length;
   const double Y = ( a->center[1] - p->center[1] )/ a->length;
@@ -101,7 +82,11 @@ int app_main(
   int argc, char**argv             // args read from app's runtime settings file
 ) {
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
-  const int nActions = 2, nStates = 10;
+  #ifdef STEFANS_SENSORS_STATE
+    const int nActions = 2, nStates = 16;
+  #else
+    const int nActions = 2, nStates = 10;
+  #endif
   const unsigned maxLearnStepPerSim = 200; // random number... TODO
 
   comm->set_state_action_dims(nStates, nActions);
@@ -145,7 +130,7 @@ int app_main(
     unsigned step = 0;
     bool agentOver = false;
 
-    comm->sendInitState(getState(agent,object,t)); //send initial state
+    comm->sendInitState( agent->state(object) ); //send initial state
 
     while (true) //simulation loop
     {
@@ -167,7 +152,7 @@ int app_main(
       }
       step++;
       tot_steps++;
-      std::vector<double> state = getState(agent,object,t);
+      std::vector<double> state = agent->state(object);
       double reward = getReward(agent,object);
 
       if (agentOver || checkNaN(state, reward) ) {

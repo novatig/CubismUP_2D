@@ -287,30 +287,127 @@ double StefanFish::getPhase(const double t) const
   const double phase = std::fmod(arg, 2*M_PI);
   return (phase<0) ? 2*M_PI + phase : phase;
 }
-/* apparently unnecessary, solved by simply removing const in declaration of state, reward in main (PW)
-std::vector<double> StefanFish::state(const double OX, const double OY, const double t) const{
-/  std::vector<double> S(10,0);
-  S[0] = ( center[0] - OX )/ length;
-  S[1] = ( center[1] - OY )/ length;
+
+std::vector<double> StefanFish::state(Shape*const p) const
+{
+  std::vector<double> S(10,0);
+  S[0] = ( center[0] - p->center[0] )/ length;
+  S[1] = ( center[1] - p->center[1] )/ length;
   S[2] = getOrientation();
-  S[3] = getPhase(t);
+  S[3] = getPhase( sim.time );
   S[4] = getU() * Tperiod / length;
   S[5] = getV() * Tperiod / length;
   S[6] = getW() * Tperiod;
   S[7] = lastTact;
   S[8] = lastCurv;
   S[9] = oldrCurv;
-/
-  const double X = ( center[0] - OX )/ length;
-  const double Y = ( center[1] - OY )/ length;
-  const double A = getOrientation(), T = getPhase(t);
-  const double U = getU() * Tperiod / length;
-  const double V = getV() * Tperiod / length;
-  const double W = getW() * Tperiod;
-  const double lastT = lastTact, lastC = lastCurv, oldrC = oldrCurv;
-  std::vector<double> S = { X, Y, A, T, U, V, W, lastT, lastC, oldrC };
-  return S;
+
+  #ifndef STEFANS_SENSORS_STATE
+    return S;
+  #else
+    S.resize(16);
+    const Real h = sim.getH(), invh = 1/h;
+    const auto holdsPoint = [&](const BlockInfo& I, const Real X, const Real Y)
+    {
+      Real MIN[2], MAX[2];
+      I.pos(MIN, 0,0);
+      I.pos(MAX, VectorBlock::sizeX-1, VectorBlock::sizeY-1);
+      for(int i=0; i<2; ++i) {
+          MIN[i] -= 0.5 * h; // pos returns cell centers
+          MAX[i] += 0.5 * h; // we care about whole block
+      }
+      return X >= MIN[0] && Y >= MIN[1] && X <= MAX[0] && Y <= MAX[1];
+    };
+
+    // side of the head defined by position sb from function _width above ^^^
+    int iHeadSide = 0;
+    for(int i=0; i<myFish->Nm-1; ++i)
+      if( myFish->rS[i] <= 0.04*length && myFish->rS[i+1] > 0.04*length )
+        iHeadSide = i;
+    assert(iHeadSide>0);
+
+    std::array<Real,2> tipShear, lowShear, topShear;
+    #pragma omp parallel for schedule(dynamic)
+    for(size_t i=0; i<velInfo.size(); ++i)
+    {
+      {
+        const auto &DU = myFish->upperSkin, &DL = myFish->lowerSkin;
+        const Real skinX=DU.xSurf[0], normX=(DU.normXSurf[0]+DL.normXSurf[0])/2;
+        const Real skinY=DU.ySurf[0], normY=(DU.normYSurf[0]+DL.normYSurf[0])/2;
+        const Real sensX = skinX + 2*h * normX, sensY = skinY + 2*h * normY;
+        if( not holdsPoint(velInfo[i], sensX, sensY) ) continue;
+
+        const ObstacleBlock*const o = obstacleBlocks[velInfo[i].blockID];
+        if (o == nullptr) {
+          printf("ABORT: sensor point is outside allocated obstacle blocks\n");
+          fflush(0); abort();
+        }
+        Real org[2]; velInfo[i].pos(org, 0, 0);
+        const int indx = (int) std::round((sensX - org[0])*invh);
+        const int indy = (int) std::round((sensY - org[1])*invh);
+        const int clipIndX = std::min( std::max(0, indx), VectorBlock::sizeX-1);
+        const int clipIndY = std::min( std::max(0, indy), VectorBlock::sizeY-1);
+        const VectorBlock& b = * (const VectorBlock*) velInfo[i].ptrBlock;
+        const auto&__restrict__ udef = obstacleBlocks[velInfo[i].blockID]->udef;
+        const Real uSkin = u - omega*(skinX-centerOfMass[0]) + udef[iy][ix][0];
+        const Real vSkin = v + omega*(skinY-centerOfMass[1]) + udef[iy][ix][1];
+        tipShear[0] = (b(clipIndX, clipIndY).u[0] - uSkin) * invh/2;
+        tipShear[1] = (b(clipIndX, clipIndY).u[1] - vSkin) * invh/2;
+
+        printf("tip sensor:[%f %f]->[%f %f] ind:[%d %d] val:%f %f\n",
+        skinX, skinY, p[0], p[1], indx, indy, tipShear[0], tipShear[1]);
+      }
+      for(int a = 0; a<2; ++a)
+      {
+        const auto& D = a==0? myFish->upperSkin : myFish->lowerSkin;
+        const Real skinX = D.midX[iHeadSide], normX = D.normXSurf[iHeadSide];
+        const Real skinY = D.midY[iHeadSide], normY = D.normYSurf[iHeadSide];
+        const Real sensX = skinX + 2*h * normX, sensY = skinY + 2*h * normY;
+        if( not holdsPoint(velInfo[i], sensX, sensY) ) continue;
+
+        const ObstacleBlock*const o = obstacleBlocks[velInfo[i].blockID];
+        if (o == nullptr) {
+          printf("ABORT: sensor point is outside allocated obstacle blocks\n");
+          fflush(0); abort();
+        }
+        Real org[2]; velInfo[i].pos(org, 0, 0);
+        const int indx = (int) std::round((sensX - org[0])*invh);
+        const int indy = (int) std::round((sensY - org[1])*invh);
+        const int clipIndX = std::min( std::max(0, indx), VectorBlock::sizeX-1);
+        const int clipIndY = std::min( std::max(0, indy), VectorBlock::sizeY-1);
+        const VectorBlock& b = * (const VectorBlock*) velInfo[i].ptrBlock;
+        const auto&__restrict__ udef = obstacleBlocks[velInfo[i].blockID]->udef;
+        const Real uSkin = u - omega*(skinX-centerOfMass[0]) + udef[iy][ix][0];
+        const Real vSkin = v + omega*(skinY-centerOfMass[1]) + udef[iy][ix][1];
+        const Real shearX = (b(clipIndX, clipIndY).u[0] - uSkin) * invh/2;
+        const Real shearY = (b(clipIndX, clipIndY).u[1] - vSkin) * invh/2;
+        const Real dX = D->xSurf[iHeadSide+1] - D->xSurf[iHeadSide];
+        const Real dY = D->ySurf[iHeadSide+1] - D->ySurf[iHeadSide];
+        const Real proj = dX * normX - dY * normY;
+        const Real tangX = proj>0?  normX : -normX;
+        const Real tangY = proj>0? -normY :  normY;
+        (a==0? topShear[0] : lowShear[0]) = shearX * normX + shearY * normY;
+        (a==0? topShear[1] : lowShear[1]) = shearX * tangX + shearY * tangY;
+        if(a==0)
+          printf("top sensor:[%f %f]->[%f %f] ind:[%d %d] val:%f %f\n",
+          skinX, skinY, p[0], p[1], indx, indy, topShear[0], topShear[1]);
+        else
+          printf("bot sensor:[%f %f]->[%f %f] ind:[%d %d] val:%f %f\n",
+          skinX, skinY, p[0], p[1], indx, indy, lowShear[0], lowShear[1]);
+      }
+    }
+
+    S[10] = tipShear[0] * Tperiod / length;
+    S[11] = tipShear[1] * Tperiod / length;
+    S[12] = lowShear[0] * Tperiod / length;
+    S[13] = lowShear[1] * Tperiod / length;
+    S[14] = topShear[0] * Tperiod / length;
+    S[15] = topShear[1] * Tperiod / length;
+
+    return S;
+  #endif
 }
+
 double StefanFish::reward() const{
   //double efficiency = EffPDefBnd;
   return EffPDefBnd;
