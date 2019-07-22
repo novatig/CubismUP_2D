@@ -264,11 +264,11 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
   if (followX > 0 && followY > 0) //then i control the position
   {
     assert(not bCorrectTrajectory);
-    const double AngDiff  = std::atan2(-v, -u);
+    const double AngDiff  = std::atan2(-v, -u), dt = sim.dt;
     const double relU = u + sim.uinfx, relV = v + sim.uinfy;
     // Control posDiffs
-    const double xDiff = (position[0] - followX)/length;
-    const double yDiff = (position[1] - followY)/length;
+    const double xDiff = (centerOfMass[0] - followX)/length;
+    const double yDiff = (centerOfMass[1] - followY)/length;
     const double absDY = std::fabs(yDiff);
     const double velAbsDY = yDiff>0 ? relV/length : -relV/length;
     const double velDAvg = AngDiff-adjTh + dt * omega;
@@ -298,10 +298,10 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
     const double curv2vel = f2*(velAbsDY*AngDiff + absDY*omega);
                 //const Real vPID = velAbsDY*(f1*adjTh + f2*AngDiff) + absDY*(f1*velDAvg+f2*angVel[2]);
                 //const Real PID = f1*PROP + f2*INST;
-    printf("%f\t f1: %f %f\t f2: %f %f\t f3: %f %f\n", time,
+    printf("%f\t f1: %f %f\t f2: %f %f\t f3: %f %f\n", sim.time,
       curv1fac, curv1vel, curv2fac, curv2vel, ampFac, ampVel);
-    myFish->_correctTrajectory(curv1fac+curv2fac, curv1vel+curv2vel, time, dt);
-    myFish->_correctAmplitude(ampFac, ampVel, time, dt);
+    cFish->_correctTrajectory(curv1fac+curv2fac, curv1vel+curv2vel, sim.time, dt);
+    cFish->_correctAmplitude(ampFac, ampVel, sim.time, dt);
   }
 
   Fish::create(vInfo);
