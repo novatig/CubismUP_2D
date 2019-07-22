@@ -43,9 +43,12 @@ class CurvatureFish : public FishData
     }
   void resetAll() override;
 
-  void _correctTrajectory(const Real dtheta, const Real time, Real dt);
+  void _correctTrajectory(const Real dtheta, const Real vtheta,
+                          const Real time, Real dt);
 
-  void _correctAmplitude(Real dAmp, Real vAmp, const Real time, const Real dt);
+  void _correctAmplitude(      Real periodFac, Real periodVel,
+                         const Real lastTime, const Real time,
+                         const Real dt);
 
   void execute(const Real time, const Real l_tnext, const std::vector<double>& input);
 
