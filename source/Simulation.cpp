@@ -19,6 +19,7 @@
 #include "Operators/PressureIterator_approx.h"
 #include "Operators/PutObjectsOnGrid.h"
 #include "Operators/UpdateObjects.h"
+#include "Operators/ComputeForces.h"
 #include "Operators/UpdateObjectsStaggered.h"
 #include "Operators/advDiffGrav.h"
 #include "Operators/advDiffGravStaggered.h"
@@ -217,12 +218,14 @@ void Simulation::init()
     }
     //pipeline.push_back( new FadeOut(sim) );
   }
+  pipeline.push_back( new ComputeForces(sim) );
 
   std::cout << "Operator ordering:\n";
   for (size_t c=0; c<pipeline.size(); c++)
     std::cout << "\t" << pipeline[c]->getName() << "\n";
 
   reset();
+  sim.dt = 0;
   sim.dumpAll("IC");
 }
 

@@ -11,6 +11,8 @@
 
 using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];
 
+// TODO VARIABLE DENSITY
+//
 void ComputeForces::operator()(const double dt)
 {
   const Real NUoH = sim.nu / sim.getH(); // 2 nu / 2 h

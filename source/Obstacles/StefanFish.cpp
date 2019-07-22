@@ -251,7 +251,7 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
     adjTh = (Tperiod-sim.dt)/Tperiod * adjTh + sim.dt/Tperiod * AngDiff;
     const Real INST = (AngDiff*omega>0) ? AngDiff*std::fabs(omega)*Tperiod : 0;
     const Real PID  = 0.1*adjTh + 0.01*INST;
-    if(not sim.muteAll) {
+    if(not sim.muteAll && sim.dt>0) {
       std::ofstream filePID;
       std::stringstream ssF; ssF<<sim.path2file<<"/PID_"<<obstacleID<<".dat";
       filePID.open(ssF.str().c_str(), std::ios::app);

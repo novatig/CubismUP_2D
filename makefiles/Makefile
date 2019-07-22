@@ -104,10 +104,17 @@ ifneq "$(smarties)" "false"
 	CPPFLAGS += -I$(SMARTIESDIR)/
 endif
 
-ifneq "$(hdf5)" "false"
-LIBS+= -lhdf5
-CPPFLAGS+= -DCUBISM_USE_HDF
+ifneq "$(hdf)" "false"
+  ifneq ($(HDF5_ROOT),)
+  else ifneq ($(HDF5ROOT),)
+    HDF5_ROOT = HDF5ROOT
+  else
+    ERROR = "Neither HDF5_ROOT nor HDF5ROOT environment variables set. Did you forget to `module load`?"
+  endif
+  LIBS     += -L$(HDF5_ROOT)/lib -lhdf5
+  CPPFLAGS += -I$(HDF5_ROOT)/include -DCUBISM_USE_HDF
 endif
+
 
 all: simulation
 .DEFAULT: all;

@@ -14,6 +14,7 @@
 #include <iomanip>
 using namespace cubism;
 
+static constexpr double EPS = std::numeric_limits<double>::epsilon();
 Real Shape::getMinRhoS() const { return rhoS; }
 Real Shape::getCharMass() const { return 0; }
 Real Shape::getMaxVel() const { return std::sqrt(u*u + v*v); }
@@ -106,6 +107,8 @@ void Shape::updatePosition(double dt)
 
   const Real CX = labCenterOfMass[0], CY = labCenterOfMass[1], t = sim.time;
   const Real cx = centerOfMass[0], cy = centerOfMass[1], angle = orientation;
+
+  if(sim.dt <= 0) return;
 
   if(sim.verbose)
     printf("CM:[%.02f %.02f] C:[%.02f %.02f] ang:%.02f u:%.03f v:%.03f av:%.03f"
@@ -295,8 +298,12 @@ void Shape::computeForces()
   //derived quantities:
   Pthrust    = thrust * std::sqrt(u*u + v*v);
   Pdrag      =   drag * std::sqrt(u*u + v*v);
-  EffPDef    = Pthrust/(Pthrust- std::min(defPower, (double)0));
-  EffPDefBnd = Pthrust/(Pthrust-          defPowerBnd);
+  const Real denUnb = Pthrust- std::min(defPower, (double)0);
+  const Real demBnd = Pthrust-          defPowerBnd;
+  EffPDef    = Pthrust/std::max(denUnb, EPS);
+  EffPDefBnd = Pthrust/std::max(demBnd, EPS);
+
+  if(sim.dt <= 0) return;
 
   if (sim._bDump && not sim.muteAll)
   {
@@ -307,6 +314,7 @@ void Shape::computeForces()
       block->print(pFile);
     pFile.close();
   }
+
   if(not sim.muteAll)
   {
     std::stringstream ssF, ssP;
@@ -315,14 +323,21 @@ void Shape::computeForces()
 
     std::stringstream &fileForce = logger.get_stream(ssF.str());
     if(sim.step==0)
-      fileForce<<"time Fx Fy FxPres FyPres FxVisc FyVisc tau tauPres tauVisc drag thrust perimeter circulation area_penal mass_penal forcex_penal forcey_penal torque_penal\n";
+      fileForce<<"time Fx Fy FxPres FyPres FxVisc FyVisc tau tauPres tauVisc"
+                 " drag thrust perimeter circulation area_penal mass_penal"
+                 " forcex_penal forcey_penal torque_penal\n";
 
-    fileForce<<sim.time<<" "<<forcex<<" "<<forcey<<" "<<forcex_P<<" "<<forcey_P<<" "<<forcex_V <<" "<<forcey_V<<" "<<torque <<" "<<torque_P<<" "<<torque_V<<" "<<drag<<" "<<thrust<<" "<<perimeter<<" "<<circulation<<"\n";
+    fileForce<<sim.time<<" "<<forcex<<" "<<forcey<<" "<<forcex_P<<" "<<forcey_P
+             <<" "<<forcex_V <<" "<<forcey_V<<" "<<torque <<" "<<torque_P<<" "
+             <<torque_V<<" "<<drag<<" "<<thrust<<" "<<perimeter<<" "
+             <<circulation<<"\n";
 
     std::stringstream &filePower = logger.get_stream(ssP.str());
     if(sim.step==0)
-      filePower<<"time Pthrust Pdrag PoutBnd Pout defPowerBnd defPower EffPDefBnd EffPDef"<<std::endl;
-    filePower<<sim.time<<" "<<Pthrust<<" "<<Pdrag<<" "<<PoutBnd<<" "<<Pout<<" "<<defPowerBnd<<" "<<defPower<<" "<<EffPDefBnd<<" "<<EffPDef<<"\n";
+      filePower<<"time Pthrust Pdrag PoutBnd Pout defPowerBnd defPower"
+                 " EffPDefBnd EffPDef\n";
+    filePower<<sim.time<<" "<<Pthrust<<" "<<Pdrag<<" "<<PoutBnd<<" "<<Pout<<" "
+             <<defPowerBnd<<" "<<defPower<<" "<<EffPDefBnd<<" "<<EffPDef<<"\n";
   }
 }
 
