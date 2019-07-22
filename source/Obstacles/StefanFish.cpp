@@ -261,6 +261,49 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
     cFish->_correctTrajectory(PID, sim.time, sim.dt);
   }
 
+  if (followX > 0 && followY > 0) //then i control the position
+  {
+    assert(not bCorrectTrajectory);
+    const double AngDiff  = std::atan2(-v, -u);
+    const double relU = u + sim.uinfx, relV = v + sim.uinfy;
+    // Control posDiffs
+    const double xDiff = (position[0] - followX)/length;
+    const double yDiff = (position[1] - followY)/length;
+    const double absDY = std::fabs(yDiff);
+    const double velAbsDY = yDiff>0 ? relV/length : -relV/length;
+    const double velDAvg = AngDiff-adjTh + dt * omega;
+
+    adjTh = (1.0-dt)/Tperiod * adjTh + dt/Tperiod * AngDiff;
+    adjDy = (1.0-dt)/Tperiod * adjDy + dt/Tperiod * yDiff;
+
+    //If angle is positive: positive curvature only if Dy<0 (must go up)
+    //If angle is negative: negative curvature only if Dy>0 (must go down)
+    //const Real INST = (AngDiff*angVel[2]>0 && yDiff*AngDiff<0) ? AngDiff*std::fabs(yDiff*angVel[2]) : 0;
+    const double PROP = (adjTh  *yDiff<0) ?   adjTh*absDY : 0;
+    const double INST = (AngDiff*yDiff<0) ? AngDiff*absDY : 0;
+
+    //zero also the derivatives when appropriate
+    const double f1 = std::fabs(PROP)>2e-16 ? 20 : 0;
+    const double f2 = std::fabs(INST)>2e-16 ? 50 : 0, f3=1;
+
+    // Linearly increase (or decrease) amplitude to 1.2X (decrease to 0.8X)
+    //(experiments observed 1.2X increase in amplitude when swimming faster)
+    //if fish falls back 1 body length. Beyond that, will still increase but dunno if will work
+    const double ampFac = f3*xDiff + 1.0;
+    const double ampVel = f3*relU/length;
+
+    const double curv1fac = f1*PROP;
+    const double curv1vel = f1*(velAbsDY*adjTh   + absDY*velDAvg);
+    const double curv2fac = f2*INST;
+    const double curv2vel = f2*(velAbsDY*AngDiff + absDY*omega);
+                //const Real vPID = velAbsDY*(f1*adjTh + f2*AngDiff) + absDY*(f1*velDAvg+f2*angVel[2]);
+                //const Real PID = f1*PROP + f2*INST;
+    printf("%f\t f1: %f %f\t f2: %f %f\t f3: %f %f\n", time,
+      curv1fac, curv1vel, curv2fac, curv2vel, ampFac, ampVel);
+    myFish->_correctTrajectory(curv1fac+curv2fac, curv1vel+curv2vel, time, dt);
+    myFish->_correctAmplitude(ampFac, ampVel, time, dt);
+  }
+
   Fish::create(vInfo);
 }
 
@@ -408,4 +451,3 @@ std::vector<double> StefanFish::state(Shape*const p) const
     return S;
   #endif
 }
-
