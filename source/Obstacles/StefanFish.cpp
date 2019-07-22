@@ -155,7 +155,7 @@ void CurvatureFish::computeMidline(const Real time, const Real dt)
     const Real _vA = velPID, _rA = valPID;
     //#pragma omp parallel for schedule(static)
     for(int i=0; i<Nm; ++i) {
-      const Real darg = 2*M_PI*(1/l_Tp - dt*d_Tp/l_Tp/l_Tp);
+      const Real darg = 2*M_PI*(1/l_Tp - (time-time0)*d_Tp/l_Tp/l_Tp);
       const Real arg  = 2*M_PI*((time-time0)/l_Tp +timeshift
                                 -rS[i]/length/waveLength) + M_PI*phaseShift;
       rK[i] = amplitudeFactor* rC[i]*(std::sin(arg)     + rB[i] + _rA);
@@ -277,35 +277,31 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
     // Control posDiffs
     const double xDiff = (centerOfMass[0] - followX)/length;
     const double yDiff = (centerOfMass[1] - followY)/length;
-    const double absDY = std::fabs(yDiff);
-    const double velAbsDY = yDiff>0 ? relV/length : -relV/length;
-    const double velDAvg = AngDiff-adjTh + dt * omega;
+    const double velDAavg = (AngDiff-adjTh)/Tperiod + dt/Tperiod * omega;
+    const double velDYavg = (  yDiff-adjDy)/Tperiod + dt/Tperiod * relV/length;
 
     adjTh = (1.0-dt)/Tperiod * adjTh + dt/Tperiod * AngDiff;
-    adjDy = (1.0-dt)/Tperiod * adjDy + dt/Tperiod * yDiff;
+    adjDy = (1.0-dt)/Tperiod * adjDy + dt/Tperiod *   yDiff;
 
     //If angle is positive: positive curvature only if Dy<0 (must go up)
     //If angle is negative: negative curvature only if Dy>0 (must go down)
-    //const Real INST = (AngDiff*angVel[2]>0 && yDiff*AngDiff<0) ? AngDiff*std::fabs(yDiff*angVel[2]) : 0;
-    const double PROP = (adjTh  *yDiff<0) ?   adjTh*absDY : 0;
-    const double INST = (AngDiff*yDiff<0) ? AngDiff*absDY : 0;
+    const double PROP = (adjTh *   yDiff < 0) ?   adjTh * std::fabs(yDiff) : 0;
+    const double INST = (adjDy * AngDiff < 0) ? AngDiff * std::fabs(adjDy) : 0;
 
     //zero also the derivatives when appropriate
-    const double f1 = std::fabs(PROP)>2e-16 ? 20 : 0;
-    const double f2 = std::fabs(INST)>2e-16 ? 50 : 0, f3=1;
+    const double f1 = adjTh * yDiff < 0 ? 20 : 0;
+    const double f2 = adjDy * yDiff < 0 ? 50 : 0, f3=1;
 
-    // Linearly increase (or decrease) amplitude to 1.2X (decrease to 0.8X)
-    //(experiments observed 1.2X increase in amplitude when swimming faster)
-    //if fish falls back 1 body length. Beyond that, will still increase but dunno if will work
     const double periodFac = 1.0 - f3*xDiff;
     const double periodVel =     - f3*relU/length;
 
+    const double velAbsDY = yDiff>0 ? relV/length : -relV/length;
+    const double velAvgDY = adjDy>0 ?    velDYavg : -   velDYavg;
     const double curv1fac = f1*PROP;
-    const double curv1vel = f1*(velAbsDY*adjTh   + absDY*velDAvg);
+    const double curv1vel = f1*(velAbsDY*adjTh   + std::fabs(yDiff)*velDAavg);
     const double curv2fac = f2*INST;
-    const double curv2vel = f2*(velAbsDY*AngDiff + absDY*omega);
-                //const Real vPID = velAbsDY*(f1*adjTh + f2*AngDiff) + absDY*(f1*velDAvg+f2*angVel[2]);
-                //const Real PID = f1*PROP + f2*INST;
+    const double curv2vel = f2*(velAvgDY*AngDiff + std::fabs(adjDy)*omega);
+
     printf("%f\t f1: %f %f\t f2: %f %f\t f3: %f %f\n", time,
       curv1fac, curv1vel, curv2fac, curv2vel, periodFac, periodVel);
     cFish->_correctTrajectory(curv1fac+curv2fac, curv1vel+curv2vel, time, dt);
