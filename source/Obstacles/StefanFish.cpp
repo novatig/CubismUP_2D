@@ -74,7 +74,7 @@ void CurvatureFish::resetAll() {
   FishData::resetAll();
 }
 
-void CurvatureFish::_correctTrajectory(const Real dtheta, const double vtheta,
+void CurvatureFish::_correctTrajectory(const Real dtheta, const Real vtheta,
                                        const Real t, Real dt)
 {
   valPID = dtheta;
@@ -87,9 +87,10 @@ void CurvatureFish::_correctTrajectory(const Real dtheta, const double vtheta,
 }
 
 
-void CurvatureFish::_correctAmplitude(Real dAmp, Real vAmp, const Real time, const Real dt)
+void CurvatureFish::_correctAmplitude(      Real dAmp,       Real vAmp,
+                                      const Real time, const Real dt)
 {
-  assert(dAmp>0 && dAmp<2); //buhu
+  assert(dAmp>0 && dAmp<2); // would be crazy
   if(dAmp<=0) { dAmp=0; vAmp=0; }
   controlFac = dAmp;
   controlVel = vAmp;
@@ -151,7 +152,7 @@ void CurvatureFish::computeMidline(const Real time, const Real dt)
   if(useFollowXY_PID) {
     const Real _vA = velPID, _rA = valPID;
     //#pragma omp parallel for schedule(static)
-    for(int i=0; i<Nm; i++) {
+    for(int i=0; i<Nm; ++i) {
       const Real darg = 2*M_PI* _1oT;
       const Real arg  = 2*M_PI*(_1oT*(time-time0) +timeshift
                                 -rS[i]*_1oL/waveLength) + M_PI*phaseShift;
@@ -162,7 +163,7 @@ void CurvatureFish::computeMidline(const Real time, const Real dt)
     }
   } else {
     //#pragma omp parallel for schedule(static)
-    for(int i=0; i<Nm; i++) {
+    for(int i=0; i<Nm; ++i) {
       const Real darg = 2*M_PI* _1oT;
       const Real arg  = 2*M_PI*(_1oT*(time-time0) +timeshift
                                 -rS[i]*_1oL/waveLength) + M_PI*phaseShift;
@@ -264,7 +265,7 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
       filePID<<adjTh<<" "<<INST<<std::endl;
       filePID.close();
     }
-    cFish->_correctTrajectory(PID, sim.time, sim.dt);
+    cFish->_correctTrajectory(PID, 0, sim.time, sim.dt); // 2nd arg unused
   }
 
   if (followX > 0 && followY > 0) //then i control the position
@@ -306,7 +307,7 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
                 //const Real PID = f1*PROP + f2*INST;
     printf("%f\t f1: %f %f\t f2: %f %f\t f3: %f %f\n", sim.time,
       curv1fac, curv1vel, curv2fac, curv2vel, ampFac, ampVel);
-    cFish->_correctTrajectory(curv1fac+curv2fac, curv1vel+curv2vel, sim.time, dt);
+    cFish->_correctTrajectory(curv1fac+curv2fac, curv1vel+curv2vel,sim.time,dt);
     cFish->_correctAmplitude(ampFac, ampVel, sim.time, dt);
   }
 
