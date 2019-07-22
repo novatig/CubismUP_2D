@@ -61,11 +61,11 @@ DIRS = $(sort $(dir $(wildcard ../source/*/)))
 #advDiff_RK.o
 OBJECTS = \
 		Simulation.o SimulationData.o Shape.o ShapeLibrary.o ShapesSimple.o \
-		PressureSingle.o PoissonSolver.o PressureIterator_approx.o \
+		PressureSingle.o PressureIterator_unif.o PressureIterator_approx.o \
 		HYPREdirichlet.o FFTW_freespace.o PutObjectsOnGrid.o UpdateObjects.o \
-		advDiff.o BufferedLogger.o Helpers.o BlowFish.o Fish.o SmartCylinder.o \
-		FishLibrary.o StefanFish.o CarlingFish.o advDiffGravStaggered.o \
-		advDiffGrav.o Glider.o ArgumentParser.o PressureIterator_unif.o \
+		advDiff.o BufferedLogger.o Helpers.o Glider.o Fish.o SmartCylinder.o \
+		FishLibrary.o ArgumentParser.o PoissonSolver.o advDiffGravStaggered.o \
+		advDiffGrav.o BlowFish.o StefanFish.o CarlingFish.o ComputeForces.o \
 		HYPREdirichletVarRho.o PressureVarRho_proper.o UpdateObjectsStaggered.o
 #Penalization.o PressureIterator.o  PressureVarRho.o PressureSingleStaggered.o
 

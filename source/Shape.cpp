@@ -272,15 +272,6 @@ void Shape::diagnostics()
 
 void Shape::computeForces()
 {
-  /*
-  const vector<BlockInfo>& vInfo = sim.grid->getBlocksInfo();
-  Real vel_unit[2] = {0., 0.};
-  const Real vel_norm = std::sqrt(u*u + v*v);
-  if(vel_norm>0){ vel_unit[0]=u/vel_norm; vel_unit[1]=v/vel_norm; }
-
-  OperatorComputeForces finalize(sim, vel_unit, centerOfMass);
-  compute_surface(finalize, vInfo);
-
   //additive quantities:
   perimeter = 0; forcex = 0; forcey = 0; forcex_P = 0;
   forcey_P = 0; forcex_V = 0; forcey_V = 0; torque = 0;
@@ -332,7 +323,6 @@ void Shape::computeForces()
       filePower<<"time Pthrust Pdrag PoutBnd Pout defPowerBnd defPower EffPDefBnd EffPDef"<<std::endl;
     filePower<<sim.time<<" "<<Pthrust<<" "<<Pdrag<<" "<<PoutBnd<<" "<<Pout<<" "<<defPowerBnd<<" "<<defPower<<" "<<EffPDefBnd<<" "<<EffPDef<<endl;
   }
-  */
 }
 
 Shape::Shape( SimulationData& s, ArgumentParser& p, double C[2] ) :
