@@ -97,7 +97,7 @@ void Simulation::parseRuntime()
   sim.fadeLenY = parser("-fadeLen").asDouble(0.05) * sim.extent;
 
   sim.verbose = parser("-verbose").asInt(1);
-  sim.iterativePenalization = parser("-iterativePenalization").asInt(1);
+  sim.iterativePenalization = parser("-iterativePenalization").asInt(0);
   sim.muteAll = parser("-muteAll").asInt(0);//stronger silence, not even files
   if(sim.muteAll) sim.verbose = 0;
 }

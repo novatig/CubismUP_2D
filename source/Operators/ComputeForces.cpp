@@ -13,7 +13,6 @@ using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];
 
 void ComputeForces::operator()(const double dt)
 {
-  const std::vector<cubism::BlockInfo>& presInfo = sim.pres->getBlocksInfo();
   const Real NUoH = sim.nu / sim.getH(); // 2 nu / 2 h
   static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 2, 2, 1};
 
@@ -28,13 +27,14 @@ void ComputeForces::operator()(const double dt)
       const Real Cx = shape->centerOfMass[0], Cy = shape->centerOfMass[1];
       const Real vel_norm = std::sqrt(shape->u*shape->u + shape->v*shape->v);
       const Real vel_unit[2] = {
-        vel_norm>0? u/vel_norm : (Real)0, vel_norm>0? v/vel_norm : (Real)0
+        vel_norm>0? shape->u / vel_norm : (Real)0,
+        vel_norm>0? shape->v / vel_norm : (Real)0
       };
 
       #pragma omp for schedule(static)
       for (size_t i=0; i < Nblocks; ++i)
       {
-        const ObstacleBlock * const O = OBLOCK[velInfo[i].blockID];
+        ObstacleBlock * const O = OBLOCK[velInfo[i].blockID];
         if (O == nullptr) continue;
         assert(O->filled);
 
