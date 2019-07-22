@@ -26,8 +26,9 @@ class CurvatureFish : public FishData
   Real * const rA;
   Real * const vA;
   bool useFollowXY_PID = false;
-  Real controlFac = 0, valPID = 0;
-  Real controlVel = 0, velPID = 0;
+  Real valPID = 0;
+  Real velPID = 0;
+  Real d_Tp = 0;
   Schedulers::ParameterSchedulerVector<6> curvScheduler;
   Schedulers::ParameterSchedulerLearnWave<7> baseScheduler;
   Schedulers::ParameterSchedulerVector<6> adjustScheduler;
@@ -65,8 +66,8 @@ class CurvatureFish : public FishData
 };
 
 void CurvatureFish::resetAll() {
-  controlFac = 0; valPID = 0;
-  controlVel = 0; velPID = 0;
+  valPID = 0;
+  velPID = 0;
   useFollowXY_PID = false;
   curvScheduler.resetAll();
   baseScheduler.resetAll();
@@ -87,22 +88,21 @@ void CurvatureFish::_correctTrajectory(const Real dtheta, const Real vtheta,
 }
 
 
-void CurvatureFish::_correctAmplitude(      Real dAmp,       Real vAmp,
-                                      const Real time, const Real dt)
+void CurvatureFish::_correctAmplitude(Real periodFac, Real periodVel,
+                                      const Real lastTime, const Real time,
+                                      const Real dt)
 {
-  assert(dAmp>0 && dAmp<2); // would be crazy
-  if(dAmp<=0) { dAmp=0; vAmp=0; }
-  controlFac = dAmp;
-  controlVel = vAmp;
+  assert(periodFac>0 && periodFac<2); // would be crazy
+  if(periodFac <= 0) { periodFac=0; periodVel=0; }
+
+  const Real lastArg = (lastTime-time0)/l_Tp + timeshift;
+  time0 = lastTime;
+  timeshift = lastArg;
+  // so that new arg is only constant (prev arg) + dt / l_Tp
+  // with the new l_Tp:
+  l_Tp = Tperiod * periodFac;
+  d_Tp = Tperiod * periodVel;
   useFollowXY_PID = true;
-  //TODO actually should be cubic spline!
-  //const Real rampUp = time<Tperiod ? time/Tperiod : 1;
-  //const Real fac = dAmp*rampUp/length; //curvature is 1/length
-  //const std::array<Real ,6> curvature_values = {
-  // fac*.82014, fac*1.46515, fac*2.57136, fac*3.75425, fac*5.09147, fac*5.70449
-  //};
-  //curvScheduler.transition(time,time,time+2*dt, curvature_values, true);
-  //curvScheduler.transition(time, time-dt, time+dt, curvature_values);
 }
 
 void CurvatureFish::execute(const Real t, const Real lTact,
@@ -123,15 +123,14 @@ void CurvatureFish::execute(const Real t, const Real lTact,
 
 void CurvatureFish::computeMidline(const Real time, const Real dt)
 {
-  const Real _1oL = 1./length, _1oT = 1./l_Tp;
   const std::array<Real ,6> curvature_points = { (Real)0, (Real).15*length,
     (Real).4*length, (Real).65*length, (Real).9*length, length
   };
   const std::array<Real,7> baseline_points = {(Real)-.5, (Real)-.25, (Real)0,
     (Real).25, (Real).5, (Real).75, (Real)1};
   const std::array<Real ,6> curvature_values = {
-      (Real)0.82014*_1oL, (Real)1.46515*_1oL, (Real)2.57136*_1oL,
-      (Real)3.75425*_1oL, (Real)5.09147*_1oL, (Real)5.70449*_1oL
+      (Real)0.82014/length, (Real)1.46515/length, (Real)2.57136/length,
+      (Real)3.75425/length, (Real)5.09147/length, (Real)5.70449/length
   };
   #if 1
   const std::array<Real,6> curvature_zeros = std::array<Real, 6>();
@@ -153,20 +152,19 @@ void CurvatureFish::computeMidline(const Real time, const Real dt)
     const Real _vA = velPID, _rA = valPID;
     //#pragma omp parallel for schedule(static)
     for(int i=0; i<Nm; ++i) {
-      const Real darg = 2*M_PI* _1oT;
-      const Real arg  = 2*M_PI*(_1oT*(time-time0) +timeshift
-                                -rS[i]*_1oL/waveLength) + M_PI*phaseShift;
-      rK[i] = amplitudeFactor* rC[i]*(std::sin(arg)     +rB[i]+_rA)*controlFac;
-      vK[i] = amplitudeFactor*(vC[i]*(std::sin(arg)     +rB[i]+_rA)*controlFac
-                              +rC[i]*(std::cos(arg)*darg+vB[i]+_vA)*controlFac
-                              +rC[i]*(std::sin(arg)     +rB[i]+_rA)*controlVel);
+      const Real darg = 2*M_PI*(1/l_Tp - dt*d_Tp/l_Tp/l_Tp);
+      const Real arg  = 2*M_PI*((time-time0)/l_Tp +timeshift
+                                -rS[i]/length/waveLength) + M_PI*phaseShift;
+      rK[i] = amplitudeFactor* rC[i]*(std::sin(arg)     + rB[i] + _rA);
+      vK[i] = amplitudeFactor*(vC[i]*(std::sin(arg)     + rB[i] + _rA)
+                              +rC[i]*(std::cos(arg)*darg+ vB[i] + _vA));
     }
   } else {
     //#pragma omp parallel for schedule(static)
     for(int i=0; i<Nm; ++i) {
-      const Real darg = 2*M_PI* _1oT;
-      const Real arg  = 2*M_PI*(_1oT*(time-time0) +timeshift
-                                -rS[i]*_1oL/waveLength) + M_PI*phaseShift;
+      const Real darg = 2*M_PI/l_Tp;
+      const Real arg  = 2*M_PI*((time-time0)/l_Tp +timeshift
+                                -rS[i]/length/waveLength) + M_PI*phaseShift;
       rK[i] = amplitudeFactor*  rC[i]*(std::sin(arg)      + rB[i] + rA[i]);
       vK[i] = amplitudeFactor* (vC[i]*(std::sin(arg)      + rB[i] + rA[i])
                               + rC[i]*(std::cos(arg)*darg + vB[i] + vA[i]));
@@ -271,7 +269,7 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
   if (followX > 0 && followY > 0) //then i control the position
   {
     assert(not bCorrectTrajectory);
-    const double AngDiff  = std::atan2(-v, -u), dt = sim.dt;
+    const double AngDiff  = std::atan2(-v, -u), dt = sim.dt, time = sim.time;
     const double relU = u + sim.uinfx, relV = v + sim.uinfy;
     // Control posDiffs
     const double xDiff = (centerOfMass[0] - followX)/length;
@@ -296,8 +294,8 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
     // Linearly increase (or decrease) amplitude to 1.2X (decrease to 0.8X)
     //(experiments observed 1.2X increase in amplitude when swimming faster)
     //if fish falls back 1 body length. Beyond that, will still increase but dunno if will work
-    const double ampFac = f3*xDiff + 1.0;
-    const double ampVel = f3*relU/length;
+    const double periodFac = 1.0 - f3*xDiff;
+    const double periodVel =     - f3*relU/length;
 
     const double curv1fac = f1*PROP;
     const double curv1vel = f1*(velAbsDY*adjTh   + absDY*velDAvg);
@@ -305,12 +303,13 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
     const double curv2vel = f2*(velAbsDY*AngDiff + absDY*omega);
                 //const Real vPID = velAbsDY*(f1*adjTh + f2*AngDiff) + absDY*(f1*velDAvg+f2*angVel[2]);
                 //const Real PID = f1*PROP + f2*INST;
-    printf("%f\t f1: %f %f\t f2: %f %f\t f3: %f %f\n", sim.time,
-      curv1fac, curv1vel, curv2fac, curv2vel, ampFac, ampVel);
-    cFish->_correctTrajectory(curv1fac+curv2fac, curv1vel+curv2vel,sim.time,dt);
-    cFish->_correctAmplitude(ampFac, ampVel, sim.time, dt);
+    printf("%f\t f1: %f %f\t f2: %f %f\t f3: %f %f\n", time,
+      curv1fac, curv1vel, curv2fac, curv2vel, periodFac, periodVel);
+    cFish->_correctTrajectory(curv1fac+curv2fac, curv1vel+curv2vel, time, dt);
+    cFish->_correctAmplitude(periodFac, periodVel, time, dt);
   }
 
+  lastTime = sim.time;
   Fish::create(vInfo);
 }
 

@@ -21,7 +21,7 @@ class StefanFish: public Fish
   double adjTh = 0, adjDy = 0;
   const Real followX, followY;
   const bool bCorrectTrajectory;
-
+  Real lastTime = 0;
  public:
   mutable double lastTact = 0;
   mutable double lastCurv = 0;
