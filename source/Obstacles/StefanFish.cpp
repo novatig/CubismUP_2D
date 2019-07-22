@@ -25,8 +25,9 @@ class CurvatureFish : public FishData
   Real * const vB;
   Real * const rA;
   Real * const vA;
-  Real controlFac = -1, valPID = 0;
-  Real controlVel  = 0, velPID = 0;
+  bool useFollowXY_PID = false;
+  Real controlFac = 0, valPID = 0;
+  Real controlVel = 0, velPID = 0;
   Schedulers::ParameterSchedulerVector<6> curvScheduler;
   Schedulers::ParameterSchedulerLearnWave<7> baseScheduler;
   Schedulers::ParameterSchedulerVector<6> adjustScheduler;
@@ -64,17 +65,20 @@ class CurvatureFish : public FishData
 };
 
 void CurvatureFish::resetAll() {
-  controlFac = -1; valPID = 0;
-  controlVel  = 0; velPID = 0;
+  controlFac = 0; valPID = 0;
+  controlVel = 0; velPID = 0;
+  useFollowXY_PID = false;
   curvScheduler.resetAll();
   baseScheduler.resetAll();
   adjustScheduler.resetAll();
   FishData::resetAll();
 }
 
-void CurvatureFish::_correctTrajectory(const Real dtheta, const Real t, Real dt)
+void CurvatureFish::_correctTrajectory(const Real dtheta, const double vtheta,
+                                       const Real t, Real dt)
 {
   valPID = dtheta;
+  velPID = vtheta;
   dt = std::max(std::numeric_limits<Real>::epsilon(),dt);
   std::array<Real, 6> tmp_curv;
   tmp_curv.fill(dtheta);
@@ -82,12 +86,14 @@ void CurvatureFish::_correctTrajectory(const Real dtheta, const Real t, Real dt)
   adjustScheduler.transition(t, t-2*dt, t+2*dt, tmp_curv, true);
 }
 
+
 void CurvatureFish::_correctAmplitude(Real dAmp, Real vAmp, const Real time, const Real dt)
 {
   assert(dAmp>0 && dAmp<2); //buhu
   if(dAmp<=0) { dAmp=0; vAmp=0; }
   controlFac = dAmp;
   controlVel = vAmp;
+  useFollowXY_PID = true;
   //TODO actually should be cubic spline!
   //const Real rampUp = time<Tperiod ? time/Tperiod : 1;
   //const Real fac = dAmp*rampUp/length; //curvature is 1/length
@@ -142,7 +148,7 @@ void CurvatureFish::computeMidline(const Real time, const Real dt)
     curvScheduler.gimmeValues(time,            curvature_points, Nm,rS, rC,vC);
     baseScheduler.gimmeValues(time,l_Tp,length, baseline_points, Nm,rS, rB,vB);
   adjustScheduler.gimmeValues(time,            curvature_points, Nm,rS, rA,vA);
-  if(controlFac>0) {
+  if(useFollowXY_PID) {
     const Real _vA = velPID, _rA = valPID;
     //#pragma omp parallel for schedule(static)
     for(int i=0; i<Nm; i++) {
