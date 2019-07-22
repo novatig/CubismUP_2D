@@ -309,7 +309,7 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
     printf("%f\t f1: %f %f\t f2: %f %f\t f3: %f %f\n", time,
       curv1fac, curv1vel, curv2fac, curv2vel, periodFac, periodVel);
     cFish->_correctTrajectory(curv1fac+curv2fac, curv1vel+curv2vel, time, dt);
-    cFish->_correctAmplitude(periodFac, periodVel, time, dt);
+    cFish->_correctAmplitude(periodFac, periodVel, lastTime, time, dt);
   }
 
   lastTime = sim.time;
