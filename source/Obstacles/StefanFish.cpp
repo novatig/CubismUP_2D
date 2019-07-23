@@ -310,6 +310,8 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
     const double difPangIdy = coefPangIdy * velPangIdy;
     const double valIangIdy = coefIangIdy * IangIdy;
     const double difIangIdy = coefIangIdy * velIangIdy;
+    const double periodFac = 1.0 - xDiff;
+    const double periodVel =     - relU/length;
 
     if(not sim.muteAll && sim.dt>0) {
       std::ofstream filePID;
@@ -324,9 +326,6 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
     const double totalTerm = valIangPdy + valPangIdy + valIangIdy;
     const double totalDiff = difIangPdy + difPangIdy + difIangIdy;
     cFish->_correctTrajectory(totalTerm, totalDiff, time, dt);
-
-    const double periodFac = 1.0 - xDiff;
-    const double periodVel =     - relU/length;
     cFish->_correctAmplitude(periodFac, periodVel, lastTime, time, dt);
   }
 
