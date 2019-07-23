@@ -175,8 +175,8 @@ void PressureSingle::updatePressureRHS(const double dt) const
     }
   }
 
-  for (size_t j=0; j < nShapes; j++)
-  printf("sum of udef src terms %e\n", sumRHS[j]/std::max(absRHS[j], EPS));
+  //for (size_t j=0; j < nShapes; j++)
+  //printf("sum of udef src terms %e\n", sumRHS[j]/std::max(absRHS[j], EPS));
 
   #pragma omp parallel
   {
