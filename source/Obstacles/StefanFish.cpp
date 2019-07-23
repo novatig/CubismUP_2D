@@ -300,8 +300,8 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
 
     //zero also the derivatives when appropriate
     const double coefIangPdy =  adjTh  * yDiff < 0 ? 20 : 0;
-    const double coefPangIdy = angDiff * adjDy < 0 ? 20 : 0;
-    const double coefIangIdy =  adjTh  * adjDy < 0 ? 50 : 0;
+    const double coefPangIdy = angDiff * adjDy < 0 ? 0 : 0;
+    const double coefIangIdy =  adjTh  * adjDy < 0 ? 20 : 0;
 
 
     const double valIangPdy = coefIangPdy * IangPdy;
