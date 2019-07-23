@@ -263,8 +263,7 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
       std::ofstream filePID;
       std::stringstream ssF; ssF<<sim.path2file<<"/PID_"<<obstacleID<<".dat";
       filePID.open(ssF.str().c_str(), std::ios::app);
-      filePID<<adjTh<<" "<<INST<<std::endl;
-      filePID.close();
+      filePID<<adjTh<<" "<<INST<<"\n";
     }
     cFish->_correctTrajectory(PID, 0, sim.time, sim.dt); // 2nd arg unused
   }
@@ -272,39 +271,62 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
   if (followX > 0 && followY > 0) //then i control the position
   {
     assert(not bCorrectTrajectory);
-    const double AngDiff  = std::atan2(-v, -u), dt = sim.dt, time = sim.time;
+    const double angDiff  = std::atan2(-v, -u), dt = sim.dt, time = sim.time;
     const double relU = u + sim.uinfx, relV = v + sim.uinfy;
-    // Control posDiffs
+    // Control pos diffs
     const double xDiff = (centerOfMass[0] - followX)/length;
     const double yDiff = (centerOfMass[1] - followY)/length;
-    const double velDAavg = (AngDiff-adjTh)/Tperiod + dt/Tperiod * omega;
+    // derivatives of following 2 exponential averages:
+    const double velDAavg = (angDiff-adjTh)/Tperiod + dt/Tperiod * omega;
     const double velDYavg = (  yDiff-adjDy)/Tperiod + dt/Tperiod * relV/length;
 
-    adjTh = (1.0-dt)/Tperiod * adjTh + dt/Tperiod * AngDiff;
-    adjDy = (1.0-dt)/Tperiod * adjDy + dt/Tperiod *   yDiff;
+    adjTh = (1.0-dt/Tperiod) * adjTh + dt/Tperiod * angDiff;
+    adjDy = (1.0-dt/Tperiod) * adjDy + dt/Tperiod *   yDiff;
 
+    // integral (averaged) and proportional absolute DY and their derivative
+    const double absPy = std::fabs(yDiff), absIy = std::fabs(adjDy);
+    const double velAbsPy = yDiff>0 ? relV/length : -relV/length;
+    const double velAbsIy = adjDy>0 ?    velDYavg : -   velDYavg;
     //If angle is positive: positive curvature only if Dy<0 (must go up)
     //If angle is negative: negative curvature only if Dy>0 (must go down)
-    const double PROP = (adjTh *   yDiff < 0) ?   adjTh * std::fabs(yDiff) : 0;
-    const double INST = (adjDy * AngDiff < 0) ? AngDiff * std::fabs(adjDy) : 0;
+    const double IangPdy = ( adjTh  * yDiff < 0)?   adjTh * absPy : 0;
+    const double PangIdy = (angDiff * adjDy < 0)? angDiff * absIy : 0;
+    const double IangIdy = ( adjTh  * adjDy < 0)?   adjTh * absIy : 0;
+
+    // derivatives multiplied by 0 when term is inactive later:
+    const double velIangPdy = velAbsPy * adjTh   + absPy * velDAavg;
+    const double velPangIdy = velAbsIy * angDiff + absIy * omega;
+    const double velIangIdy = velAbsIy * adjTh   + absIy * velDAavg;
 
     //zero also the derivatives when appropriate
-    const double f1 = adjTh * yDiff < 0 ? 20 : 0;
-    const double f2 = adjDy * yDiff < 0 ? 50 : 0, f3=1;
+    const double coefIangPdy =  adjTh  * yDiff < 0 ? 20 : 0;
+    const double coefPangIdy = angDiff * adjDy < 0 ? 20 : 0;
+    const double coefIangIdy =  adjTh  * adjDy < 0 ? 50 : 0;
 
-    const double periodFac = 1.0 - f3*xDiff;
-    const double periodVel =     - f3*relU/length;
 
-    const double velAbsDY = yDiff>0 ? relV/length : -relV/length;
-    const double velAvgDY = adjDy>0 ?    velDYavg : -   velDYavg;
-    const double curv1fac = f1*PROP;
-    const double curv1vel = f1*(velAbsDY*adjTh   + std::fabs(yDiff)*velDAavg);
-    const double curv2fac = f2*INST;
-    const double curv2vel = f2*(velAvgDY*AngDiff + std::fabs(adjDy)*omega);
+    const double valIangPdy = coefIangPdy * IangPdy;
+    const double difIangPdy = coefIangPdy * velIangPdy;
+    const double valPangIdy = coefPangIdy * PangIdy;
+    const double difPangIdy = coefPangIdy * velPangIdy;
+    const double valIangIdy = coefIangIdy * IangIdy;
+    const double difIangIdy = coefIangIdy * velIangIdy;
 
-    printf("%f\t f1: %f %f\t f2: %f %f\t f3: %f %f\n", time,
-      curv1fac, curv1vel, curv2fac, curv2vel, periodFac, periodVel);
-    cFish->_correctTrajectory(curv1fac+curv2fac, curv1vel+curv2vel, time, dt);
+    if(not sim.muteAll && sim.dt>0) {
+      std::ofstream filePID;
+      std::stringstream ssF;
+      ssF<<sim.path2file<<"/PID_"<<obstacleID<<".dat";
+      filePID.open(ssF.str().c_str(), std::ios::app);
+      filePID<<time<<" "<<valIangPdy<<" "<<difIangPdy
+                   <<" "<<valPangIdy<<" "<<difPangIdy
+                   <<" "<<valIangIdy<<" "<<difIangIdy
+                   <<" "<<periodFac <<" "<<periodVel <<"\n";
+    }
+    const double totalTerm = valIangPdy + valPangIdy + valIangIdy;
+    const double totalDiff = difIangPdy + difPangIdy + difIangIdy;
+    cFish->_correctTrajectory(totalTerm, totalDiff, time, dt);
+
+    const double periodFac = 1.0 - xDiff;
+    const double periodVel =     - relU/length;
     cFish->_correctAmplitude(periodFac, periodVel, lastTime, time, dt);
   }
 
