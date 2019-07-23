@@ -271,22 +271,24 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
   if (followX > 0 && followY > 0) //then i control the position
   {
     assert(not bCorrectTrajectory);
-    const double angDiff  = std::atan2(-v, -u), dt = sim.dt, time = sim.time;
-    const double relU = u + sim.uinfx, relV = v + sim.uinfy;
+    const double angDiff = orientation, dt = sim.dt, time = sim.time;
+    const double relU = (u + sim.uinfx) / length;
+    const double relV = (v + sim.uinfy) / length;
+    const double angVel = omega;
     // Control pos diffs
     const double xDiff = (centerOfMass[0] - followX)/length;
     const double yDiff = (centerOfMass[1] - followY)/length;
     // derivatives of following 2 exponential averages:
-    const double velDAavg = (angDiff-adjTh)/Tperiod + dt/Tperiod * omega;
-    const double velDYavg = (  yDiff-adjDy)/Tperiod + dt/Tperiod * relV/length;
+    const double velDAavg = (angDiff-adjTh)/Tperiod + dt/Tperiod * angVel;
+    const double velDYavg = (  yDiff-adjDy)/Tperiod + dt/Tperiod * relV;
 
     adjTh = (1.0-dt/Tperiod) * adjTh + dt/Tperiod * angDiff;
     adjDy = (1.0-dt/Tperiod) * adjDy + dt/Tperiod *   yDiff;
 
     // integral (averaged) and proportional absolute DY and their derivative
     const double absPy = std::fabs(yDiff), absIy = std::fabs(adjDy);
-    const double velAbsPy = yDiff>0 ? relV/length : -relV/length;
-    const double velAbsIy = adjDy>0 ?    velDYavg : -   velDYavg;
+    const double velAbsPy = yDiff>0 ? relV     : -relV;
+    const double velAbsIy = adjDy>0 ? velDYavg : -velDYavg;
     //If angle is positive: positive curvature only if Dy<0 (must go up)
     //If angle is negative: negative curvature only if Dy>0 (must go down)
     const double IangPdy = ( adjTh  * yDiff < 0)?   adjTh * absPy : 0;
@@ -295,23 +297,22 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
 
     // derivatives multiplied by 0 when term is inactive later:
     const double velIangPdy = velAbsPy * adjTh   + absPy * velDAavg;
-    const double velPangIdy = velAbsIy * angDiff + absIy * omega;
+    const double velPangIdy = velAbsIy * angDiff + absIy * angVel;
     const double velIangIdy = velAbsIy * adjTh   + absIy * velDAavg;
 
     //zero also the derivatives when appropriate
-    const double coefIangPdy =  adjTh  * yDiff < 0 ? 20 : 0;
-    const double coefPangIdy = angDiff * adjDy < 0 ? 0 : 0;
-    const double coefIangIdy =  adjTh  * adjDy < 0 ? 20 : 0;
+    const double coefIangPdy =  adjTh  * yDiff < 0 ? 1 : 0;
+    const double coefPangIdy = angDiff * adjDy < 0 ? 1 : 0;
+    const double coefIangIdy =  adjTh  * adjDy < 0 ? 1 : 0;
 
-
-    const double valIangPdy = coefIangPdy * IangPdy;
+    const double valIangPdy = coefIangPdy *    IangPdy;
     const double difIangPdy = coefIangPdy * velIangPdy;
-    const double valPangIdy = coefPangIdy * PangIdy;
+    const double valPangIdy = coefPangIdy *    PangIdy;
     const double difPangIdy = coefPangIdy * velPangIdy;
-    const double valIangIdy = coefIangIdy * IangIdy;
+    const double valIangIdy = coefIangIdy *    IangIdy;
     const double difIangIdy = coefIangIdy * velIangIdy;
     const double periodFac = 1.0 - xDiff;
-    const double periodVel =     - relU/length;
+    const double periodVel =     - relU;
 
     if(not sim.muteAll && sim.dt>0) {
       std::ofstream filePID;

@@ -112,7 +112,7 @@ void Shape::updatePosition(double dt)
 
   if(sim.verbose)
     printf("CM:[%.02f %.02f] C:[%.02f %.02f] ang:%.02f u:%.03f v:%.03f av:%.03f"
-      " M:%e J:%e\n", cx, cy, center[0], center[1], angle, u, v, omega, M, J);
+      " M:%.02e J:%.02e\n", cx, cy, center[0], center[1], angle, u, v, omega, M, J);
   if(not sim.muteAll)
   {
     std::stringstream ssF;
