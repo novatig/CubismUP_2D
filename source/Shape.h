@@ -37,6 +37,7 @@ class Shape
   const double forcedu;
   const double forcedv;
   const double forcedomega;
+  const bool bDumpSurface;
 
   double M = 0;
   double J = 0;

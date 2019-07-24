@@ -303,7 +303,7 @@ void Shape::computeForces()
 
   if(sim.dt <= 0) return;
 
-  if (sim._bDump && not sim.muteAll)
+  if (sim._bDump && not sim.muteAll && bDumpSurface)
   {
     std::stringstream ssF; ssF<<sim.path2file<<"/surface_"<<obstacleID
       <<"_"<<std::setfill('0')<<std::setw(7)<<sim.step<<".raw";
@@ -350,9 +350,9 @@ Shape::Shape( SimulationData& s, ArgumentParser& p, double C[2] ) :
   bForcedx(  p("-bForcedx").asBool(bForced)),
   bForcedy(  p("-bForcedy").asBool(bForced)),
   bBlockang( p("-bBlockAng").asBool(bForcedx || bForcedy) ),
-  forcedu( - p("-xvel").asDouble(0) ),
-  forcedv( - p("-yvel").asDouble(0) ),
-  forcedomega( - p("-angvel").asDouble(0) ) {  }
+  forcedu( - p("-xvel").asDouble(0) ), forcedv( - p("-yvel").asDouble(0) ),
+  forcedomega(-p("-angvel").asDouble(0)), bDumpSurface(p("-dumpSurf").asInt(0))
+  {}
 
 Shape::~Shape()
 {

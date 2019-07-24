@@ -261,7 +261,6 @@ StefanFish::StefanFish(SimulationData&s, ArgumentParser&p, double C[2]):
 //static inline Real sgn(const Real val) { return (0 < val) - (val < 0); }
 void StefanFish::create(const std::vector<BlockInfo>& vInfo)
 {
-  static constexpr double EPS = std::numeric_limits<double>::epsilon();
   CurvatureFish* const cFish = dynamic_cast<CurvatureFish*>( myFish );
   if(cFish == nullptr) { printf("Someone touched my fish\n"); abort(); }
   const double DT = sim.dt/Tperiod, time = sim.time;
@@ -291,7 +290,7 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
   const double aVelDiff = (angVel - lastAngVel)*Tperiod/sim.dt;
   const double absAvelDiff = aVelMidP>0? aVelDiff : -aVelDiff;
 
-  if (bCorrectPosition)
+  if (bCorrectPosition && sim.dt>0)
   {
     //If angle is positive: positive curvature only if Dy<0 (must go up)
     //If angle is negative: negative curvature only if Dy>0 (must go down)
@@ -318,7 +317,7 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
     const double periodFac = 1.0 - xDiff;
     const double periodVel =     - relU;
 
-    if(not sim.muteAll && sim.dt>0) {
+    if(not sim.muteAll) {
       std::ofstream filePID;
       std::stringstream ssF;
       ssF<<sim.path2file<<"/PID_"<<obstacleID<<".dat";
@@ -335,7 +334,7 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
   }
   // if absIy<EPS then we have just one fish that the simulation box follows
   // therefore we control the average angle but not the Y disp (which is 0)
-  else if (bCorrectTrajectory)
+  else if (bCorrectTrajectory && sim.dt>0)
   {
     const Real coefInst = angDiff*aVelMidP>0 ? 0.01 : 1;
     const Real termInst = angDiff*std::fabs(aVelMidP);
@@ -343,13 +342,13 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
     const double totalTerm = coefInst*termInst + 0.1 * avgDangle;
     const double totalDiff = coefInst*diffInst + 0.1 * velDAavg;
 
-    if(not sim.muteAll && sim.dt>0) {
+    if(not sim.muteAll) {
       std::ofstream filePID;
       std::stringstream ssF;
       ssF<<sim.path2file<<"/PID_"<<obstacleID<<".dat";
       filePID.open(ssF.str().c_str(), std::ios::app);
-      filePID<<time<<" "<<totalTerm<<" "<<totalDiff // keep num of cols same
-                   <<" "<<0<<" "<<0 <<" "<<0<<" "<<0<<" "<<0 <<" "<<0 <<"\n";
+      filePID<<time<<" "<<coefInst*termInst<<" "<<coefInst*diffInst
+                   <<" "<<avgDangle<<" "<<velDAavg<<"\n";
     }
     cFish->correctTrajectory(totalTerm, totalDiff, sim.time, sim.dt);
   }
