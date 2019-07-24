@@ -170,8 +170,6 @@ Shape::Integrals Shape::integrateObstBlock(const std::vector<BlockInfo>& vInfo)
   assert(std::fabs(_x)     < 10*std::numeric_limits<Real>::epsilon() );
   assert(std::fabs(_y)     < 10*std::numeric_limits<Real>::epsilon() );
   assert(std::fabs(M - _m) < 10*std::numeric_limits<Real>::epsilon() );
-  _j = _j;
-  _a = _a;
   // turn moments into velocities:
   _u /= _m;
   _v /= _m;

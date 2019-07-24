@@ -94,15 +94,6 @@ CarlingFish::CarlingFish(SimulationData&s, ArgumentParser&p, double C[2])
   printf("AmplitudeFish %d %f %f %f\n",myFish->Nm, length, Tperiod, phaseShift);
 }
 
-double CarlingFish::getPhase(const double t) const {
-  const double Tp = myFish->l_Tp;
-  const double T0 = myFish->time0;
-  const double Ts = myFish->timeshift;
-  const double arg  = 2*M_PI*((t-T0)/Tp +Ts) + M_PI*phaseShift;
-  const double phase = std::fmod(arg, 2*M_PI);
-  return (phase<0) ? 2*M_PI + phase : phase;
-}
-
 void CarlingFish::create(const std::vector<BlockInfo>& vInfo) {
   Fish::create(vInfo);
 }

@@ -11,7 +11,7 @@
 
 #include "../Shape.h"
 
-class FishData;
+struct FishData;
 
 class Fish: public Shape
 {

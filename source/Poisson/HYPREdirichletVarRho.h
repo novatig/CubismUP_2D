@@ -9,14 +9,16 @@
 
 #pragma once
 #include "PoissonSolver.h"
-#ifdef HYPREFFT
 
+#ifdef HYPREFFT
 #include "HYPRE_struct_ls.h"
+#endif
 
 class HYPREdirichletVarRho : public PoissonSolver
 {
   const bool bPeriodic = false;
   const std::string solver;
+  #ifdef HYPREFFT
   HYPRE_StructGrid     hypre_grid;
   HYPRE_StructStencil  hypre_stencil;
   HYPRE_StructMatrix   hypre_mat;
@@ -24,6 +26,7 @@ class HYPREdirichletVarRho : public PoissonSolver
   HYPRE_StructVector   hypre_sol;
   HYPRE_StructSolver   hypre_solver;
   HYPRE_StructSolver   hypre_precond;
+  #endif
 
  public:
   bool bUpdateMat = true;
@@ -41,5 +44,3 @@ class HYPREdirichletVarRho : public PoissonSolver
 
   ~HYPREdirichletVarRho();
 };
-
-#endif

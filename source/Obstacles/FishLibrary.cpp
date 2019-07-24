@@ -48,9 +48,6 @@ FishData::~FishData()
 
 void FishData::resetAll()
 {
-  l_Tp = Tperiod;
-  timeshift = 0;
-  time0 = 0;
 }
 
 void FishData::writeMidline2File(const int step_id, std::string filename)

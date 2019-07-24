@@ -12,7 +12,6 @@
 class CarlingFish: public Fish
 {
  public:
-  double getPhase(const double t) const;
 
   CarlingFish(SimulationData&s, cubism::ArgumentParser&p, double C[2]);
   void resetAll() override;

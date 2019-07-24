@@ -10,12 +10,13 @@
 #include "HYPREdirichletVarRho.h"
 
 using namespace cubism;
-#ifdef HYPREFFT
-static constexpr double EPS = std::numeric_limits<double>::epsilon();
 
 void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
                                  const std::vector<BlockInfo>& BDST)
 {
+  #ifdef HYPREFFT
+
+  static constexpr double EPS = std::numeric_limits<double>::epsilon();
   const size_t nBlocks = BDST.size();
   HYPRE_Int ilower[2] = {0,0}, iupper[2] = {(int)totNx-1, (int)totNy-1};
 
@@ -150,6 +151,8 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
   sol2cub(BDST);
 
   sim.stopProfiler();
+
+  #endif
 }
 
 #define STRIDE s.vel->getBlocksPerDimension(0) * VectorBlock::sizeX
@@ -157,6 +160,8 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
 HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
   PoissonSolver(s, STRIDE), solver("gmres") //
 {
+  #ifdef HYPREFFT
+
   printf("Employing VarRho HYPRE-based Poisson solver with Dirichlet BCs.\n");
   buffer = new Real[totNy * totNx];
   HYPRE_Int ilower[2] = {0,0}, iupper[2] = {(int)totNx-1, (int)totNy-1};
@@ -288,12 +293,16 @@ HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
     HYPRE_StructHybridSetPrintLevel(hypre_solver, 0);
     HYPRE_StructHybridSetup(hypre_solver, hypre_mat, hypre_rhs, hypre_sol);
   }
+
+  #endif
 }
 // let's relinquish STRIDE which was only added for clarity:
 #undef STRIDE
 
 HYPREdirichletVarRho::~HYPREdirichletVarRho()
 {
+  #ifdef HYPREFFT
+
   if (solver == "gmres")
     HYPRE_StructLGMRESDestroy(hypre_solver);
   else if (solver == "bicgstab")
@@ -311,6 +320,6 @@ HYPREdirichletVarRho::~HYPREdirichletVarRho()
   HYPRE_StructVectorDestroy(hypre_sol);
   delete [] buffer;
   delete [] matAry;
-}
 
-#endif
+  #endif
+}

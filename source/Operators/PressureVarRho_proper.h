@@ -11,16 +11,12 @@
 
 #include "../Operator.h"
 
-#ifdef HYPREFFT
 class HYPREdirichletVarRho;
-#endif
 class PoissonSolver;
 
 class PressureVarRho_proper : public Operator
 {
-  #ifdef HYPREFFT
-    HYPREdirichletVarRho * const varRhoSolver;
-  #endif
+  HYPREdirichletVarRho * const varRhoSolver;
   PoissonSolver * const unifRhoSolver;
 
   void pressureCorrection(const double dt) const;

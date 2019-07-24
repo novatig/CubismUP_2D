@@ -13,19 +13,9 @@
 
 class StefanFish: public Fish
 {
-  // std::array<Real ,6> curvature_points;
-  // std::array<Real ,6> curvature_values;
-  // std::array<Real ,6> baseline_points;
-  // std::array<Real ,6> baseline_values;
-  // Real tau;
-  double adjTh = 0, adjDy = 0;
-  const Real followX, followY;
   const bool bCorrectTrajectory;
-  Real lastTime = 0;
+  const bool bCorrectPosition;
  public:
-  mutable double lastTact = 0;
-  mutable double lastCurv = 0;
-  mutable double oldrCurv = 0;
   void act(const Real lTact, const std::vector<double>& a) const;
   double getLearnTPeriod() const;
   double getPhase(const double t) const;

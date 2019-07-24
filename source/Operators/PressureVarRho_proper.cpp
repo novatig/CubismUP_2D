@@ -167,15 +167,11 @@ void PressureVarRho_proper::operator()(const double dt)
   sim.stopProfiler();
 }
 
-PressureVarRho_proper::PressureVarRho_proper(SimulationData& s) : Operator(s),
-#ifdef HYPREFFT
-  varRhoSolver( new HYPREdirichletVarRho(s) ),
-#endif
+PressureVarRho_proper::PressureVarRho_proper(SimulationData& s) :
+  Operator(s), varRhoSolver( new HYPREdirichletVarRho(s) ),
   unifRhoSolver( PoissonSolver::makeSolver(s) ) { }
 
 PressureVarRho_proper::~PressureVarRho_proper() {
-  #ifdef HYPREFFT
     delete varRhoSolver;
-  #endif
     delete unifRhoSolver;
 }

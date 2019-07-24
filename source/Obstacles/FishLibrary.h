@@ -69,8 +69,6 @@ struct FishData
   Real * const vNorX;
   Real * const vNorY;
   Real * const width;
-  // quantities needed to correctly control the speed of the midline maneuvers
-  Real l_Tp = Tperiod, timeshift = 0, time0 = 0;
 
   Real linMom[2], area, J, angMom; // for diagnostics
   // start and end indices in the arrays where the fish starts and ends (to ignore the extensions when interpolating the shapes)
