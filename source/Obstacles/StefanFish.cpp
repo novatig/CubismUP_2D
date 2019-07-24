@@ -23,6 +23,7 @@ class CurvatureFish : public FishData
   // exponential averages:
   Real avgDeltaY = 0;
   Real avgDangle = 0;
+  Real avgAngVel = 0;
   // stored past action for RL state:
   Real lastTact = 0;
   Real lastCurv = 0;
@@ -64,6 +65,7 @@ class CurvatureFish : public FishData
     curv_PID_dif = 0;
     avgDeltaY = 0;
     avgDangle = 0;
+    avgAngVel = 0;
     lastTact = 0;
     lastCurv = 0;
     oldrCurv = 0;
@@ -271,24 +273,26 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
   const double relU = (u + sim.uinfx) / length;
   const double relV = (v + sim.uinfy) / length;
   const double angVel = omega, lastAngVel = cFish->lastAvel;
+  // compute ang vel at t - 1/2 dt such that we have a better derivative:
+  const double aVelMidP = (angVel + lastAngVel)*Tperiod/2;
+  const double aVelDiff = (angVel - lastAngVel)*Tperiod/sim.dt;
   cFish->lastAvel = angVel; // store for next time
 
   // derivatives of following 2 exponential averages:
   const double velDAavg = (angDiff-cFish->avgDangle)/Tperiod + DT * angVel;
   const double velDYavg = (  yDiff-cFish->avgDeltaY)/Tperiod + DT * relV;
+  const double velAVavg = 10*((aVelMidP-cFish->avgAngVel)/Tperiod +DT*aVelDiff);
   // exponential averages
-  cFish->avgDangle = (1.0-DT) * cFish->avgDangle + DT * angDiff;
-  cFish->avgDeltaY = (1.0-DT) * cFish->avgDeltaY + DT *   yDiff;
+  cFish->avgDangle = (1.0 -DT) * cFish->avgDangle +    DT * angDiff;
+  cFish->avgDeltaY = (1.0 -DT) * cFish->avgDeltaY +    DT *   yDiff;
+  // faster average:
+  cFish->avgAngVel = (1-10*DT) * cFish->avgAngVel + 10*DT *aVelMidP;
   const double avgDangle = cFish->avgDangle, avgDeltaY = cFish->avgDeltaY;
 
   // integral (averaged) and proportional absolute DY and their derivative
   const double absPy = std::fabs(yDiff), absIy = std::fabs(avgDeltaY);
   const double velAbsPy =     yDiff>0 ? relV     : -relV;
   const double velAbsIy = avgDeltaY>0 ? velDYavg : -velDYavg;
-  // compute ang vel at t - 1/2 dt such that we have a better derivative:
-  const double aVelMidP = (angVel + lastAngVel)*Tperiod/2;
-  const double aVelDiff = (angVel - lastAngVel)*Tperiod/sim.dt;
-  const double absAvelDiff = aVelMidP>0? aVelDiff : -aVelDiff;
 
   if (bCorrectPosition && sim.dt>0)
   {
@@ -336,9 +340,11 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
   // therefore we control the average angle but not the Y disp (which is 0)
   else if (bCorrectTrajectory && sim.dt>0)
   {
-    const Real coefInst = angDiff*aVelMidP>0 ? 0.01 : 1;
-    const Real termInst = angDiff*std::fabs(aVelMidP);
-    const Real diffInst = angDiff*absAvelDiff + angVel*std::fabs(aVelMidP);
+    const double avgAngVel = cFish->avgAngVel, absAngVel = std::fabs(avgAngVel);
+    const double absAvelDiff = avgAngVel>0? velAVavg : -velAVavg;
+    const Real coefInst = angDiff*avgAngVel>0 ? 0.01 : 1;
+    const Real termInst = angDiff*absAngVel;
+    const Real diffInst = angDiff*absAvelDiff + angVel*absAngVel;
     const double totalTerm = coefInst*termInst + 0.1 * avgDangle;
     const double totalDiff = coefInst*diffInst + 0.1 * velDAavg;
 
