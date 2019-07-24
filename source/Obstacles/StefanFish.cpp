@@ -212,7 +212,7 @@ void StefanFish::resetAll() {
 
 StefanFish::StefanFish(SimulationData&s, ArgumentParser&p, double C[2]):
  Fish(s,p,C), bCorrectTrajectory(p("-pid").asInt(0)),
- bCorrectPosition(p("-pid_pos").asInt(0))
+ bCorrectPosition(p("-pidpos").asInt(0))
 {
  #if 0
   // parse tau
