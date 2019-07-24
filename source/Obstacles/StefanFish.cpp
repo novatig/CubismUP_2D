@@ -342,11 +342,11 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
   {
     const double avgAngVel = cFish->avgAngVel, absAngVel = std::fabs(avgAngVel);
     const double absAvelDiff = avgAngVel>0? velAVavg : -velAVavg;
-    const Real coefInst = angDiff*avgAngVel>0 ? 0.01 : 1;
+    const Real coefInst = angDiff*avgAngVel>0 ? 0.01 : 1, coefAvg = 0.1;
     const Real termInst = angDiff*absAngVel;
     const Real diffInst = angDiff*absAvelDiff + angVel*absAngVel;
-    const double totalTerm = coefInst*termInst + 0.1 * avgDangle;
-    const double totalDiff = coefInst*diffInst + 0.1 * velDAavg;
+    const double totalTerm = coefInst*termInst + coefAvg*avgDangle;
+    const double totalDiff = coefInst*diffInst + coefAvg*velDAavg;
 
     if(not sim.muteAll) {
       std::ofstream filePID;
@@ -354,7 +354,7 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
       ssF<<sim.path2file<<"/PID_"<<obstacleID<<".dat";
       filePID.open(ssF.str().c_str(), std::ios::app);
       filePID<<time<<" "<<coefInst*termInst<<" "<<coefInst*diffInst
-                   <<" "<<avgDangle<<" "<<velDAavg<<"\n";
+                   <<" "<<coefAvg*avgDangle<<" "<<coefAvg*velDAavg<<"\n";
     }
     cFish->correctTrajectory(totalTerm, totalDiff, sim.time, sim.dt);
   }
