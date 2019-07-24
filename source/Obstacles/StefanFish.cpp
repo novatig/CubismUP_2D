@@ -450,8 +450,8 @@ std::vector<double> StefanFish::state(Shape*const p) const
         const int iy = std::min( std::max(0, indy), VectorBlock::sizeY-1);
         const VectorBlock& b = * (const VectorBlock*) velInfo[i].ptrBlock;
         const auto&__restrict__ udef = obstacleBlocks[velInfo[i].blockID]->udef;
-        const Real uSkin = u - omega*(skinX-centerOfMass[0]) + udef[iy][ix][0];
-        const Real vSkin = v + omega*(skinY-centerOfMass[1]) + udef[iy][ix][1];
+        const Real uSkin = u - omega*(skinY-centerOfMass[1]) + udef[iy][ix][0];
+        const Real vSkin = v + omega*(skinX-centerOfMass[0]) + udef[iy][ix][1];
         tipShear[0] = (b(ix, iy).u[0] - uSkin) * invh/2;
         tipShear[1] = (b(ix, iy).u[1] - vSkin) * invh/2;
 
@@ -478,8 +478,8 @@ std::vector<double> StefanFish::state(Shape*const p) const
         const int iy = std::min( std::max(0, indy), VectorBlock::sizeY-1);
         const VectorBlock& b = * (const VectorBlock*) velInfo[i].ptrBlock;
         const auto&__restrict__ udef = obstacleBlocks[velInfo[i].blockID]->udef;
-        const Real uSkin = u - omega*(skinX-centerOfMass[0]) + udef[iy][ix][0];
-        const Real vSkin = v + omega*(skinY-centerOfMass[1]) + udef[iy][ix][1];
+        const Real uSkin = u - omega*(skinY-centerOfMass[1]) + udef[iy][ix][0];
+        const Real vSkin = v + omega*(skinX-centerOfMass[0]) + udef[iy][ix][1];
         const Real shearX = (b(ix, iy).u[0] - uSkin) * invh/2;
         const Real shearY = (b(ix, iy).u[1] - vSkin) * invh/2;
         const Real dX = D.xSurf[iHeadSide+1] - D.xSurf[iHeadSide];
