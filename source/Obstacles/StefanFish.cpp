@@ -294,6 +294,10 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
   const double velAbsPy =     yDiff>0 ? relV     : -relV;
   const double velAbsIy = avgDeltaY>0 ? velDYavg : -velDYavg;
 
+  if (bCorrectPosition || bCorrectPosition)
+    assert(origAng<2e-16 && "TODO: rotate pos and vel to fish POV to enable \
+                             PID to work even for non-zero angles");
+
   if (bCorrectPosition && sim.dt>0)
   {
     //If angle is positive: positive curvature only if Dy<0 (must go up)
