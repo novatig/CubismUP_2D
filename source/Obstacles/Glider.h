@@ -19,14 +19,21 @@ class Glider : public Shape
   const Real majax = std::max(semiAxis[0], semiAxis[1]);
   const Real minax = std::min(semiAxis[0], semiAxis[1]);
   const Real velscale = std::sqrt((rhoS-1)*std::fabs(sim.gravity[1])*minax); // 0.01566045976
-  const Real lengthscale = majax, timescale = majax/velscale;
+  const Real lengthscale = majax, timescale = lengthscale/velscale;
   const Real DTactions_nonDim = 0.5;
   const Real DTactions = DTactions_nonDim * timescale;
   const Real beta = minax/majax;
-  const Real torquescale = M_PI/8*std::pow(majax*(1-beta*beta)*velscale,2)/beta;
+
+  // what Paoletti's paper says:
+  //const Real torquescale = M_PI/8*std::pow(majax*(1-beta*beta)*velscale,2)/beta;
+  // eg:
   // pi/8*((0.125^2-0.025^2)*0.01566045976)^2 /0.125/0.025 = 0.000006934280382
-  //const Real torquescale = M_PI*majax*majax*velscale*velscale;
+
+  // what Paoletti's paper does:
+  const Real torquescale = M_PI*majax*majax*velscale*velscale;
+  // eg:
   // pi*0.125^2*0.01566045976^2 = 0.00001203868122
+
   const Real termRew_fac = rewardType==1 ? 50 : 10;
   double old_angle = 0;
   double old_torque = 0;
