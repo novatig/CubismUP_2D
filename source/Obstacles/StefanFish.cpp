@@ -363,8 +363,9 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
     cFish->correctTrajectory(totalTerm, totalDiff, sim.time, sim.dt);
   }
 
-  const int indCurrAct = (time + sim.dt)/(Tperiod/2);
-  if(time < indCurrAct*Tperiod/2) state(sim.shapes[0]);
+  // to debug and check state function, but requires an other obstacle
+  //const int indCurrAct = (time + sim.dt)/(Tperiod/2);
+  //if(time < indCurrAct*Tperiod/2) state(sim.shapes[0]);
 
   Fish::create(vInfo);
 }
@@ -527,7 +528,7 @@ std::vector<double> StefanFish::state(Shape*const p) const
     S[13] = lowShear[1] * Tperiod / length;
     S[14] = topShear[0] * Tperiod / length;
     S[15] = topShear[1] * Tperiod / length;
-    printf("shear tip:[%f %f] los:[%f %f] top:[%f %f]\n",
+    printf("shear tip:[%f %f] lower side:[%f %f] upper side:[%f %f]\n",
       S[10],S[11], S[12],S[13], S[14],S[15]);
 
     return S;
