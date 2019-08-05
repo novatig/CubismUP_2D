@@ -294,7 +294,7 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
   const double velAbsPy =     yDiff>0 ? relV     : -relV;
   const double velAbsIy = avgDeltaY>0 ? velDYavg : -velDYavg;
 
-  if (bCorrectPosition || bCorrectPosition)
+  if (bCorrectPosition || bCorrectTrajectory)
     assert(origAng<2e-16 && "TODO: rotate pos and vel to fish POV to enable \
                              PID to work even for non-zero angles");
 
@@ -362,6 +362,7 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
     }
     cFish->correctTrajectory(totalTerm, totalDiff, sim.time, sim.dt);
   }
+
 
   Fish::create(vInfo);
 }
