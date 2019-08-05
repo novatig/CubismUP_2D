@@ -434,14 +434,14 @@ std::vector<double> StefanFish::state(Shape*const p) const
     #pragma omp parallel for schedule(dynamic)
     for(size_t i=0; i<velInfo.size(); ++i)
     {
-      {
-        const auto &DU = myFish->upperSkin, &DL = myFish->lowerSkin;
-        // first point of the two skins is the same
-        // normal should be almost the same: take the mean
-        const Real skinX=DU.xSurf[0], normX=(DU.normXSurf[0]+DL.normXSurf[0])/2;
-        const Real skinY=DU.ySurf[0], normY=(DU.normYSurf[0]+DL.normYSurf[0])/2;
-        const Real sensX = skinX + 2*h * normX, sensY = skinY + 2*h * normY;
-        if( not holdsPoint(velInfo[i], sensX, sensY) ) continue;
+
+      const auto &DU = myFish->upperSkin, &DL = myFish->lowerSkin;
+      // first point of the two skins is the same
+      // normal should be almost the same: take the mean
+      const Real skinX=DU.xSurf[0], normX=(DU.normXSurf[0]+DL.normXSurf[0])/2;
+      const Real skinY=DU.ySurf[0], normY=(DU.normYSurf[0]+DL.normYSurf[0])/2;
+      const Real sensX = skinX + 2*h * normX, sensY = skinY + 2*h * normY;
+      if( holdsPoint(velInfo[i], sensX, sensY) ) {
 
         const ObstacleBlock*const o = obstacleBlocks[velInfo[i].blockID];
         if (o == nullptr) {
@@ -465,11 +465,11 @@ std::vector<double> StefanFish::state(Shape*const p) const
       }
       for(int a = 0; a<2; ++a)
       {
-        const auto& D = a==0? myFish->upperSkin : myFish->lowerSkin;
-        const Real skinX = D.midX[iHeadSide], normX = D.normXSurf[iHeadSide];
-        const Real skinY = D.midY[iHeadSide], normY = D.normYSurf[iHeadSide];
-        const Real sensX = skinX + 2*h * normX, sensY = skinY + 2*h * normY;
-        if( not holdsPoint(velInfo[i], sensX, sensY) ) continue;
+       const auto& D = a==0? myFish->upperSkin : myFish->lowerSkin;
+       const Real skinX = D.midX[iHeadSide], normX = D.normXSurf[iHeadSide];
+       const Real skinY = D.midY[iHeadSide], normY = D.normYSurf[iHeadSide];
+       const Real sensX = skinX + 2*h * normX, sensY = skinY + 2*h * normY;
+       if( holdsPoint(velInfo[i], sensX, sensY) ) {
 
         const ObstacleBlock*const o = obstacleBlocks[velInfo[i].blockID];
         if (o == nullptr) {
@@ -500,6 +500,7 @@ std::vector<double> StefanFish::state(Shape*const p) const
         else
           printf("bot sensor:[%f %f]->[%f %f] ind:[%d %d] val:%f %f\n",
           skinX, skinY, org[0], org[1], ix, iy, lowShear[0], lowShear[1]);
+       }
       }
     }
 
