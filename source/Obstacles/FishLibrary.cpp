@@ -548,10 +548,20 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, ScalarBlock& b,
           }
 
           if(std::fabs(o->dist[sy][sx]) > dist1) {
-            o->udef[sy][sx][0] = udef[0];
-            o->udef[sy][sx][1] = udef[1];
-            o->dist[sy][sx] = sign2d*dist1;
-            o->chi [sy][sx] = 1;
+            assert(dist1 < std::pow(3 * h, 2));
+            const Real W = 1 - std::sqrt(dist1) * (invh / 3);
+            // W behaves like hat interpolation kernel that is used for internal
+            // fish points. Introducing W (used to be W=1) smoothens transition
+            // from surface to internal points. In fact, later we plus equal
+            // udef*hat of internal points. If hat>0, point should behave like
+            // internal point, meaning that fish-section udef rotation should
+            // multiply distance from midline instead of entire half-width.
+            // Remember that uder will become udef / chi, so W simplifies out.
+            assert(W > 0);
+            o->udef[sy][sx][0] = W * udef[0];
+            o->udef[sy][sx][1] = W * udef[1];
+            o->dist[sy][sx] = sign2d * dist1;
+            o->chi [sy][sx] = W;
             o->rho [sy][sx] = 1;
           }
           // Not chi yet, I stored squared distance from analytical boundary

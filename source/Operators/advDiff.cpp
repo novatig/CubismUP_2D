@@ -65,10 +65,10 @@ void advDiff::operator()(const double dt)
       vellab.load(velInfo[i], 0); VectorLab & __restrict__ V = vellab;
       VectorBlock & __restrict__ TMP = *(VectorBlock*) tmpVInfo[i].ptrBlock;
 
-      for(int iy=-1; iy<=BSY && isW(velInfo[i]); ++iy) fade(V(BX-1,iy), fadeW);
-      for(int ix=-1; ix<=BSX && isS(velInfo[i]); ++ix) fade(V(ix,BY-1), fadeS);
-      for(int iy=-1; iy<=BSY && isE(velInfo[i]); ++iy) fade(V(EX+1,iy), fadeE);
-      for(int ix=-1; ix<=BSX && isN(velInfo[i]); ++ix) fade(V(ix,EY+1), fadeN);
+      if(isW(velInfo[i])) for(int iy=-1; iy<=BSY; ++iy) fade(V(BX-1,iy), fadeW);
+      if(isS(velInfo[i])) for(int ix=-1; ix<=BSX; ++ix) fade(V(ix,BY-1), fadeS);
+      if(isE(velInfo[i])) for(int iy=-1; iy<=BSY; ++iy) fade(V(EX+1,iy), fadeE);
+      if(isN(velInfo[i])) for(int ix=-1; ix<=BSX; ++ix) fade(V(ix,EY+1), fadeN);
 
       for(int iy=0; iy<BSY; ++iy) for(int ix=0; ix<BSX; ++ix)
       {
@@ -87,21 +87,24 @@ void advDiff::operator()(const double dt)
   }
 
   {
+    const std::vector<size_t>& boundaryInfoIDs = sim.boundaryInfoIDs;
+    const size_t NboundaryBlocks = boundaryInfoIDs.size();
     ////////////////////////////////////////////////////////////////////////////
     Real IF = 0, AF = 0;
-    #pragma omp parallel for schedule(dynamic) reduction(+ : IF, AF)
-    for (size_t i=0; i < Nblocks; i++) {
+    #pragma omp parallel for schedule(static) reduction(+ : IF, AF)
+    for (size_t k=0; k < NboundaryBlocks; k++) {
+      const size_t i = boundaryInfoIDs[k];
       const VectorBlock& V = *(VectorBlock*) velInfo[i].ptrBlock;
-      for(int iy=0; iy<BSY && isW(velInfo[i]); ++iy) {
+      if(isW(velInfo[i])) for(int iy=0; iy<BSY; ++iy) {
         IF -= V(BX,iy).u[0]; AF += std::fabs(V(BX,iy).u[0]);
       }
-      for(int iy=0; iy<BSY && isE(velInfo[i]); ++iy) {
+      if(isE(velInfo[i])) for(int iy=0; iy<BSY; ++iy) {
         IF += V(EX,iy).u[0]; AF += std::fabs(V(EX,iy).u[0]);
       }
-      for(int ix=0; ix<BSX && isS(velInfo[i]); ++ix) {
+      if(isS(velInfo[i])) for(int ix=0; ix<BSX; ++ix) {
         IF -= V(ix,BY).u[1]; AF += std::fabs(V(ix,BY).u[1]);
       }
-      for(int ix=0; ix<BSX && isN(velInfo[i]); ++ix) {
+      if(isN(velInfo[i])) for(int ix=0; ix<BSX; ++ix) {
         IF += V(ix,EY).u[1]; AF += std::fabs(V(ix,EY).u[1]);
       }
     }
@@ -109,16 +112,17 @@ void advDiff::operator()(const double dt)
     const Real corr = IF/std::max(AF, EPS);
     //const Real corr = IF/( 2*(BSY*sim.bpdy -1) + 2*(BSX*sim.bpdx -1) );
     if(sim.verbose) printf("Relative inflow correction %e\n",corr);
-    #pragma omp parallel for schedule(dynamic)
-    for (size_t i=0; i < Nblocks; i++) {
+    #pragma omp parallel for schedule(static)
+    for (size_t k=0; k < NboundaryBlocks; k++) {
+      const size_t i = boundaryInfoIDs[k];
       VectorBlock& V = *(VectorBlock*) velInfo[i].ptrBlock;
-      for(int iy=0; iy<BSY && isW(velInfo[i]); ++iy)
+      if(isW(velInfo[i])) for(int iy=0; iy<BSY; ++iy)
         V(BX,iy).u[0] += corr * std::fabs(V(BX,iy).u[0]);
-      for(int iy=0; iy<BSY && isE(velInfo[i]); ++iy)
+      if(isE(velInfo[i])) for(int iy=0; iy<BSY; ++iy)
         V(EX,iy).u[0] -= corr * std::fabs(V(EX,iy).u[0]);
-      for(int ix=0; ix<BSX && isS(velInfo[i]); ++ix)
+      if(isS(velInfo[i])) for(int ix=0; ix<BSX; ++ix)
         V(ix,BY).u[1] += corr * std::fabs(V(ix,BY).u[1]);
-      for(int ix=0; ix<BSX && isN(velInfo[i]); ++ix)
+      if(isN(velInfo[i])) for(int ix=0; ix<BSX; ++ix)
         V(ix,EY).u[1] -= corr * std::fabs(V(ix,EY).u[1]);
     }
   }

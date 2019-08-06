@@ -34,6 +34,16 @@ void SimulationData::allocateGrid()
   extents[0] = bpdx * vel->getH() * VectorBlock::sizeX;
   extents[1] = bpdy * vel->getH() * VectorBlock::sizeY;
   printf("Extents %e %e (%e)\n", extents[0], extents[1], extent);
+
+  const auto isW = [&](const BlockInfo&I) { return I.index[0] == 0;      };
+  const auto isE = [&](const BlockInfo&I) { return I.index[0] == bpdx-1; };
+  const auto isS = [&](const BlockInfo&I) { return I.index[1] == 0;      };
+  const auto isN = [&](const BlockInfo&I) { return I.index[1] == bpdy-1; };
+  const std::vector<BlockInfo>& velInfo = vel->getBlocksInfo();
+
+  for (size_t i=0; i < velInfo.size(); i++)
+    if(isW(velInfo[i]) || isE(velInfo[i]) || isS(velInfo[i]) || isN(velInfo[i]))
+      boundaryInfoIDs.push_back(i);
 }
 
 void SimulationData::dumpGlue(std::string name) {

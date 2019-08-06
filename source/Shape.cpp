@@ -303,6 +303,7 @@ void Shape::computeForces()
 
   if(sim.dt <= 0) return;
 
+  #if 0
   if (sim._bDump && not sim.muteAll && bDumpSurface)
   {
     std::stringstream ssF; ssF<<sim.path2file<<"/surface_"<<obstacleID
@@ -312,6 +313,17 @@ void Shape::computeForces()
       block->print(pFile);
     pFile.close();
   }
+  #else
+  if (sim._bDump && not sim.muteAll && bDumpSurface)
+  {
+    std::stringstream ssF; ssF<<sim.path2file<<"/surface_"<<obstacleID
+      <<"_"<<std::setfill('0')<<std::setw(7)<<sim.step<<".csv";
+    std::ofstream pFile(ssF.str().c_str(), std::ofstream::out);
+    for(auto & block : obstacleBlocks) if(block not_eq nullptr)
+      block->printCSV(pFile);
+    pFile.close();
+  }
+  #endif
 
   if(not sim.muteAll)
   {

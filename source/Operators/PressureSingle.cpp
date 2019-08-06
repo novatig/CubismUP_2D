@@ -248,7 +248,7 @@ void PressureSingle::pressureCorrection(const double dt) const
 
 void PressureSingle::operator()(const double dt)
 {
-  sim.startProfiler("integrateMomenta");
+  sim.startProfiler("integrateMoms");
   for(Shape * const shape : sim.shapes) {
     integrateMomenta(shape);
     shape->updateVelocity(dt);

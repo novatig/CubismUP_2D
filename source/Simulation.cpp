@@ -94,8 +94,8 @@ void Simulation::parseRuntime()
   sim.dlm = parser("-dlm").asDouble(0);
   sim.nu = parser("-nu").asDouble(1e-2);
 
-  sim.fadeLenX = parser("-fadeLen").asDouble(0.05) * sim.extent;
-  sim.fadeLenY = parser("-fadeLen").asDouble(0.05) * sim.extent;
+  sim.fadeLenX = parser("-fadeLen").asDouble(0.01) * sim.extent;
+  sim.fadeLenY = parser("-fadeLen").asDouble(0.01) * sim.extent;
 
   sim.verbose = parser("-verbose").asInt(1);
   sim.iterativePenalization = parser("-iterativePenalization").asInt(0);
@@ -299,7 +299,7 @@ bool Simulation::advance(const double dt)
 
   const bool bOver = sim.bOver();
 
-  if (bOver || (sim.step % 10 == 0 && sim.verbose) ) sim.printResetProfiler();
+  if (bOver || (sim.step % 50 == 0 && sim.verbose) ) sim.printResetProfiler();
 
   return bOver;
 }

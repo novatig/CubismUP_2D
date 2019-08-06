@@ -92,7 +92,7 @@ struct ObstacleBlock
     memset(udef, 0, sizeof(Real)*sizeX*sizeY*2);
   }
 
-  inline void write(const int ix, const int iy, const Real delta, const Real gradUX, const Real gradUY)
+  void write(const int ix, const int iy, const Real delta, const Real gradUX, const Real gradUY)
   {
     assert(!filled);
 
@@ -124,5 +124,14 @@ struct ObstacleBlock
         (float)vyDef[i], (float)surface[i]->dchidx, (float)surface[i]->dchidy};
       pFile.write((char*)buf, sizeof(float)*11);
     }
+  }
+
+  void printCSV(std::ofstream& pFile)
+  {
+    assert(filled);
+    for(size_t i=0; i<n_surfPoints; i++)
+      pFile<<pX[i]<<", "<<pY[i]<<", "<<P[i]<<", "<<fX[i]<<", "<<fY[i]<<", "
+           <<vx[i]<<", "<<vy[i]<<", "<<vxDef[i]<<", "<<vyDef[i]<<", "
+           <<surface[i]->dchidx<<", "<<surface[i]->dchidy<<"\n";
   }
 };
