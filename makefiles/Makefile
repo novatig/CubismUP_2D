@@ -115,20 +115,20 @@ all: simulation
 .DEFAULT: all;
 
 leadFollow: $(OBJECTS)
-	$(CXX) $(CPPFLAGS) -I${SMARTIES_INCLUDE} -c ../source/main_RL_2fish.cpp -o main_RL_2fish.o
-	$(LD) -o $@ $^ main_RL_2fish.o $(LIBS) -L${SMARTIES_LIB} -lsmarties
+	$(CXX) $(CPPFLAGS) -I${SMARTIES_INCLUDE} -c ../source/main_RL_$@.cpp -o main_RL_$@.o
+	$(LD) -o $@ $^ main_RL_$@.o $(LIBS) -L${SMARTIES_LIB} -lsmarties
 
 blowfish: $(OBJECTS)
-	$(CXX) $(CPPFLAGS) -I${SMARTIES_INCLUDE} -c ../source/main_RL_blowfish.cpp -o main_RL_blowfish.o
-	$(LD) -o $@ $^ main_RL_blowfish.o $(LIBS) -L${SMARTIES_LIB} -lsmarties
+	$(CXX) $(CPPFLAGS) -I${SMARTIES_INCLUDE} -c ../source/main_RL_$@.cpp -o main_RL_$@.o
+	$(LD) -o $@ $^ main_RL_$@.o $(LIBS) -L${SMARTIES_LIB} -lsmarties
 
 smartCyl: $(OBJECTS)
-	$(CXX) $(CPPFLAGS) -I${SMARTIES_INCLUDE} -c ../source/main_RL_smartCyl.cpp -o main_RL_smartCyl.o
-	$(LD) -o $@ $^ main_RL_smartCyl.o $(LIBS) -L${SMARTIES_LIB} -lsmarties
+	$(CXX) $(CPPFLAGS) -I${SMARTIES_INCLUDE} -c ../source/main_RL_$@.cpp -o main_RL_$@.o
+	$(LD) -o $@ $^ main_RL_$@.o $(LIBS) -L${SMARTIES_LIB} -lsmarties
 
 glider: $(OBJECTS)
-	$(CXX) $(CPPFLAGS) -I${SMARTIES_INCLUDE} -c ../source/main_RL_glider.cpp -o main_RL_glider.o
-	$(LD) -o $@ $^ main_RL_glider.o $(LIBS) -L${SMARTIES_LIB} -lsmarties
+	$(CXX) $(CPPFLAGS) -I${SMARTIES_INCLUDE} -c ../source/main_RL_$@.cpp -o main_RL_$@.o
+	$(LD) -o $@ $^ main_RL_$@.o $(LIBS) -L${SMARTIES_LIB} -lsmarties
 
 simulation: main.o $(OBJECTS)
 	$(LD) main.o $(OBJECTS) $(LIBS) -o $@
