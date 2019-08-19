@@ -10,7 +10,7 @@
 #include "PressureIterator_approx.h"
 #include "../Poisson/HYPREdirichletVarRho.h"
 #include "../Shape.h"
-#include "Utils/BufferedLogger.h"
+#include "../Utils/BufferedLogger.h"
 #include <stdio.h>
 
 using namespace cubism;

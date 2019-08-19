@@ -10,7 +10,7 @@
 #include "PressureIterator_unif.h"
 #include "../Poisson/PoissonSolver.h"
 #include "../Shape.h"
-#include "Utils/BufferedLogger.h"
+#include "../Utils/BufferedLogger.h"
 
 using namespace cubism;
 

@@ -52,7 +52,7 @@ CPPFLAGS+= -D_BS_=$(bs) -DCUBISM_ALIGNMENT=32 -DNTHREADS=$(nthreads)
 NVFLAGS+= -code=sm_60 -arch=compute_60
 
 BUILDDIR = .
-CPPFLAGS += -I../source/ -I$(BUILDDIR)/../Cubism/include/
+CPPFLAGS += -I$(BUILDDIR)/../Cubism/include/
 NVFLAGS += -I$(BUILDDIR)/../Cubism/include/
 SRC_DIR = $(BUILDDIR)/../source/
 DIRS = $(sort $(dir $(wildcard ../source/*/)))
@@ -99,11 +99,6 @@ ifneq "$(GSL_ROOT_DIR)" ""
 endif
 LIBS += -lgsl -lgslcblas
 
-ifneq "$(smarties)" "false"
-	SMARTIESDIR ?= ../../smarties/source/
-	CPPFLAGS += -I$(SMARTIESDIR)/
-endif
-
 ifneq "$(hdf)" "false"
   ifneq ($(HDF5_ROOT),)
   else ifneq ($(HDF5ROOT),)
@@ -119,17 +114,21 @@ endif
 all: simulation
 .DEFAULT: all;
 
-leadFollow: main_RL_2fish.o $(OBJECTS)
-	ar rs libsimulation.a $^
+leadFollow: $(OBJECTS)
+	$(CXX) $(CPPFLAGS) -I${SMARTIES_INCLUDE} -c ../source/main_RL_2fish.cpp -o main_RL_2fish.o
+	$(LD) -o $@ $^ main_RL_2fish.o $(LIBS) -L${SMARTIES_LIB} -lsmarties
 
-blowfish: main_RL_blowfish.o $(OBJECTS)
-	ar rs libsimulation.a $^
+blowfish: $(OBJECTS)
+	$(CXX) $(CPPFLAGS) -I${SMARTIES_INCLUDE} -c ../source/main_RL_blowfish.cpp -o main_RL_blowfish.o
+	$(LD) -o $@ $^ main_RL_blowfish.o $(LIBS) -L${SMARTIES_LIB} -lsmarties
 
-smartCyl: main_RL_smartCyl.o $(OBJECTS)
-	ar rs libsimulation.a $^
+smartCyl: $(OBJECTS)
+	$(CXX) $(CPPFLAGS) -I${SMARTIES_INCLUDE} -c ../source/main_RL_smartCyl.cpp -o main_RL_smartCyl.o
+	$(LD) -o $@ $^ main_RL_smartCyl.o $(LIBS) -L${SMARTIES_LIB} -lsmarties
 
-glider: main_RL_glider.o $(OBJECTS)
-	ar rs libsimulation.a $^
+glider: $(OBJECTS)
+	$(CXX) $(CPPFLAGS) -I${SMARTIES_INCLUDE} -c ../source/main_RL_glider.cpp -o main_RL_glider.o
+	$(LD) -o $@ $^ main_RL_glider.o $(LIBS) -L${SMARTIES_LIB} -lsmarties
 
 simulation: main.o $(OBJECTS)
 	$(LD) main.o $(OBJECTS) $(LIBS) -o $@

@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "ObstacleBlock.h"
+#include "../ObstacleBlock.h"
 #include "../Operator.h"
 
 struct FishSkin
