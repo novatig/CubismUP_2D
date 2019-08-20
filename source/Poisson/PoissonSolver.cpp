@@ -18,7 +18,7 @@
 #endif
 
 using namespace cubism;
-static constexpr double EPS = std::numeric_limits<double>::epsilon();
+static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
 
 PoissonSolver * PoissonSolver::makeSolver(SimulationData& sim)
 {

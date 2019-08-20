@@ -296,8 +296,8 @@ void Shape::computeForces()
   //derived quantities:
   Pthrust    = thrust * std::sqrt(u*u + v*v);
   Pdrag      =   drag * std::sqrt(u*u + v*v);
-  const Real denUnb = Pthrust- std::min(defPower, (double)0);
-  const Real demBnd = Pthrust-          defPowerBnd;
+  const double denUnb = Pthrust- std::min(defPower, (double)0);
+  const double demBnd = Pthrust-          defPowerBnd;
   EffPDef    = Pthrust/std::max(denUnb, EPS);
   EffPDefBnd = Pthrust/std::max(demBnd, EPS);
 

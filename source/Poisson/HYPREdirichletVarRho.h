@@ -27,10 +27,13 @@ class HYPREdirichletVarRho : public PoissonSolver
   HYPRE_StructSolver   hypre_solver;
   HYPRE_StructSolver   hypre_precond;
   #endif
+  #ifdef _FLOAT_PRECISION_
+    double * dbuffer;
+  #endif
 
  public:
   bool bUpdateMat = true;
-  using RowType = Real[5];
+  using RowType = double[5];
   RowType * matAry = new RowType[totNy*totNx];
 
   void solve(const std::vector<cubism::BlockInfo>& BSRC,

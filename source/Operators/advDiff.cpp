@@ -37,7 +37,7 @@ void advDiff::operator()(const double dt)
 {
   sim.startProfiler("advDiff");
   static constexpr int BSX = VectorBlock::sizeX, BSY = VectorBlock::sizeY;
-  static constexpr double EPS = std::numeric_limits<Real>::epsilon();
+  static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
   static constexpr int BX=0, EX=BSX-1, BY=0, EY=BSY-1;
   const auto isW = [&](const BlockInfo&I) { return I.index[0] == 0;          };
   const auto isE = [&](const BlockInfo&I) { return I.index[0] == sim.bpdx-1; };

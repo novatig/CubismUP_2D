@@ -13,7 +13,7 @@
 
 using namespace cubism;
 
-static constexpr double EPS = std::numeric_limits<double>::epsilon();
+static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
 using CHI_MAT = Real[VectorBlock::sizeY][VectorBlock::sizeX];
 using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];
 

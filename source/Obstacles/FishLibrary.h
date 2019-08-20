@@ -46,9 +46,9 @@ struct FishData
   const Real amplitudeFactor;
 
   // Midline is discretized by more points in first fraction and last fraction:
-  const double fracRefined = 0.1, fracMid = 1 - 2*fracRefined;
-  const double dSmid_tgt = h / std::sqrt(2);
-  const double dSrefine_tgt = 0.125 * h;
+  const Real fracRefined = 0.1, fracMid = 1 - 2*fracRefined;
+  const Real dSmid_tgt = h / std::sqrt(2);
+  const Real dSrefine_tgt = 0.125 * h;
 
   const int Nmid = (int)std::ceil(length * fracMid / dSmid_tgt / 8) * 8;
   const Real dSmid = length * fracMid / Nmid;
@@ -129,18 +129,18 @@ struct FishData
   FishData(Real L, Real Tp, Real phi, Real _h, const Real A=1);
   virtual ~FishData();
 
-  Real integrateLinearMomentum(double CoM[2], double vCoM[2]);
-  Real integrateAngularMomentum(double & angVel);
+  Real integrateLinearMomentum(Real CoM[2], Real vCoM[2]);
+  Real integrateAngularMomentum(Real & angVel);
 
-  void changeToCoMFrameLinear(const double CoM_internal[2], const double vCoM_internal[2]) const;
+  void changeToCoMFrameLinear(const Real CoM_internal[2], const Real vCoM_internal[2]) const;
   void changeToCoMFrameAngular(const Real theta_internal, const Real angvel_internal) const;
 
   void computeSurface() const;
   void surfaceToCOMFrame(const Real theta_internal,
                          const Real CoM_internal[2]) const;
   void surfaceToComputationalFrame(const Real theta_comp,
-                                   const Real CoM_interpolated[2]) const;
-  void computeSkinNormals(const Real theta_comp, const Real CoM_comp[3]) const;
+                                   const double CoM_interpolated[2]) const;
+  void computeSkinNormals(const Real theta_comp, const double CoM_comp[3]) const;
   void writeMidline2File(const int step_id, std::string filename);
 
   virtual void computeMidline(const Real time, const Real dt) = 0;

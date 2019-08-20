@@ -16,7 +16,7 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
 {
   #ifdef HYPREFFT
 
-  static constexpr double EPS = std::numeric_limits<double>::epsilon();
+  //static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
   const size_t nBlocks = BDST.size();
   HYPRE_Int ilower[2] = {0,0}, iupper[2] = {(int)totNx-1, (int)totNy-1};
 
@@ -40,12 +40,13 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
       const size_t blockStart = blocki + stride * blockj;
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-        buffer[blockStart + ix + stride*iy] = P(ix,iy).s; // 1)
+        dbuffer[blockStart + ix + stride*iy] = P(ix,iy).s; // 1)
     }
-    HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, buffer); // 3)
 
-    Real sumRHS = 0, sumABS = 0;
-    #pragma omp parallel for schedule(static) reduction(+ : sumRHS, sumABS)
+    HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, dbuffer); // 3)
+
+    //Real sumRHS = 0, sumABS = 0;
+    #pragma omp parallel for schedule(static) //reduction(+ : sumRHS, sumABS)
     for(size_t i=0; i<nBlocks; ++i) {
       const size_t blocki = VectorBlock::sizeX * BSRC[i].index[0];
       const size_t blockj = VectorBlock::sizeY * BSRC[i].index[1];
@@ -53,14 +54,14 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
       const size_t start = blocki + stride * blockj;
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix) { // 4)
-        buffer[start +ix +stride*iy] = RHS(ix,iy).s;
-        sumRHS +=           RHS(ix,iy).s;  // 2)
-        sumABS += std::fabs(RHS(ix,iy).s); // 2)
+        dbuffer[start +ix +stride*iy] = RHS(ix,iy).s;
+        //sumRHS +=           RHS(ix,iy).s;  // 2)
+        //sumABS += std::fabs(RHS(ix,iy).s); // 2)
       }
     }
 
     //printf("Relative RHS correction:%e\n", sumRHS/std::max(EPS,sumABS) );
-    HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, buffer); // 5)
+    HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, dbuffer); // 5)
   }
 
   if(not bPeriodic && 1) // 6)
@@ -102,9 +103,8 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
     #endif
   }
 
-  if(1) // 7)
-  {
-    Real * const linV = (Real*) matAry;
+  if(1) { // 7)
+    double * const linV = (double*) matAry;
     // These indices must match to those in the offset array:
     HYPRE_Int inds[5] = {0, 1, 2, 3, 4};
     HYPRE_StructMatrixSetBoxValues(hypre_mat, ilower, iupper, 5, inds, linV);
@@ -113,8 +113,7 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
 
   sim.stopProfiler();
 
-  if(0)
-  {
+  if(0) {
     char fname[512]; sprintf(fname, "RHS_%06d", sim.step);
     sim.dumpTmp2( std::string(fname) );
   }
@@ -132,23 +131,25 @@ void HYPREdirichletVarRho::solve(const std::vector<BlockInfo>& BSRC,
   sim.stopProfiler();
 
   sim.startProfiler("HYPRE_getBoxV");
-  HYPRE_StructVectorGetBoxValues(hypre_sol, ilower, iupper, buffer);
+  HYPRE_StructVectorGetBoxValues(hypre_sol, ilower, iupper, dbuffer);
   sim.stopProfiler();
 
   sim.startProfiler("HYPRE_sol2cub");
 
-  if(1) // remove mean pressure
-  {
-    Real avgP = 0;
-    const Real fac = 1.0 / (totNx * totNy);
+  if(1) { // remove mean pressure
+    double avgP = 0;
+    const double fac = 1.0 / (totNx * totNy);
     #pragma omp parallel for schedule(static) reduction(+ : avgP)
-    for (size_t i = 0; i < totNy*totNx; ++i) avgP += fac * buffer[i];
+    for (size_t i = 0; i < totNy*totNx; ++i) avgP += fac * dbuffer[i];
     #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < totNy*totNx; ++i) buffer[i] -= avgP;
+    for (size_t i = 0; i < totNy*totNx; ++i) dbuffer[i] -= avgP;
     printf("Average pressure:%e\n", avgP);
   }
 
-  sol2cub(BDST);
+  #ifdef _FLOAT_PRECISION_
+    std::copy(dbuffer, dbuffer + totNy*totNx, buffer);
+  #endif
+  sol2cub(BDST); // this will read buffer, which, if single prec, is not dbuffer
 
   sim.stopProfiler();
 
@@ -164,6 +165,11 @@ HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
 
   printf("Employing VarRho HYPRE-based Poisson solver with Dirichlet BCs.\n");
   buffer = new Real[totNy * totNx];
+  #ifdef _FLOAT_PRECISION_
+    dbuffer = new double[totNy * totNx];
+  #else
+    dbuffer = buffer;
+  #endif
   HYPRE_Int ilower[2] = {0,0}, iupper[2] = {(int)totNx-1, (int)totNy-1};
 
   const auto COMM = MPI_COMM_SELF;
@@ -210,8 +216,9 @@ HYPREdirichletVarRho::HYPREdirichletVarRho(SimulationData& s) :
 
   {
     memset(buffer, 0, totNx*totNy*sizeof(Real));
-    HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, buffer);
-    HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, buffer);
+    memset(dbuffer, 0, totNx*totNy*sizeof(double));
+    HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, dbuffer);
+    HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, dbuffer);
   }
 
   HYPRE_StructVectorAssemble(hypre_rhs);
@@ -318,6 +325,9 @@ HYPREdirichletVarRho::~HYPREdirichletVarRho()
   HYPRE_StructMatrixDestroy(hypre_mat);
   HYPRE_StructVectorDestroy(hypre_rhs);
   HYPRE_StructVectorDestroy(hypre_sol);
+  #ifdef _FLOAT_PRECISION_
+    delete [] dbuffer;
+  #endif
   delete [] buffer;
   delete [] matAry;
 

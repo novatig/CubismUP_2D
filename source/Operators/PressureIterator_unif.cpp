@@ -17,7 +17,7 @@ using namespace cubism;
 #define EXPL_INTEGRATE_MOM
 using CHI_MAT = Real[VectorBlock::sizeY][VectorBlock::sizeX];
 using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];
-static constexpr double EPS = std::numeric_limits<double>::epsilon();
+static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
 
 void PressureIterator_unif::updatePressureRHS(const double dt) const
 {
@@ -271,7 +271,7 @@ void PressureIterator_unif::operator()(const double dt)
   if(oldNsteps > 30) targetRelError = std::max({relDF, targetRelError});
   if(oldNsteps > 10) targetRelError *= 1.01;
   if(oldNsteps <= 2) targetRelError *= 0.99;
-  targetRelError = std::min(1e-3, std::max(1e-5, targetRelError));
+  targetRelError = std::min((Real)1e-3, std::max((Real)1e-5, targetRelError));
 
   if(not sim.muteAll)
   {

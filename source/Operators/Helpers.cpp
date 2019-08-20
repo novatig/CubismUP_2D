@@ -83,7 +83,7 @@ void IC::operator()(const double dt)
 
 void FadeOut::operator()(const double dt)
 {
-  static constexpr double EPS = std::numeric_limits<Real>::epsilon();
+  static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
   static constexpr int BSX = VectorBlock::sizeX, BSY = VectorBlock::sizeY;
   static constexpr int BX=0, EX=BSX-1, BY=0, EY=BSY-1;
   //const auto& extent = sim.extents; const Real H = sim.vel->getH();
