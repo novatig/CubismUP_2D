@@ -14,8 +14,112 @@ using namespace cubism;
 
 using CHI_MAT = Real[VectorBlock::sizeY][VectorBlock::sizeX];
 using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];
+static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
 
 //#define EXPL_INTEGRATE_MOM
+
+void UpdateObjects::preventCollidingObstacles() const
+{
+  const Real h = velInfo[k].h_gridpoint, invh = 1.0/h;
+  const std::vector<Shape*>& shapes = sim.shapes;
+  const size_t n = shapes.size();
+
+  // iterate over surface of the hittee to have normal of the 'wall'
+  // return normal and location of hit:
+  const auto findIntersect = [&] (const ObstacleBlock * const oHitter,
+                                  const ObstacleBlock * const oHittee,
+                                  const BlockInfo & info )
+  {
+    const CHI_MAT & chiEr  = oHitter->chi;
+    const auto& surfEe = oHittee->surface;
+    const int nSurfEe = surfEe.size();
+
+    Real intPx = 0, intPy = 0, intNorm = 0, intDchiX = 0, intDchiY = 0;
+
+    for(int k = 0; k < nSurfEe; ++k)
+    {
+      const int ix = surfEe[k]->ix, iy = surfEe[k]->iy;
+      if(chiEr[iy][ix] <= 0) continue;
+      const std::array<Real,2> pos = info.pos<Real>(ix, iy);
+      intDchiX += chiEr[iy][ix] * surfEe[k]->dchidx;
+      intDchiY += chiEr[iy][ix] * surfEe[k]->dchidy;
+      intPx    += chiEr[iy][ix] * surfEe[k]->delta * pos[0];
+      intPy    += chiEr[iy][ix] * surfEe[k]->delta * pos[1];
+      intNorm  += chiEr[iy][ix] * surfEe[k]->delta;
+    }
+    if(intNorm <= 0) return std::vector<Real> (0); // no hit
+    const Real normF = std::sqrt(intDchiX * intDchiX + intDchiY * intDchiY);
+    assert(normF>0 && "FATAL: if delta>0 also gradchi must be nonzero");
+    const Real NX = intDchiX / (normF+EPS), NY = intDchiY / (normF+EPS);
+    const Real PX = intPx/intNorm, PY = intPy/intNorm;
+    const std::array<Real,2> org = info.pos<Real>(0, 0);
+    const Real INDX = std::round(PX - org[0]) * invh;
+    const Real INDY = std::round(PY - org[1]) * invh;
+    assert(INDX>=0 && INDX<_BS_ && INDY>=0 && INDY<_BS_);
+    const std::vector<Real> {NX, NY, PX, PY, INDX, INDY};
+  };
+
+  #pragma omp parallel for schedule(static)
+  for (int i=0; i<N; ++i)
+  {
+    for (int j=0; j<N; ++j)
+    {
+      const auto& iBlocks = shapes[i]->obstacleBlocks;
+      const auto& jBlocks = shapes[j]->obstacleBlocks;
+      assert(iBlocks.size() == jBlocks.size());
+      const size_t nBlocks = iBlocks.size();
+
+      for (size_t k=0; k<nBlocks; ++k)
+      {
+        if ( iBlocks[k] == nullptr ) continue;
+        if ( jBlocks[k] == nullptr ) continue;
+        const auto collInfo = findIntersect(iBlocks[k], jBlocks[k], velInfo[k]);
+        if ( collInfo.size() == 0 ) continue;
+        assert(collInfo.size() == 6);
+
+        const Real NX = collInfo[0], NY = collInfo[1]; // collision normal
+        const Real CX = collInfo[2], CY = collInfo[3]; // collision point
+        const int INDX = collInfo[4], INDY = collInfo[5]; // coll block index
+
+        // compute linear, rotational, and total velocities for j and i
+        const Real iUl = shapes[i]->u, iVl = shapes[i]->v, iW =shapes[i]->omega;
+        const Real jUl = shapes[j]->u, jVl = shapes[j]->v, jW =shapes[j]->omega;
+        const UDEFMAT & iUDEF = iBlocks[k]->udef, & jUDEF = jBlocks[k]->udef;
+        const Real iDCx = CX - shapes[i]->centerOfMass[0];
+        const Real iDCy = CY - shapes[i]->centerOfMass[1];
+        const Real iUr = - iW * iDCy, iVr =   iW * iDCx;
+        const Real jUr = - jW * (CY - shapes[j]->centerOfMass[1]);
+        const Real jVr =   jW * (CX - shapes[j]->centerOfMass[0]);
+
+        const Real iUtot = iUl + iUr + iUDEF[INDY][INDX][0];
+        const Real iVtot = iVl + iVr + iUDEF[INDY][INDX][1];
+        const Real jUtot = jUl + jUr + jUDEF[INDY][INDX][0];
+        const Real jVtot = jVl + jVr + jUDEF[INDY][INDX][1];
+        const Real invNormal = 1 / (NX * NX + NY * NY + EPS);
+        // relVel of collider point (i) wrt to collided (j) point dot normal:
+        const Real projVel = ((iUtot-jUtot)*NX + (iVtot-jVtot)*NY) * invNormal;
+        if (projVel>=0) continue; // vel goes away from coll: no need to bounce
+        // we correct both rotation and translation: compute contributions
+        const Real projLin = (iUl-jUtot) * NX + (iVl-jVtot) * NY;
+        const Real projRot = (iUr-jUtot) * NX + (iVr-jVtot) * NY;
+        const Real facLin = - std::min(projLin, (Real) 0);
+        const Real facRot = - std::min(projRot, (Real) 0);
+        const Real Wlin = facLin / (facLin + facRot + EPS);
+        const Real Wrot = facRot / (facLin + facRot + EPS);
+        assert( facLin >= 0 && facRot >= 0 && Wlin >= && Wrot >= 0 );
+        if ( projLin < 0 ) { // lin velocity goes towards collision: bounce back
+          shapes[i]->u -= 2 * projVel * Wlin * NX;
+          shapes[i]->v -= 2 * projVel * Wlin * NY;
+        }
+        if ( projRot < 0 ) { // rot velocity goes towards collision: bounce back
+          const Real rdotr = iDCx * iDCx + iDCy * iDCy + EPS;
+          const Real rcrossn = iDCx * NY - iDCy * NX;
+          shapes[i]->omega -= 2 * projVel * Wrot * rcrossn / rdotr;
+        }
+      }
+    }
+  }
+}
 
 void UpdateObjects::integrateMomenta(Shape * const shape) const
 {
@@ -113,6 +217,7 @@ void UpdateObjects::operator()(const double dt)
     integrateMomenta(shape);
     shape->updateVelocity(dt);
   }
+  preventCollidingObstacles();
   penalize(dt);
   sim.stopProfiler();
 }

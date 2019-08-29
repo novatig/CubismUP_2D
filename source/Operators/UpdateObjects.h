@@ -21,7 +21,7 @@ class UpdateObjects : public Operator
   //const std::vector<BlockInfo>& tmpInfo   = sim.tmp->getBlocksInfo();
   void integrateMomenta(Shape * const shape) const;
   void penalize(const double dt) const;
-
+  void preventCollidingObstacles() const;
  public:
   UpdateObjects(SimulationData& s) : Operator(s) { }
 
