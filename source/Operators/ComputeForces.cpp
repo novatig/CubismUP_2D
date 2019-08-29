@@ -29,8 +29,8 @@ void ComputeForces::operator()(const double dt)
       const Real Cx = shape->centerOfMass[0], Cy = shape->centerOfMass[1];
       const Real vel_norm = std::sqrt(shape->u*shape->u + shape->v*shape->v);
       const Real vel_unit[2] = {
-        vel_norm>0? shape->u / vel_norm : (Real)0,
-        vel_norm>0? shape->v / vel_norm : (Real)0
+        vel_norm>0? (Real) shape->u / vel_norm : (Real)0,
+        vel_norm>0? (Real) shape->v / vel_norm : (Real)0
       };
 
       #pragma omp for schedule(static)

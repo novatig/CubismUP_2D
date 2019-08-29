@@ -20,6 +20,7 @@ struct SimulationData
 
   ScalarGrid * chi   = nullptr;
   VectorGrid * vel   = nullptr;
+  std::vector<size_t> boundaryInfoIDs;
 
   ScalarGrid * pres  = nullptr;
   ScalarGrid * pOld  = nullptr;

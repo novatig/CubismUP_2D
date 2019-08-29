@@ -15,7 +15,7 @@ void advDiffGrav::operator()(const double dt)
 {
   sim.startProfiler("advDiffGrav");
   static constexpr int BSX = VectorBlock::sizeX, BSY = VectorBlock::sizeY;
-  static constexpr double EPS = std::numeric_limits<Real>::epsilon();
+  static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
   static constexpr int BX=0, EX=BSX-1, BY=0, EY=BSY-1;
   const auto isW = [&](const BlockInfo&I) { return I.index[0] == 0; };
   const auto isE = [&](const BlockInfo&I) { return I.index[0] == sim.bpdx-1; };
@@ -23,7 +23,7 @@ void advDiffGrav::operator()(const double dt)
   const auto isN = [&](const BlockInfo&I) { return I.index[1] == sim.bpdy-1; };
 
   const Real UINF[2]= {sim.uinfx, sim.uinfy}, h = sim.getH();
-  const std::array<Real,2>& G = sim.gravity;
+  const std::array<Real,2> G = { (Real) sim.gravity[0], (Real) sim.gravity[1]};
   //const Real G[]= {sim.gravity[0],sim.gravity[1]};
   const Real dfac = (sim.nu/h)*(dt/h), afac = -0.5*dt/h;
   const Real norUinf = std::max({std::fabs(UINF[0]), std::fabs(UINF[1]), EPS});

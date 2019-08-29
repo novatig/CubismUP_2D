@@ -7,18 +7,18 @@
 //
 
 //#include "PoissonSolver.h"
-#include "../Poisson/FFTW_freespace.h"
+#include "FFTW_freespace.h"
 #ifdef HYPREFFT
-#include "../Poisson/HYPREdirichlet.h"
+#include "HYPREdirichlet.h"
 #endif
-#include "../Poisson/FFTW_dirichlet.h"
-#include "../Poisson/FFTW_periodic.h"
+#include "FFTW_dirichlet.h"
+#include "FFTW_periodic.h"
 #ifdef CUDAFFT
-#include "../Poisson/CUDA_all.h"
+#include "CUDA_all.h"
 #endif
 
 using namespace cubism;
-static constexpr double EPS = std::numeric_limits<double>::epsilon();
+static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
 
 PoissonSolver * PoissonSolver::makeSolver(SimulationData& sim)
 {

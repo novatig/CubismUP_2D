@@ -35,7 +35,10 @@ void HYPREdirichlet::solve(const std::vector<BlockInfo>& BSRC,
   }
 
   sim.startProfiler("HYPRE_setBoxV");
-  HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, buffer);
+  #ifdef _FLOAT_PRECISION_
+    std::copy(buffer, buffer + totNy*totNx, dbuffer);
+  #endif // else buffer == dbuffer
+  HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, dbuffer);
   sim.stopProfiler();
 
   sim.startProfiler("HYPRE_solve");
@@ -48,20 +51,22 @@ void HYPREdirichlet::solve(const std::vector<BlockInfo>& BSRC,
   sim.stopProfiler();
 
   sim.startProfiler("HYPRE_getBoxV");
-  HYPRE_StructVectorGetBoxValues(hypre_sol, ilower, iupper, buffer);
+  HYPRE_StructVectorGetBoxValues(hypre_sol, ilower, iupper, dbuffer);
+  #ifdef _FLOAT_PRECISION_
+    std::copy(dbuffer, dbuffer + totNy*totNx, buffer);
+  #endif
   sim.stopProfiler();
 
   sim.startProfiler("HYPRE_sol2cub");
   {
-    Real avgP = 0;
-    const Real fac = 1.0 / (totNx * totNy);
-    Real * const nxtGuess = buffer;
+    double avgP = 0;
+    const double fac = 1.0 / (totNx * totNy);
     #pragma omp parallel for schedule(static) reduction(+ : avgP)
-    for (size_t i = 0; i < totNy*totNx; i++) avgP += fac * nxtGuess[i];
+    for (size_t i = 0; i < totNy*totNx; i++) avgP += fac * dbuffer[i];
     #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < totNy*totNx; i++) nxtGuess[i] -= avgP;
-    HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, buffer);
-    pLast = buffer[totNx*totNy-1];
+    for (size_t i = 0; i < totNy*totNx; i++) dbuffer[i] -= avgP;
+    HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, dbuffer);
+    pLast = dbuffer[totNx*totNy-1];
     printf("Avg Pressure:%f\n", avgP);
   }
   sol2cub(BDST);
@@ -76,6 +81,11 @@ solver("smg")
 {
   printf("Employing HYPRE-based Poisson solver with Dirichlet BCs.\n");
   buffer = new Real[totNy * totNx];
+  #ifdef _FLOAT_PRECISION_
+    dbuffer = new double[totNy * totNx];
+  #else
+    dbuffer = buffer;
+  #endif
   HYPRE_Int ilower[2] = {0,0};
   HYPRE_Int iupper[2] = {(int)totNx-1, (int)totNy-1};
   const auto COMM = MPI_COMM_SELF;
@@ -113,12 +123,12 @@ solver("smg")
 
     // These indices must match to those in the offset array:
     HYPRE_Int inds[5] = {0, 1, 2, 3, 4};
-    using RowType = Real[5];
+    using RowType = double[5];
     RowType * vals = new RowType[totNy*totNx];
     #ifdef CONSISTENT
-      static constexpr Real COEF = 0.25;
+      static constexpr double COEF = 0.25;
     #else
-      static constexpr Real COEF = 1;
+      static constexpr double COEF = 1;
     #endif
 
     #pragma omp parallel for schedule(static)
@@ -191,7 +201,7 @@ solver("smg")
     }
     // TODO fix last dof for periodic BC
 
-    Real * const linV = (Real*) vals;
+    double * const linV = (double*) vals;
     HYPRE_StructMatrixSetBoxValues(hypre_mat, ilower, iupper, 5, inds, linV);
     delete [] vals;
     HYPRE_StructMatrixAssemble(hypre_mat);
@@ -206,9 +216,10 @@ solver("smg")
   HYPRE_StructVectorInitialize(hypre_sol);
 
   {
-    memset(buffer, 0, totNx*totNy*sizeof(Real));
-    HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, buffer);
-    HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, buffer);
+    memset(buffer, 0, totNx * totNy * sizeof(Real));
+    memset(dbuffer, 0, totNx * totNy * sizeof(double));
+    HYPRE_StructVectorSetBoxValues(hypre_rhs, ilower, iupper, dbuffer);
+    HYPRE_StructVectorSetBoxValues(hypre_sol, ilower, iupper, dbuffer);
   }
 
   HYPRE_StructVectorAssemble(hypre_rhs);
@@ -270,6 +281,9 @@ HYPREdirichlet::~HYPREdirichlet()
   HYPRE_StructMatrixDestroy(hypre_mat);
   HYPRE_StructVectorDestroy(hypre_rhs);
   HYPRE_StructVectorDestroy(hypre_sol);
+  #ifdef _FLOAT_PRECISION_
+    delete [] dbuffer;
+  #endif
   delete [] buffer;
 }
 

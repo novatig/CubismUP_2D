@@ -83,19 +83,19 @@ void FishData::_computeMidlineNormals() const
   vNorY[Nm-1] = vNorY[Nm-2];
 }
 
-Real FishData::integrateLinearMomentum(double CoM[2], double vCoM[2])
+Real FishData::integrateLinearMomentum(Real CoM[2], Real vCoM[2])
 {
   // already worked out the integrals for r, theta on paper
   // remaining integral done with composite trapezoidal rule
   // minimize rhs evaluations --> do first and last point separately
-  double _area=0, _cmx=0, _cmy=0, _lmx=0, _lmy=0;
+  Real _area=0, _cmx=0, _cmy=0, _lmx=0, _lmy=0;
   #pragma omp parallel for schedule(static) reduction(+:_area,_cmx,_cmy,_lmx,_lmy)
   for(int i=0; i<Nm; ++i)
   {
-    const double ds = (i==0) ? rS[1]-rS[0] :
+    const Real ds = (i==0) ? rS[1]-rS[0] :
         ((i==Nm-1) ? rS[Nm-1]-rS[Nm-2] :rS[i+1]-rS[i-1]);
-    const double fac1 = _integrationFac1(i);
-    const double fac2 = _integrationFac2(i);
+    const Real fac1 = _integrationFac1(i);
+    const Real fac2 = _integrationFac2(i);
     _area +=                        fac1 *ds/2;
     _cmx  += (rX[i]*fac1 +  norX[i]*fac2)*ds/2;
     _cmy  += (rY[i]*fac1 +  norY[i]*fac2)*ds/2;
@@ -116,27 +116,27 @@ Real FishData::integrateLinearMomentum(double CoM[2], double vCoM[2])
   return area;
 }
 
-Real FishData::integrateAngularMomentum(double& angVel)
+Real FishData::integrateAngularMomentum(Real& angVel)
 {
   // assume we have already translated CoM and vCoM to nullify linear momentum
   // already worked out the integrals for r, theta on paper
   // remaining integral done with composite trapezoidal rule
   // minimize rhs evaluations --> do first and last point separately
-  double _J = 0, _am = 0;
+  Real _J = 0, _am = 0;
   #pragma omp parallel for reduction(+:_J,_am) schedule(static)
   for(int i=0; i<Nm; ++i)
   {
-    const double ds =   (i==   0) ? rS[1]   -rS[0] :
+    const Real ds =   (i==   0) ? rS[1]   -rS[0] :
                     ( (i==Nm-1) ? rS[Nm-1]-rS[Nm-2]
                                 : rS[i+1] -rS[i-1] );
-    const double fac1 = _integrationFac1(i);
-    const double fac2 = _integrationFac2(i);
-    const double fac3 = _integrationFac3(i);
-    const double tmp_M = (rX[i]*vY[i] - rY[i]*vX[i])*fac1
+    const Real fac1 = _integrationFac1(i);
+    const Real fac2 = _integrationFac2(i);
+    const Real fac3 = _integrationFac3(i);
+    const Real tmp_M = (rX[i]*vY[i] - rY[i]*vX[i])*fac1
       + (rX[i]*vNorY[i] -rY[i]*vNorX[i] +vY[i]*norX[i] -vX[i]*norY[i])*fac2
       + (norX[i]*vNorY[i] - norY[i]*vNorX[i])*fac3;
 
-    const double tmp_J = (rX[i]*rX[i]   + rY[i]*rY[i]  )*fac1
+    const Real tmp_J = (rX[i]*rX[i]   + rY[i]*rY[i]  )*fac1
                    + 2*(rX[i]*norX[i] + rY[i]*norY[i])*fac2 + fac3;
 
     _am += tmp_M*ds/2;
@@ -149,8 +149,8 @@ Real FishData::integrateAngularMomentum(double& angVel)
   return J;
 }
 
-void FishData::changeToCoMFrameLinear(const double Cin[2],
-                                      const double vCin[2]) const
+void FishData::changeToCoMFrameLinear(const Real Cin[2],
+                                      const Real vCin[2]) const
 {
   #pragma omp parallel for schedule(static)
   for(int i=0;i<Nm;++i) { // subtract internal CM and vCM
@@ -194,7 +194,7 @@ void FishData::computeSurface() const
 }
 
 void FishData::computeSkinNormals(const Real theta_comp,
-                                  const Real CoM_comp[3]) const
+                                  const double CoM_comp[3]) const
 {
   const Real Rmatrix2D[2][2]={ { std::cos(theta_comp),-std::sin(theta_comp)},
                                { std::sin(theta_comp), std::cos(theta_comp)} };
@@ -273,7 +273,7 @@ void FishData::surfaceToCOMFrame(const Real theta_internal,
 }
 
 void FishData::surfaceToComputationalFrame(const Real theta_comp,
-                                           const Real CoM_interpolated[2]) const
+                                           const double CoM_interpolated[2]) const
 {
   const Real Rmatrix2D[2][2] = {
     { std::cos(theta_comp),-std::sin(theta_comp)},
@@ -548,10 +548,20 @@ void PutFishOnBlocks::constructSurface(const BlockInfo& info, ScalarBlock& b,
           }
 
           if(std::fabs(o->dist[sy][sx]) > dist1) {
-            o->udef[sy][sx][0] = udef[0];
-            o->udef[sy][sx][1] = udef[1];
-            o->dist[sy][sx] = sign2d*dist1;
-            o->chi [sy][sx] = 1;
+            assert(dist1 < std::pow(3 * h, 2));
+            const Real W = 1 - std::sqrt(dist1) * (invh / 3);
+            // W behaves like hat interpolation kernel that is used for internal
+            // fish points. Introducing W (used to be W=1) smoothens transition
+            // from surface to internal points. In fact, later we plus equal
+            // udef*hat of internal points. If hat>0, point should behave like
+            // internal point, meaning that fish-section udef rotation should
+            // multiply distance from midline instead of entire half-width.
+            // Remember that uder will become udef / chi, so W simplifies out.
+            assert(W > 0);
+            o->udef[sy][sx][0] = W * udef[0];
+            o->udef[sy][sx][1] = W * udef[1];
+            o->dist[sy][sx] = sign2d * dist1;
+            o->chi [sy][sx] = W;
             o->rho [sy][sx] = 1;
           }
           // Not chi yet, I stored squared distance from analytical boundary

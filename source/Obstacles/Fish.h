@@ -18,9 +18,9 @@ class Fish: public Shape
  public:
   const Real length, Tperiod, phaseShift;
  protected:
-  double area_internal = 0, J_internal = 0;
-  double CoM_internal[2] ={0,0}, vCoM_internal[2] ={0,0};
-  double theta_internal = 0, angvel_internal = 0, angvel_internal_prev = 0;
+  Real area_internal = 0, J_internal = 0;
+  Real CoM_internal[2] = {0, 0}, vCoM_internal[2] = {0, 0};
+  Real theta_internal = 0, angvel_internal = 0, angvel_internal_prev = 0;
 
   FishData * myFish = nullptr;
   //void apply_pid_corrections();

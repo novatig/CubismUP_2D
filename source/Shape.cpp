@@ -296,13 +296,14 @@ void Shape::computeForces()
   //derived quantities:
   Pthrust    = thrust * std::sqrt(u*u + v*v);
   Pdrag      =   drag * std::sqrt(u*u + v*v);
-  const Real denUnb = Pthrust- std::min(defPower, (double)0);
-  const Real demBnd = Pthrust-          defPowerBnd;
+  const double denUnb = Pthrust- std::min(defPower, (double)0);
+  const double demBnd = Pthrust-          defPowerBnd;
   EffPDef    = Pthrust/std::max(denUnb, EPS);
   EffPDefBnd = Pthrust/std::max(demBnd, EPS);
 
   if(sim.dt <= 0) return;
 
+  #if 0
   if (sim._bDump && not sim.muteAll && bDumpSurface)
   {
     std::stringstream ssF; ssF<<sim.path2file<<"/surface_"<<obstacleID
@@ -312,6 +313,17 @@ void Shape::computeForces()
       block->print(pFile);
     pFile.close();
   }
+  #else
+  if (sim._bDump && not sim.muteAll && bDumpSurface)
+  {
+    std::stringstream ssF; ssF<<sim.path2file<<"/surface_"<<obstacleID
+      <<"_"<<std::setfill('0')<<std::setw(7)<<sim.step<<".csv";
+    std::ofstream pFile(ssF.str().c_str(), std::ofstream::out);
+    for(auto & block : obstacleBlocks) if(block not_eq nullptr)
+      block->printCSV(pFile);
+    pFile.close();
+  }
+  #endif
 
   if(not sim.muteAll)
   {

@@ -13,7 +13,7 @@
 
 using namespace cubism;
 
-static constexpr double EPS = std::numeric_limits<double>::epsilon();
+static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
 using CHI_MAT = Real[VectorBlock::sizeY][VectorBlock::sizeX];
 using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];
 
@@ -248,7 +248,7 @@ void PressureSingle::pressureCorrection(const double dt) const
 
 void PressureSingle::operator()(const double dt)
 {
-  sim.startProfiler("integrateMomenta");
+  sim.startProfiler("integrateMoms");
   for(Shape * const shape : sim.shapes) {
     integrateMomenta(shape);
     shape->updateVelocity(dt);
