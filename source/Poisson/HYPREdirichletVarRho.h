@@ -27,9 +27,7 @@ class HYPREdirichletVarRho : public PoissonSolver
   HYPRE_StructSolver   hypre_solver;
   HYPRE_StructSolver   hypre_precond;
   #endif
-  #ifdef _FLOAT_PRECISION_
-    double * dbuffer;
-  #endif
+  double * dbuffer;
 
  public:
   bool bUpdateMat = true;

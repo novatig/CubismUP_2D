@@ -50,8 +50,10 @@ void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const
         }
         else
         {
-          const double distPx = SDIST(ix+1,iy  ).s, distMx = SDIST(ix-1,iy  ).s;
-          const double distPy = SDIST(ix  ,iy+1).s, distMy = SDIST(ix  ,iy-1).s;
+          const double distPx = ix+1 == _BS_ ? SDIST(ix+1,iy).s : sdf[iy][ix+1];
+          const double distMx = ix   == 0    ? SDIST(ix-1,iy).s : sdf[iy][ix-1];
+          const double distPy = iy+1 == _BS_ ? SDIST(ix,iy+1).s : sdf[iy+1][ix];
+          const double distMy = iy   == 0    ? SDIST(ix,iy-1).s : sdf[iy-1][ix];
           const double IplusX = distPx<0? 0:distPx, IminuX = distMx<0? 0:distMx;
           const double IplusY = distPy<0? 0:distPy, IminuY = distMy<0? 0:distMy;
 
@@ -84,10 +86,10 @@ void PutObjectsOnGrid::putChiOnGrid(Shape * const shape) const
         if (ssdf > +2*h || ssdf < -2*h) continue; // no need to compute gradChi
 
         {
-          const double distPx = SDIST(ix+1,iy  ).s + shift;
-          const double distMx = SDIST(ix-1,iy  ).s + shift;
-          const double distPy = SDIST(ix  ,iy+1).s + shift;
-          const double distMy = SDIST(ix  ,iy-1).s + shift;
+          const double distPx = (ix+1==_BS_? SDIST(ix+1,iy).s : sdf[iy][ix+1]) + shift;
+          const double distMx = (ix  ==0   ? SDIST(ix-1,iy).s : sdf[iy][ix-1]) + shift;
+          const double distPy = (iy+1==_BS_? SDIST(ix,iy+1).s : sdf[iy+1][ix]) + shift;
+          const double distMy = (iy  ==0   ? SDIST(ix,iy-1).s : sdf[iy-1][ix]) + shift;
 
           const auto HplusX = std::fabs(distPx)<EPS? (double).5 :(distPx<0?0:1);
           const auto HminuX = std::fabs(distMx)<EPS? (double).5 :(distMx<0?0:1);

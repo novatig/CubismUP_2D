@@ -246,6 +246,106 @@ void PressureSingle::pressureCorrection(const double dt) const
   }
 }
 
+void PressureSingle::preventCollidingObstacles() const
+{
+  const Real h = velInfo[0].h_gridpoint, invh = 1.0/h;
+  const std::vector<Shape*>& shapes = sim.shapes;
+  const size_t N = shapes.size();
+
+  // iterate over surface of the hittee to have normal of the 'wall'
+  // return normal and location of hit:
+  const auto findIntersect = [&] (const ObstacleBlock * const oHitter,
+                                  const ObstacleBlock * const oHittee,
+                                  const BlockInfo & info )
+  {
+    const CHI_MAT & chiEr  = oHitter->chi;
+    const CHI_MAT & chiEe  = oHittee->chi;
+
+    Real MXer = 0, MYer = 0, MXee = 0, MYee = 0;
+    Real Mer = 0, Mee = 0;
+    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+    for(int ix=0; ix<VectorBlock::sizeX; ++ix)
+    {
+      if(chiEr[iy][ix] <= 0) continue;
+      if(chiEe[iy][ix] <= 0) continue;
+      const auto pos = info.pos<Real>(ix, iy);
+      MXee += chiEe[iy][ix] * pos[0];
+      MYee += chiEe[iy][ix] * pos[1];
+      Mee  += chiEe[iy][ix];
+      MXer += chiEr[iy][ix] * pos[0];
+      MYer += chiEr[iy][ix] * pos[1];
+      Mer  += chiEr[iy][ix];
+    }
+    // less than one fluid element of overlap: wait to get closer. no hit
+    if(Mer < 1 || Mee < 1) return std::vector<Real>();
+    const Real PXer = MXer/Mer, PXee = MXee/Mee;
+    const Real PYer = MYer/Mer, PYee = MYee/Mee;
+    const Real PX = (PXer+PXee)/2, PY = (PYer+PYee)/2;
+    const Real dirX = (PXer-PXee), dirY = (PYer-PYee);
+    const Real normF = std::max(std::sqrt(dirX * dirX + dirY * dirY), EPS);
+    const Real NX = dirX / normF, NY = dirY / normF;
+    const std::array<Real,2> org = info.pos<Real>(0, 0);
+    const Real INDX = std::round((PX - org[0]) * invh);
+    const Real INDY = std::round((PY - org[1]) * invh);
+    assert(INDX>=0 && INDX<_BS_ && INDY>=0 && INDY<_BS_);
+    return std::vector<Real> {NX, NY, PX, PY, INDX, INDY};
+  };
+
+  #pragma omp parallel for schedule(static)
+  for (size_t i=0; i<N; ++i)
+  {
+    for (size_t j=0; j<N; ++j)
+    {
+      if(i==j) continue;
+      const auto& iBlocks = shapes[i]->obstacleBlocks;
+      const auto& jBlocks = shapes[j]->obstacleBlocks;
+      assert(iBlocks.size() == jBlocks.size());
+      const size_t nBlocks = iBlocks.size();
+
+      for (size_t k=0; k<nBlocks; ++k)
+      {
+        if ( iBlocks[k] == nullptr ) continue;
+        if ( jBlocks[k] == nullptr ) continue;
+        const auto collInfo = findIntersect(iBlocks[k], jBlocks[k], velInfo[k]);
+        if ( collInfo.size() == 0 )  continue;
+        assert(collInfo.size() == 6);
+
+        const Real NX = collInfo[0], NY = collInfo[1]; // collision normal
+        const Real CX = collInfo[2], CY = collInfo[3]; // collision point
+        const int INDX = collInfo[4], INDY = collInfo[5]; // coll block index
+        printf("%lu hit %lu in [%f %f] (block index %d %d) with dir [%f %f]\n",
+         i, j, CX, CY, INDX, INDY, NX, NY); fflush(0);
+        // compute linear, rotational, and total velocities for j and i
+        const Real iUl = shapes[i]->u, iVl = shapes[i]->v, iW =shapes[i]->omega;
+        const Real jUl = shapes[j]->u, jVl = shapes[j]->v, jW =shapes[j]->omega;
+        const UDEFMAT & iUDEF = iBlocks[k]->udef, & jUDEF = jBlocks[k]->udef;
+        const Real iDCx = CX - shapes[i]->centerOfMass[0];
+        const Real iDCy = CY - shapes[i]->centerOfMass[1];
+        const Real iUr = - iW * iDCy, iVr =   iW * iDCx;
+        const Real jUr = - jW * (CY - shapes[j]->centerOfMass[1]);
+        const Real jVr =   jW * (CX - shapes[j]->centerOfMass[0]);
+
+        const Real iUtot = iUl + iUr + iUDEF[INDY][INDX][0];
+        const Real iVtot = iVl + iVr + iUDEF[INDY][INDX][1];
+        const Real jUtot = jUl + jUr + jUDEF[INDY][INDX][0];
+        const Real jVtot = jVl + jVr + jUDEF[INDY][INDX][1];
+
+        const Real hitVelX = jUtot - iUtot, hitVelY = jVtot - iVtot;
+        const Real projVel = hitVelX * NX + hitVelY * NY;
+        if(projVel<=0) continue; // vel goes away from coll: no need to bounce
+        // Force_i_bounce _from_j = HARMONIC_MEAN_MASS * (Uj - Ui) / dt
+        const Real meanMass = 2 / (1/shapes[i]->M + 1/shapes[j]->M);
+        // TODO : shear component
+        const Real hitUnorm = projVel * NX, hitVnorm = projVel * NY;
+        shapes[i]->u += meanMass/shapes[i]->M * hitUnorm;
+        shapes[i]->v += meanMass/shapes[i]->M * hitVnorm;
+        const Real RcrossF = iDCx * hitVnorm - iDCy * hitUnorm;
+        shapes[i]->omega += meanMass/shapes[i]->J * RcrossF;
+      }
+    }
+  }
+}
+
 void PressureSingle::operator()(const double dt)
 {
   sim.startProfiler("integrateMoms");
@@ -253,6 +353,7 @@ void PressureSingle::operator()(const double dt)
     integrateMomenta(shape);
     shape->updateVelocity(dt);
   }
+  preventCollidingObstacles();
   sim.stopProfiler();
 
   sim.startProfiler("Prhs");

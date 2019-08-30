@@ -3,13 +3,6 @@ compiler ?= gnu
 else
 compiler ?= intel
 endif
-ifeq "$(compiler)" "intel"
-CXX ?= icpc
-include make.icc.flags
-else
-CXX ?= g++
-include make.gcc.flags
-endif
 
 NVCC ?= nvcc
 
@@ -19,6 +12,14 @@ hdf5 ?= true
 config ?= production
 precision ?= double
 smarties ?= false
+
+ifeq "$(compiler)" "intel"
+CXX ?= icpc
+include make.icc.flags
+else
+CXX ?= g++
+include make.gcc.flags
+endif
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
