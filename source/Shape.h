@@ -38,6 +38,7 @@ class Shape
   const double forcedv;
   const double forcedomega;
   const bool bDumpSurface;
+  const double timeForced;
 
   double M = 0;
   double J = 0;

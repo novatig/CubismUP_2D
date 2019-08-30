@@ -20,101 +20,105 @@ static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
 
 void UpdateObjects::preventCollidingObstacles() const
 {
-  const Real h = velInfo[0].h_gridpoint, invh = 1.0/h;
   const std::vector<Shape*>& shapes = sim.shapes;
   const size_t N = shapes.size();
 
-  // iterate over surface of the hittee to have normal of the 'wall'
-  // return normal and location of hit:
-  const auto findIntersect = [&] (const ObstacleBlock * const oHitter,
-                                  const ObstacleBlock * const oHittee,
-                                  const BlockInfo & info )
+  struct CollisionInfo // hitter and hittee, symmetry but we do things twice
   {
-    const CHI_MAT & chiEr  = oHitter->chi;
-    const CHI_MAT & chiEe  = oHittee->chi;
-
-    Real MXer = 0, MYer = 0, MXee = 0, MYee = 0;
-    Real Mer = 0, Mee = 0;
-    for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-    for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-    {
-      if(chiEr[iy][ix] <= 0) continue;
-      if(chiEe[iy][ix] <= 0) continue;
-      const auto pos = info.pos<Real>(ix, iy);
-      MXee += chiEe[iy][ix] * pos[0];
-      MYee += chiEe[iy][ix] * pos[1];
-      Mee  += chiEe[iy][ix];
-      MXer += chiEr[iy][ix] * pos[0];
-      MYer += chiEr[iy][ix] * pos[1];
-      Mer  += chiEr[iy][ix];
-    }
-    // less than one fluid element of overlap: wait to get closer. no hit
-    if(Mer < 1 || Mee < 1) return std::vector<Real>();
-    const Real PXer = MXer/Mer, PXee = MXee/Mee;
-    const Real PYer = MYer/Mer, PYee = MYee/Mee;
-    const Real PX = (PXer+PXee)/2, PY = (PYer+PYee)/2;
-    const Real dirX = (PXer-PXee), dirY = (PYer-PYee);
-    const Real normF = std::max(std::sqrt(dirX * dirX + dirY * dirY), EPS);
-    const Real NX = dirX / normF, NY = dirY / normF;
-    const std::array<Real,2> org = info.pos<Real>(0, 0);
-    const Real INDX = std::round((PX - org[0]) * invh);
-    const Real INDY = std::round((PY - org[1]) * invh);
-    assert(INDX>=0 && INDX<_BS_ && INDY>=0 && INDY<_BS_);
-    return std::vector<Real> {NX, NY, PX, PY, INDX, INDY};
+    Real iM = 0, iPosX = 0, iPosY = 0, iMomX = 0, iMomY = 0;
+    Real jM = 0, jPosX = 0, jPosY = 0, jMomX = 0, jMomY = 0;
   };
+  std::vector<CollisionInfo> collisions(N);
 
   #pragma omp parallel for schedule(static)
   for (size_t i=0; i<N; ++i)
+  for (size_t j=0; j<N; ++j)
   {
-    for (size_t j=0; j<N; ++j)
+    if(i==j) continue;
+    auto & coll = collisions[i];
+    const auto& iBlocks = shapes[i]->obstacleBlocks;
+    const auto& jBlocks = shapes[j]->obstacleBlocks;
+    const Real iUl = shapes[i]->u, iVl = shapes[i]->v, iW = shapes[i]->omega;
+    const Real jUl = shapes[j]->u, jVl = shapes[j]->v, jW = shapes[j]->omega;
+    const Real iCx =shapes[i]->centerOfMass[0], iCy =shapes[i]->centerOfMass[1];
+    const Real jCx =shapes[j]->centerOfMass[0], jCy =shapes[j]->centerOfMass[1];
+
+    assert(iBlocks.size() == jBlocks.size());
+    const size_t nBlocks = iBlocks.size();
+
+    for (size_t k=0; k<nBlocks; ++k)
     {
-      if(i==j) continue;
-      const auto& iBlocks = shapes[i]->obstacleBlocks;
-      const auto& jBlocks = shapes[j]->obstacleBlocks;
-      assert(iBlocks.size() == jBlocks.size());
-      const size_t nBlocks = iBlocks.size();
+      if ( iBlocks[k] == nullptr || jBlocks[k] == nullptr ) continue;
 
-      for (size_t k=0; k<nBlocks; ++k)
+      const CHI_MAT & iChi  = iBlocks[k]->chi,  & jChi  = jBlocks[k]->chi;
+      const UDEFMAT & iUDEF = iBlocks[k]->udef, & jUDEF = jBlocks[k]->udef;
+
+      for(int iy=0; iy<VectorBlock::sizeY; ++iy)
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
-        if ( iBlocks[k] == nullptr ) continue;
-        if ( jBlocks[k] == nullptr ) continue;
-        const auto collInfo = findIntersect(iBlocks[k], jBlocks[k], velInfo[k]);
-        if ( collInfo.size() == 0 )  continue;
-        assert(collInfo.size() == 6);
+        if(iChi[iy][ix] <= 0 || jChi[iy][ix] <= 0 ) continue;
 
-        const Real NX = collInfo[0], NY = collInfo[1]; // collision normal
-        const Real CX = collInfo[2], CY = collInfo[3]; // collision point
-        const int INDX = collInfo[4], INDY = collInfo[5]; // coll block index
-        printf("%lu hit %lu in [%f %f] (block index %d %d) with dir [%f %f]\n",
-         i, j, CX, CY, INDX, INDY, NX, NY); fflush(0);
-        // compute linear, rotational, and total velocities for j and i
-        const Real iUl = shapes[i]->u, iVl = shapes[i]->v, iW =shapes[i]->omega;
-        const Real jUl = shapes[j]->u, jVl = shapes[j]->v, jW =shapes[j]->omega;
-        const UDEFMAT & iUDEF = iBlocks[k]->udef, & jUDEF = jBlocks[k]->udef;
-        const Real iDCx = CX - shapes[i]->centerOfMass[0];
-        const Real iDCy = CY - shapes[i]->centerOfMass[1];
-        const Real iUr = - iW * iDCy, iVr =   iW * iDCx;
-        const Real jUr = - jW * (CY - shapes[j]->centerOfMass[1]);
-        const Real jVr =   jW * (CX - shapes[j]->centerOfMass[0]);
-
-        const Real iUtot = iUl + iUr + iUDEF[INDY][INDX][0];
-        const Real iVtot = iVl + iVr + iUDEF[INDY][INDX][1];
-        const Real jUtot = jUl + jUr + jUDEF[INDY][INDX][0];
-        const Real jVtot = jVl + jVr + jUDEF[INDY][INDX][1];
-
-        const Real hitVelX = jUtot - iUtot, hitVelY = jVtot - iVtot;
-        const Real projVel = hitVelX * NX + hitVelY * NY;
-        if(projVel<=0) continue; // vel goes away from coll: no need to bounce
-        // Force_i_bounce _from_j = HARMONIC_MEAN_MASS * (Uj - Ui) / dt
-        const Real meanMass = 2 / (1/shapes[i]->M + 1/shapes[j]->M);
-        // TODO : shear component
-        const Real hitUnorm = projVel * NX, hitVnorm = projVel * NY;
-        shapes[i]->u += meanMass/shapes[i]->M * hitUnorm;
-        shapes[i]->v += meanMass/shapes[i]->M * hitVnorm;
-        const Real RcrossF = iDCx * hitVnorm - iDCy * hitUnorm;
-        shapes[i]->omega += meanMass/shapes[i]->J * RcrossF;
+        const auto pos = velInfo[k].pos<Real>(ix, iy);
+        const Real iUr = - iW * (pos[1] - iCy), iVr =   iW * (pos[0] - iCx);
+        const Real jUr = - jW * (pos[1] - jCy), jVr =   jW * (pos[0] - jCx);
+        coll.iM    += iChi[iy][ix];
+        coll.iPosX += iChi[iy][ix] * pos[0];
+        coll.iPosY += iChi[iy][ix] * pos[1];
+        coll.iMomX += iChi[iy][ix] * (iUl + iUr + iUDEF[iy][ix][0]);
+        coll.iMomY += iChi[iy][ix] * (iVl + iVr + iUDEF[iy][ix][1]);
+        coll.jM    += jChi[iy][ix];
+        coll.jPosX += jChi[iy][ix] * pos[0];
+        coll.jPosY += jChi[iy][ix] * pos[1];
+        coll.jMomX += jChi[iy][ix] * (jUl + jUr + jUDEF[iy][ix][0]);
+        coll.jMomY += jChi[iy][ix] * (jVl + jVr + jUDEF[iy][ix][1]);
       }
     }
+  }
+
+  #pragma omp parallel for schedule(static)
+  for (size_t i=0; i<N; ++i)
+  for (size_t j=0; j<N; ++j)
+  {
+    if(i==j) continue;
+    auto & coll = collisions[i];
+
+    // less than one fluid element of overlap: wait to get closer. no hit
+    if(coll.iM < 1 || coll.jM < 1) continue;
+    const Real iPX = coll.iPosX / coll.iM, iPY = coll.iPosY / coll.iM;
+    const Real iUX = coll.iMomX / coll.iM, iUY = coll.iMomY / coll.iM;
+    const Real jPX = coll.jPosX / coll.jM, jPY = coll.jPosY / coll.jM;
+    const Real jUX = coll.jMomX / coll.jM, jUY = coll.jMomY / coll.jM;
+    const Real CX = (iPX+jPX)/2, CY = (iPY+jPY)/2;
+    const Real dirX = iPX - jPX, dirY = iPY - jPY;
+    const Real hitVelX = jUX - iUX, hitVelY = jUY - iUY;
+    const Real normF = std::max(std::sqrt(dirX*dirX + dirY*dirY), EPS);
+    const Real NX = dirX / normF, NY = dirY / normF; // collision normal
+    const Real projVel = hitVelX * NX + hitVelY * NY;
+    printf("%lu hit %lu in [%f %f] with dir:[%f %f] DU:[%f %f] proj:%f\n",
+        i, j, CX, CY, NX, NY, hitVelX, hitVelY, projVel); fflush(0);
+    if(projVel<=0) continue; // vel goes away from coll: no need to bounce
+    const bool iForcedX = shapes[i]->bForcedx && sim.time<shapes[i]->timeForced;
+    const bool iForcedY = shapes[i]->bForcedy && sim.time<shapes[i]->timeForced;
+    const bool iForcedA = shapes[i]->bBlockang&& sim.time<shapes[i]->timeForced;
+    const bool jForcedX = shapes[j]->bForcedx && sim.time<shapes[j]->timeForced;
+    const bool jForcedY = shapes[j]->bForcedy && sim.time<shapes[j]->timeForced;
+
+    const Real iInvMassX = iForcedX? 0 : 1/shapes[i]->M; // forced == inf mass
+    const Real iInvMassY = iForcedY? 0 : 1/shapes[i]->M;
+    const Real jInvMassX = jForcedX? 0 : 1/shapes[j]->M;
+    const Real jInvMassY = jForcedY? 0 : 1/shapes[j]->M;
+    const Real iInvJ     = iForcedA? 0 : 1/shapes[i]->J;
+    const Real meanMassX = 2 / std::max(iInvMassX + jInvMassX, EPS);
+    const Real meanMassY = 2 / std::max(iInvMassY + jInvMassY, EPS);
+    // Force_i_bounce _from_j = HARMONIC_MEAN_MASS * (Uj - Ui) / dt
+    const Real FXdt = meanMassX * projVel * NX;
+    const Real FYdt = meanMassY * projVel * NY;
+    printf("%f %f %f %f %f\n", FXdt, FYdt, iInvMassX, iInvMassY, iInvJ); fflush(0);
+    shapes[i]->u += FXdt * iInvMassX; // if forced, no update
+    shapes[i]->v += FYdt * iInvMassY;
+    const Real iCx =shapes[i]->centerOfMass[0], iCy =shapes[i]->centerOfMass[1];
+    const Real RcrossF = (CX-iCx) * FYdt - (CY-iCy) * FXdt;
+    shapes[i]->omega += iInvJ * RcrossF;
   }
 }
 

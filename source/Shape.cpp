@@ -35,13 +35,13 @@ void Shape::updateVelocity(double dt)
     fluidAngMom + dt * appliedTorque
   };
 
-  if(bForcedx) {
+  if(bForcedx && sim.time < timeForced) {
                  A[0][1] = 0; A[0][2] = 0; b[0] = penalM * forcedu;
   }
-  if(bForcedy) {
+  if(bForcedy && sim.time < timeForced) {
     A[1][0] = 0;              A[1][2] = 0; b[1] = penalM * forcedv;
   }
-  if(bBlockang) {
+  if(bBlockang && sim.time < timeForced) {
     A[2][0] = 0; A[2][1] = 0;              b[2] = penalJ * forcedomega;
   }
 
@@ -53,33 +53,10 @@ void Shape::updateVelocity(double dt)
   gsl_linalg_LU_decomp (& Agsl.matrix, permgsl, & sgsl);
   gsl_linalg_LU_solve (& Agsl.matrix, permgsl, & bgsl.vector, xgsl);
 
-  if(not bForcedy)  u     = gsl_vector_get(xgsl, 0);
-  if(not bForcedy)  v     = gsl_vector_get(xgsl, 1);
-  if(not bBlockang) omega = gsl_vector_get(xgsl, 2);
+  if(not bForcedy  || sim.time > timeForced)  u     = gsl_vector_get(xgsl, 0);
+  if(not bForcedy  || sim.time > timeForced)  v     = gsl_vector_get(xgsl, 1);
+  if(not bBlockang || sim.time > timeForced)  omega = gsl_vector_get(xgsl, 2);
 }
-
-/*
-if(not bForcedx) {
-  const Real uNxt = fluidMomX / penalM;
-  const Real FX = M * (uNxt - u) / dt;
-  const Real accx = ( appliedForceX + FX ) / M;
-  u = u + dt * accx;
-}
-
-if(not bForcedy) {
-  const Real vNxt = fluidMomY / penalM;
-  const Real FY = M * (vNxt - v) / dt;
-  const Real accy = ( appliedForceY + FY ) / M;
-  v = v + dt * accy;
-}
-
-if(not bBlockang) {
-  const Real omegaNxt = fluidAngMom / penalJ;
-  const Real TZ = J * (omegaNxt - omega) / dt;
-  const Real acca = ( appliedTorque + TZ ) / J;
-  omega = omega + dt * acca;
-}
-*/
 
 void Shape::updateLabVelocity( int nSum[2], double uSum[2] )
 {
@@ -111,7 +88,7 @@ void Shape::updatePosition(double dt)
   if(sim.dt <= 0) return;
 
   if(sim.verbose)
-    printf("CM:[%.02f %.02f] C:[%.02f %.02f] ang:%.02f u:%.03f v:%.03f av:%.03f"
+    printf("CM:[%.02f %.02f] C:[%.02f %.02f] ang:%.02f u:%.05f v:%.05f av:%.03f"
       " M:%.02e J:%.02e\n", cx, cy, center[0], center[1], angle, u, v, omega, M, J);
   if(not sim.muteAll)
   {
@@ -363,7 +340,8 @@ Shape::Shape( SimulationData& s, ArgumentParser& p, double C[2] ) :
   bForcedy(  p("-bForcedy").asBool(bForced)),
   bBlockang( p("-bBlockAng").asBool(bForcedx || bForcedy) ),
   forcedu( - p("-xvel").asDouble(0) ), forcedv( - p("-yvel").asDouble(0) ),
-  forcedomega(-p("-angvel").asDouble(0)), bDumpSurface(p("-dumpSurf").asInt(0))
+  forcedomega(-p("-angvel").asDouble(0)), bDumpSurface(p("-dumpSurf").asInt(0)),
+  timeForced(p("-timeForced").asDouble(std::numeric_limits<double>::max()))
   {}
 
 Shape::~Shape()
