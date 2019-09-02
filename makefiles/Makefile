@@ -78,7 +78,7 @@ else ifneq ($(FFTW_DIR),)
 	FFTW_ROOT = $(FFTW_DIR)/..
 endif
 ifneq ($(FFTW_ROOT),)
-	FFTW_LIBS  = -L$(FFTW_ROOT)/lib
+	LIBS  = -L$(FFTW_ROOT)/lib
 	CPPFLAGS  += -I$(FFTW_ROOT)/include
 endif
 ifeq "$(precision)" "single"
@@ -96,6 +96,10 @@ CPPFLAGS += -DCUDAFFT
 endif
 
 ifneq "$(hypre)" "false"
+	ifneq ($(HYPRE_ROOT),)
+		LIBS     += -L$(HYPRE_ROOT)/lib
+		CPPFLAGS += -I$(HYPRE_ROOT)/include
+	endif
 LIBS+= -lHYPRE
 CPPFLAGS += -DHYPREFFT
 endif
