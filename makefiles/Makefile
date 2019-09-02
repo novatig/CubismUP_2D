@@ -78,7 +78,7 @@ else ifneq ($(FFTW_DIR),)
 	FFTW_ROOT = $(FFTW_DIR)/..
 endif
 ifneq ($(FFTW_ROOT),)
-	LIBS  = -L$(FFTW_ROOT)/lib
+	LIBS  += -L$(FFTW_ROOT)/lib
 	CPPFLAGS  += -I$(FFTW_ROOT)/include
 endif
 ifeq "$(precision)" "single"
