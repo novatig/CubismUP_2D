@@ -70,18 +70,29 @@ OBJECTS = \
 		HYPREdirichletVarRho.o PressureVarRho_proper.o UpdateObjectsStaggered.o
 #Penalization.o PressureIterator.o  PressureVarRho.o PressureSingleStaggered.o
 
+ifneq ($(FFTW_ROOT),)
+	# do not overwrite FFTW_ROOT
+else ifneq ($(FFTW3_ROOT_DIR),)
+	FFTW_ROOT = $(FFTW3_ROOT_DIR)
+else ifneq ($(FFTW_DIR),)
+	FFTW_ROOT = $(FFTW_DIR)/..
+endif
+ifneq ($(FFTW_ROOT),)
+	FFTW_LIBS  = -L$(FFTW_ROOT)/lib
+	CPPFLAGS  += -I$(FFTW_ROOT)/include
+endif
+ifeq "$(precision)" "single"
+	CPPFLAGS += -D_FLOAT_PRECISION_
+	NVFLAGS += -D_FLOAT_PRECISION_
+	LIBS += -lfftw3f -lfftw3f_omp
+else
+	LIBS += -lfftw3  -lfftw3_omp
+endif
+
 ifneq "$(gpu)" "false"
 LIBS += -lcufft
 OBJECTS += CUDA_all.o
 CPPFLAGS += -DCUDAFFT
-endif
-
-ifeq "$(precision)" "single"
-    CPPFLAGS += -D_FLOAT_PRECISION_
-    NVFLAGS += -D_FLOAT_PRECISION_
-    LIBS += -lfftw3f -lfftw3f_omp
-else
-    LIBS += -lfftw3  -lfftw3_omp
 endif
 
 ifneq "$(hypre)" "false"
@@ -101,16 +112,22 @@ endif
 LIBS += -lgsl -lgslcblas
 
 ifneq "$(hdf)" "false"
-  ifneq ($(HDF5_ROOT),)
+	ifneq ($(HDF5_ROOT),)
+		# do not overwrite HDF5_ROOT
   else ifneq ($(HDF5ROOT),)
-    HDF5_ROOT = HDF5ROOT
-  else
-    ERROR = "Neither HDF5_ROOT nor HDF5ROOT environment variables set. Did you forget to `module load`?"
-  endif
-  LIBS     += -L$(HDF5_ROOT)/lib -lhdf5
-  CPPFLAGS += -I$(HDF5_ROOT)/include -DCUBISM_USE_HDF
+		HDF5_ROOT = HDF5ROOT
+	endif
+	ifneq ($(HDF5_ROOT),)
+		LIBS     += -L$(HDF5_ROOT)/lib
+		CPPFLAGS += -I$(HDF5_ROOT)/include
+	endif
+	LIBS     += -lhdf5
+	CPPFLAGS += -DCUBISM_USE_HDF
 endif
 
+ifneq ($(ERROR),)
+$(error $(ERROR))
+endif
 
 all: simulation
 .DEFAULT: all;
