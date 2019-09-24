@@ -18,6 +18,7 @@ using CHI_MAT = Real[VectorBlock::sizeY][VectorBlock::sizeX];
 using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];
 
 #define EXPL_INTEGRATE_MOM
+//#define UNIFORM_CORRECT
 
 void PressureSingle::integrateMomenta(Shape * const shape) const
 {
@@ -134,7 +135,6 @@ void PressureSingle::updatePressureRHS(const double dt) const
 
   #pragma omp parallel reduction(+: sumRHS[:nShapes], posRHS[:nShapes], negRHS[:nShapes])
   {
-    VectorLab velLab;   velLab.prepare(*(sim.vel ), stenBeg, stenEnd, 0);
     ScalarLab chiLab;   chiLab.prepare(*(sim.chi ), stenBeg, stenEnd, 0);
     #pragma omp for schedule(static)
     for (size_t i=0; i < Nblocks; i++)
@@ -143,24 +143,26 @@ void PressureSingle::updatePressureRHS(const double dt) const
       const std::vector<ObstacleBlock*> & OBLOCK = shape->obstacleBlocks;
       if (OBLOCK[uDefInfo[i].blockID] == nullptr) continue;
 
-      velLab.load(  velInfo[i], 0); const auto & __restrict__ V    = velLab;
       chiLab. load( chiInfo[i], 0); const auto & __restrict__ CHI  = chiLab;
       const CHI_MAT & __restrict__ chi = OBLOCK[uDefInfo[i].blockID]->chi;
       auto & __restrict__ TMP = *(ScalarBlock*) tmpInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
-        if (chi[iy][ix] <= 0 || CHI(ix,iy).s > chi[iy][ix]) continue;
-        const Real divVx  = V(ix+1,iy).u[0] - V(ix-1,iy).u[0];
-        const Real divVy  = V(ix,iy+1).u[1] - V(ix,iy-1).u[1];
+        if (CHI(ix,iy).s > chi[iy][ix]) continue;
         const Real gradXx = CHI(ix+1,iy).s - CHI(ix-1,iy).s;
         const Real gradXy = CHI(ix,iy+1).s - CHI(ix,iy-1).s;
-        const bool isPerim = gradXx*gradXx + gradXy*gradXy > 0;
-        const Real srcBulk = - facDiv * chi[iy][ix] * ( divVx + divVy );
+        const Real srcBulk = - chi[iy][ix] * TMP(ix, iy).s;
         sumRHS[j] += srcBulk;
         TMP(ix, iy).s += srcBulk;
-        posRHS[j] += isPerim * TMP(ix, iy).s * (TMP(ix, iy).s>0);
-        negRHS[j] -= isPerim * TMP(ix, iy).s * (TMP(ix, iy).s<0);
+
+        #ifdef UNIFORM_CORRECT
+          posRHS[j] += h*h * std::sqrt(gradXx*gradXx + gradXy*gradXy);
+        #else
+          const bool isPerim = gradXx*gradXx + gradXy*gradXy > 0;
+          posRHS[j] += isPerim * TMP(ix, iy).s * (TMP(ix, iy).s>0);
+          negRHS[j] -= isPerim * TMP(ix, iy).s * (TMP(ix, iy).s<0);
+        #endif
       }
     }
   }
@@ -177,8 +179,12 @@ void PressureSingle::updatePressureRHS(const double dt) const
     for (size_t j=0; j < nShapes; j++)
     {
       const Shape * const shape = sim.shapes[j];
-      const Real corrDenom = sumRHS[j]>0 ? posRHS[j] : negRHS[j];
-      const Real corr = sumRHS[j] / std::max(corrDenom, EPS);
+      #ifdef UNIFORM_CORRECT
+        const Real corr = sumRHS[j] / std::max(posRHS[j], EPS);
+      #else
+        const Real corrDenom = sumRHS[j]>0 ? posRHS[j] : negRHS[j];
+        const Real corr = sumRHS[j] / std::max(corrDenom, EPS);
+      #endif
       const std::vector<ObstacleBlock*>& OBLOCK = shape->obstacleBlocks;
       if (OBLOCK[uDefInfo[i].blockID] == nullptr) continue;
 
@@ -189,14 +195,18 @@ void PressureSingle::updatePressureRHS(const double dt) const
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
-        if (chi[iy][ix] <= 0 || CHI(ix,iy).s > chi[iy][ix]) continue;
+        if (CHI(ix,iy).s > chi[iy][ix]) continue;
         const Real gradXx = CHI(ix+1,iy).s - CHI(ix-1,iy).s;
         const Real gradXy = CHI(ix,iy+1).s - CHI(ix,iy-1).s;
-        const bool isPerim = gradXx*gradXx + gradXy*gradXy > 0;
-        if      (isPerim and TMP(ix, iy).s > 0 and corr > 0)
-          TMP(ix, iy).s -= corr * TMP(ix, iy).s;
-        else if (isPerim and TMP(ix, iy).s < 0 and corr < 0)
-          TMP(ix, iy).s += corr * TMP(ix, iy).s;
+        #ifdef UNIFORM_CORRECT
+          TMP(ix, iy).s -= corr * h*h * std::sqrt(gradXx*gradXx+gradXy*gradXy);
+        #else
+          const bool isPerim = gradXx*gradXx + gradXy*gradXy > 0;
+          if      (isPerim and TMP(ix, iy).s > 0 and corr > 0)
+            TMP(ix, iy).s -= corr * TMP(ix, iy).s;
+          else if (isPerim and TMP(ix, iy).s < 0 and corr < 0)
+            TMP(ix, iy).s += corr * TMP(ix, iy).s;
+        #endif
       }
     }
   }

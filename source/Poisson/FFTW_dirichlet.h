@@ -25,12 +25,12 @@ class FFTW_dirichlet : public PoissonSolver
   const size_t MX = totNx, MY = totNy;
   float * const COScoefX = new float[MX];
   float * const COScoefY = new float[MY];
-  const Real norm_factor = 0.25/(MX*MY);
   myplan fwd, bwd;
 
   inline void _solveSpectral() const
   {
     const Real waveFactX = M_PI/MX, waveFactY = M_PI/MY;
+    const Real norm_factor = 0.25/(MX*MY);
     Real * __restrict__ const in_out = buffer;
     #pragma omp parallel for schedule(static)
     for(size_t j=0; j<MY; ++j)
@@ -48,6 +48,7 @@ class FFTW_dirichlet : public PoissonSolver
   inline void _solve() const
   {
     const Real waveFactX = M_PI/MX, waveFactY = M_PI/MY;
+    const Real norm_factor = 0.25/(MX*MY);
     Real * __restrict__ const in_out = buffer;
     #pragma omp parallel for schedule(static)
     for(size_t j=0; j<MY; ++j)
@@ -55,7 +56,7 @@ class FFTW_dirichlet : public PoissonSolver
       const Real rkx = (i+(Real).5)*waveFactX, rky = (j+(Real).5)*waveFactY;
       const Real denomFD = 1 - COScoefX[i]/2 - COScoefY[j]/2;
       const Real denomSP = rkx*rkx + rky*rky;
-      static const Real tol = 0.001;
+      static const Real tol = 0.01;
       in_out[j * MX + i] *= - norm_factor/((1-tol) * denomFD + tol * denomSP);
     }
     in_out[0] = 0; //this is sparta! (part 2)
