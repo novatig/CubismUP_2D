@@ -207,7 +207,6 @@ void advDiffGravStaggered::operator()(const double dt)
 }
 
 /*
-
   Real MX[2] = {0}, AX[2] = {0}, MY[2] = {0}, AY[2] = {0};
   #pragma omp parallel for schedule(dynamic) reduction(+ : MX[:2], AX[:2], \
                                                            MY[:2], AY[:2])
