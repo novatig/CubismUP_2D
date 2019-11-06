@@ -10,7 +10,7 @@
 #include "PressureIterator_approx.h"
 #include "../Poisson/HYPREdirichletVarRho.h"
 #include "../Shape.h"
-#include "Utils/BufferedLogger.h"
+#include "../Utils/BufferedLogger.h"
 #include <stdio.h>
 
 using namespace cubism;
@@ -23,7 +23,7 @@ static inline T mean(const T A, const T B) { return (A+B)/2; }
 
 using CHI_MAT = Real[VectorBlock::sizeY][VectorBlock::sizeX];
 using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];
-static constexpr double EPS = std::numeric_limits<double>::epsilon();
+static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
 
 #ifndef FOURTHORDER
   static constexpr int stenBeg [3] = {-1,-1, 0}, stenEnd [3] = { 2, 2, 1};
@@ -456,7 +456,7 @@ void PressureVarRho_approx::operator()(const double dt)
   if(oldNsteps > 30) targetRelError = std::max({relDF,relDP,targetRelError});
   if(oldNsteps > 10) targetRelError *= 1.01;
   if(oldNsteps <= 2) targetRelError *= 0.99;
-  targetRelError = std::min(1e-3, std::max(1e-5, targetRelError));
+  targetRelError = std::min((Real)1e-3, std::max((Real)1e-5, targetRelError));
 
   if(not sim.muteAll)
   {

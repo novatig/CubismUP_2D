@@ -16,6 +16,7 @@
 class HYPREdirichlet : public PoissonSolver
 {
   const bool bPeriodic = false;
+  double * dbuffer;
   const std::string solver;
   HYPRE_StructGrid     hypre_grid;
   HYPRE_StructStencil  hypre_stencil;

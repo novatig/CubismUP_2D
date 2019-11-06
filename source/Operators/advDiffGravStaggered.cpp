@@ -11,7 +11,7 @@
 //#define NOINFLOW
 
 using namespace cubism;
-static constexpr double EPS = std::numeric_limits<Real>::epsilon();
+static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
 static constexpr int BSX = VectorBlock::sizeX, BSY = VectorBlock::sizeY;
 static constexpr int BX=0, EX=BSX-1, BY=0, EY=BSY-1;
 static constexpr int stenBeg[3] = {-1,-1, 0}, stenEnd[3] = { 1, 1, 1};
@@ -27,7 +27,7 @@ void advDiffGravStaggered::operator()(const double dt)
   const auto isN = [&](const BlockInfo&I) { return I.index[1] == sim.bpdy-1; };
 
   const Real UINF[2]= {sim.uinfx, sim.uinfy}, h = sim.getH();
-  const Real G[2]= { dt*sim.gravity[0], dt*sim.gravity[1] };
+  const Real G[2]= { (Real) dt * sim.gravity[0], (Real) dt * sim.gravity[1] };
   const Real dfac = (sim.nu/h)*(dt/h), afac = -0.5*dt/h;
   const Real norUinf = std::max({std::fabs(UINF[0]), std::fabs(UINF[1]), EPS});
   const Real fadeW= 1-std::pow(std::max(UINF[0],(Real)0)/norUinf,2)/BC_KILL_FAC;
@@ -207,7 +207,6 @@ void advDiffGravStaggered::operator()(const double dt)
 }
 
 /*
-
   Real MX[2] = {0}, AX[2] = {0}, MY[2] = {0}, AY[2] = {0};
   #pragma omp parallel for schedule(dynamic) reduction(+ : MX[:2], AX[:2], \
                                                            MY[:2], AY[:2])

@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#include "Communicators/Communicator_MPI.h"
+#include "smarties.h"
 #include "Simulation.h"
 #include "Obstacles/Glider.h"
 
@@ -37,7 +37,7 @@ inline bool checkNaN(std::vector<double>& state, double& reward)
   return bTrouble;
 }
 
-int app_main(
+inline void app_main(
   smarties::Communicator*const comm, // communicator with smarties
   MPI_Comm mpicom,                  // mpi_comm that mpi-based apps can use
   int argc, char**argv             // args read from app's runtime settings file
@@ -124,8 +124,14 @@ int app_main(
     if(comm->isTraining() == false) chdir("../");
     sim_id++;
 
-    if (comm->terminateTraining()) return 0; // exit program
+    if (comm->terminateTraining()) return; // exit program
   }
+}
 
+int main(int argc, char**argv)
+{
+  smarties::Engine e(argc, argv);
+  if( e.parse() ) return 1;
+  e.run( app_main );
   return 0;
 }

@@ -7,18 +7,18 @@
 //
 
 //#include "PoissonSolver.h"
-#include "../Poisson/FFTW_freespace.h"
+#include "FFTW_freespace.h"
 #ifdef HYPREFFT
-#include "../Poisson/HYPREdirichlet.h"
+#include "HYPREdirichlet.h"
 #endif
-#include "../Poisson/FFTW_dirichlet.h"
-#include "../Poisson/FFTW_periodic.h"
+#include "FFTW_dirichlet.h"
+#include "FFTW_periodic.h"
 #ifdef CUDAFFT
-#include "../Poisson/CUDA_all.h"
+#include "CUDA_all.h"
 #endif
 
 using namespace cubism;
-static constexpr double EPS = std::numeric_limits<double>::epsilon();
+static constexpr Real EPS = std::numeric_limits<Real>::epsilon();
 
 PoissonSolver * PoissonSolver::makeSolver(SimulationData& sim)
 {
@@ -61,7 +61,7 @@ PoissonSolver * PoissonSolver::makeSolver(SimulationData& sim)
 void PoissonSolver::cub2rhs(const std::vector<BlockInfo>& BSRC)
 {
   const size_t nBlocks = BSRC.size();
-  Real sumRHS = 0, sumPOS = 0, sumNEG = 0, sumABS = 0;
+  Real sumRHS = 0, sumPOS = 0, sumNEG = 0;
   Real * __restrict__ const dest = buffer;
 
   const auto& extent = sim.extents;
@@ -121,8 +121,8 @@ void PoissonSolver::cub2rhs(const std::vector<BlockInfo>& BSRC)
     }
   }
   //sim.dumpTmp("RHS");
-  sumRHS = 0; sumABS = 0;
-  #pragma omp parallel for schedule(static) reduction(+ : sumRHS, sumABS)
+  sumRHS = 0;
+  #pragma omp parallel for schedule(static) reduction(+ : sumRHS)
   for(size_t i=0; i<nBlocks; ++i)
   {
     const BlockInfo& info = BSRC[i];
@@ -134,27 +134,10 @@ void PoissonSolver::cub2rhs(const std::vector<BlockInfo>& BSRC)
     for(int iy=0; iy<VectorBlock::sizeY; iy++)
     for(int ix=0; ix<VectorBlock::sizeX; ix++) {
       dest[blockStart + ix + stride*iy] = b(ix,iy).s;
-      sumABS += std::fabs(b(ix,iy).s);
-      sumRHS +=           b(ix,iy).s;
+      sumRHS += b(ix,iy).s;
     }
   }
-  if(0)
-  {
-    const Real C = sumRHS/std::max(EPS,sumABS);
-    printf("Relative RHS sum:%e\n", C);
-    #pragma omp parallel for schedule(static)
-    for (size_t iy = 0; iy < totNy; iy++)
-    for (size_t ix = 0; ix < totNx; ix++)
-      dest[ix + stride * iy] -=  std::fabs(dest[ix +stride * iy]) * C;
-  }
-  #ifndef NDEBUG
-    Real sumRHSpost = 0;
-    #pragma omp parallel for schedule(static) reduction(+ : sumRHSpost)
-    for(size_t iy = 0; iy < totNy; iy++)
-    for(size_t ix = 0; ix < totNx; ix++) sumRHSpost += dest[ix + stride * iy];
-    printf("Relative RHS post correction:%e\n", sumRHSpost);
-    //assert(sumRHSpost < 10*std::sqrt(std::numeric_limits<Real>::epsilon()));
-  #endif
+  //if(sim.verbose) printf("Relative RHS sum:%e\n", sumRHS);
 }
 
 void PoissonSolver::sol2cub(const std::vector<BlockInfo>& BDST)

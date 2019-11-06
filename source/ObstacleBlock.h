@@ -18,8 +18,8 @@ struct surface_data
   const int ix, iy;
   const Real dchidx, dchidy, delta;
 
-  surface_data(const int _ix, const int _iy, const Real _dchidx, const Real _dchidy, const Real _delta) : ix(_ix), iy(_iy), dchidx(_dchidx), dchidy(_dchidy), delta(_delta)
-  {}
+  surface_data(const int _ix, const int _iy, const Real Xdx,const Real Xdy,
+    const Real D) : ix(_ix), iy(_iy), dchidx(Xdx), dchidy(Xdy), delta(D) {}
 };
 
 struct ObstacleBlock
@@ -28,9 +28,9 @@ struct ObstacleBlock
   static const int sizeY = _BS_;
 
   // bulk quantities:
-  Real chi[sizeY][sizeX];
+  Real  chi[sizeY][sizeX];
   Real dist[sizeY][sizeX];
-  Real rho[sizeY][sizeX];
+  Real  rho[sizeY][sizeX];
   Real udef[sizeY][sizeX][2];
 
   //surface quantities:
@@ -92,7 +92,7 @@ struct ObstacleBlock
     memset(udef, 0, sizeof(Real)*sizeX*sizeY*2);
   }
 
-  inline void write(const int ix, const int iy, const Real delta, const Real gradUX, const Real gradUY)
+  void write(const int ix, const int iy, const Real delta, const Real gradUX, const Real gradUY)
   {
     assert(!filled);
 
@@ -124,5 +124,14 @@ struct ObstacleBlock
         (float)vyDef[i], (float)surface[i]->dchidx, (float)surface[i]->dchidy};
       pFile.write((char*)buf, sizeof(float)*11);
     }
+  }
+
+  void printCSV(std::ofstream& pFile)
+  {
+    assert(filled);
+    for(size_t i=0; i<n_surfPoints; i++)
+      pFile<<pX[i]<<", "<<pY[i]<<", "<<P[i]<<", "<<fX[i]<<", "<<fY[i]<<", "
+           <<vx[i]<<", "<<vy[i]<<", "<<vxDef[i]<<", "<<vyDef[i]<<", "
+           <<surface[i]->dchidx<<", "<<surface[i]->dchidy<<"\n";
   }
 };

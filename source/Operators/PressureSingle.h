@@ -23,6 +23,7 @@ class PressureSingle : public Operator
 
   PoissonSolver * const pressureSolver;
 
+  void preventCollidingObstacles() const;
   void pressureCorrection(const double dt) const;
   void updatePressureRHS(const double dt) const;
   void integrateMomenta(Shape * const shape) const;

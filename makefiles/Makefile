@@ -3,13 +3,6 @@ compiler ?= gnu
 else
 compiler ?= intel
 endif
-ifeq "$(compiler)" "intel"
-CXX ?= icpc
-include make.icc.flags
-else
-CXX ?= g++
-include make.gcc.flags
-endif
 
 NVCC ?= nvcc
 
@@ -19,6 +12,14 @@ hdf5 ?= true
 config ?= production
 precision ?= double
 smarties ?= false
+
+ifeq "$(compiler)" "intel"
+CXX ?= icpc
+include make.icc.flags
+else
+CXX ?= g++
+include make.gcc.flags
+endif
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
@@ -52,7 +53,7 @@ CPPFLAGS+= -D_BS_=$(bs) -DCUBISM_ALIGNMENT=32 -DNTHREADS=$(nthreads)
 NVFLAGS+= -code=sm_60 -arch=compute_60
 
 BUILDDIR = .
-CPPFLAGS += -I../source/ -I$(BUILDDIR)/../Cubism/include/
+CPPFLAGS += -I$(BUILDDIR)/../Cubism/include/
 NVFLAGS += -I$(BUILDDIR)/../Cubism/include/
 SRC_DIR = $(BUILDDIR)/../source/
 DIRS = $(sort $(dir $(wildcard ../source/*/)))
@@ -69,21 +70,36 @@ OBJECTS = \
 		HYPREdirichletVarRho.o PressureVarRho_proper.o UpdateObjectsStaggered.o
 #Penalization.o PressureIterator.o  PressureVarRho.o PressureSingleStaggered.o
 
+ifneq ($(FFTW_ROOT),)
+	# do not overwrite FFTW_ROOT
+else ifneq ($(FFTW3_ROOT_DIR),)
+	FFTW_ROOT = $(FFTW3_ROOT_DIR)
+else ifneq ($(FFTW_DIR),)
+	FFTW_ROOT = $(FFTW_DIR)/..
+endif
+ifneq ($(FFTW_ROOT),)
+	LIBS  += -L$(FFTW_ROOT)/lib
+	CPPFLAGS  += -I$(FFTW_ROOT)/include
+endif
+ifeq "$(precision)" "single"
+	CPPFLAGS += -D_FLOAT_PRECISION_
+	NVFLAGS += -D_FLOAT_PRECISION_
+	LIBS += -lfftw3f -lfftw3f_omp
+else
+	LIBS += -lfftw3  -lfftw3_omp
+endif
+
 ifneq "$(gpu)" "false"
 LIBS += -lcufft
 OBJECTS += CUDA_all.o
 CPPFLAGS += -DCUDAFFT
 endif
 
-ifeq "$(precision)" "single"
-    CPPFLAGS += -D_FLOAT_PRECISION_
-    NVFLAGS += -D_FLOAT_PRECISION_
-    LIBS += -lfftw3f -lfftw3f_omp
-else
-    LIBS += -lfftw3  -lfftw3_omp
-endif
-
 ifneq "$(hypre)" "false"
+	ifneq ($(HYPRE_ROOT),)
+		LIBS     += -L$(HYPRE_ROOT)/lib
+		CPPFLAGS += -I$(HYPRE_ROOT)/include
+	endif
 LIBS+= -lHYPRE
 CPPFLAGS += -DHYPREFFT
 endif
@@ -99,37 +115,42 @@ ifneq "$(GSL_ROOT_DIR)" ""
 endif
 LIBS += -lgsl -lgslcblas
 
-ifneq "$(smarties)" "false"
-	SMARTIESDIR ?= ../../smarties/source/
-	CPPFLAGS += -I$(SMARTIESDIR)/
-endif
-
 ifneq "$(hdf)" "false"
-  ifneq ($(HDF5_ROOT),)
+	ifneq ($(HDF5_ROOT),)
+		# do not overwrite HDF5_ROOT
   else ifneq ($(HDF5ROOT),)
-    HDF5_ROOT = HDF5ROOT
-  else
-    ERROR = "Neither HDF5_ROOT nor HDF5ROOT environment variables set. Did you forget to `module load`?"
-  endif
-  LIBS     += -L$(HDF5_ROOT)/lib -lhdf5
-  CPPFLAGS += -I$(HDF5_ROOT)/include -DCUBISM_USE_HDF
+		HDF5_ROOT = HDF5ROOT
+	endif
+	ifneq ($(HDF5_ROOT),)
+		LIBS     += -L$(HDF5_ROOT)/lib
+		CPPFLAGS += -I$(HDF5_ROOT)/include
+	endif
+	LIBS     += -lhdf5
+	CPPFLAGS += -DCUBISM_USE_HDF
 endif
 
+ifneq ($(ERROR),)
+$(error $(ERROR))
+endif
 
 all: simulation
 .DEFAULT: all;
 
-leadFollow: main_RL_2fish.o $(OBJECTS)
-	ar rs libsimulation.a $^
+leadFollow: $(OBJECTS)
+	$(CXX) $(CPPFLAGS) -I${SMARTIES_ROOT}/include -c ../source/main_RL_$@.cpp -o main_RL_$@.o
+	$(LD) -o $@ $^ main_RL_$@.o $(LIBS) -L${SMARTIES_ROOT}/lib -lsmarties
 
-blowfish: main_RL_blowfish.o $(OBJECTS)
-	ar rs libsimulation.a $^
+blowfish: $(OBJECTS)
+	$(CXX) $(CPPFLAGS) -I${SMARTIES_ROOT}/include -c ../source/main_RL_$@.cpp -o main_RL_$@.o
+	$(LD) -o $@ $^ main_RL_$@.o $(LIBS) -L${SMARTIES_ROOT}/lib -lsmarties
 
-smartCyl: main_RL_smartCyl.o $(OBJECTS)
-	ar rs libsimulation.a $^
+smartCyl: $(OBJECTS)
+	$(CXX) $(CPPFLAGS) -I${SMARTIES_ROOT}/include -c ../source/main_RL_$@.cpp -o main_RL_$@.o
+	$(LD) -o $@ $^ main_RL_$@.o $(LIBS) -L${SMARTIES_ROOT}/lib -lsmarties
 
-glider: main_RL_glider.o $(OBJECTS)
-	ar rs libsimulation.a $^
+glider: $(OBJECTS)
+	$(CXX) $(CPPFLAGS) -I${SMARTIES_ROOT}/include -c ../source/main_RL_$@.cpp -o main_RL_$@.o
+	$(LD) -o $@ $^ main_RL_$@.o $(LIBS) -L${SMARTIES_ROOT}/lib -lsmarties
 
 simulation: main.o $(OBJECTS)
 	$(LD) main.o $(OBJECTS) $(LIBS) -o $@

@@ -294,7 +294,7 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
   const double velAbsPy =     yDiff>0 ? relV     : -relV;
   const double velAbsIy = avgDeltaY>0 ? velDYavg : -velDYavg;
 
-  if (bCorrectPosition || bCorrectPosition)
+  if (bCorrectPosition || bCorrectTrajectory)
     assert(origAng<2e-16 && "TODO: rotate pos and vel to fish POV to enable \
                              PID to work even for non-zero angles");
 
@@ -363,6 +363,10 @@ void StefanFish::create(const std::vector<BlockInfo>& vInfo)
     cFish->correctTrajectory(totalTerm, totalDiff, sim.time, sim.dt);
   }
 
+  // to debug and check state function, but requires an other obstacle
+  //const int indCurrAct = (time + sim.dt)/(Tperiod/2);
+  //if(time < indCurrAct*Tperiod/2) state(sim.shapes[0]);
+
   Fish::create(vInfo);
 }
 
@@ -409,16 +413,71 @@ std::vector<double> StefanFish::state(Shape*const p) const
   #else
     S.resize(16);
     const Real h = sim.getH(), invh = 1/h;
-    const auto holdsPoint = [&](const BlockInfo& I, const Real X, const Real Y)
+    const std::vector<cubism::BlockInfo>& velInfo = sim.vel->getBlocksInfo();
+
+    // function that finds block id of block containing pos (x,y)
+    const auto holdingBlockID = [&](const Real x, const Real y)
     {
-      Real MIN[2], MAX[2];
-      I.pos(MIN, 0,0);
-      I.pos(MAX, VectorBlock::sizeX-1, VectorBlock::sizeY-1);
-      for(int i=0; i<2; ++i) {
-          MIN[i] -= 0.5 * h; // pos returns cell centers
-          MAX[i] += 0.5 * h; // we care about whole block
+      const auto holdsPoint = [&](const BlockInfo&I, const Real X,const Real Y)
+      {
+        std::array<Real,2> MIN = I.pos<Real>(0, 0);
+        std::array<Real,2> MAX = I.pos<Real>(VectorBlock::sizeX-1,
+                                             VectorBlock::sizeY-1);
+        for(int i=0; i<2; ++i) {
+            MIN[i] -= 0.5 * h; // pos returns cell centers
+            MAX[i] += 0.5 * h; // we care about whole block
+        }
+        // this may return true for 2 blocks if (X,Y) overlaps with edges
+        return X >= MIN[0] && Y >= MIN[1] && X <= MAX[0] && Y <= MAX[1];
+      };
+      for(size_t i=0; i<velInfo.size(); ++i)
+        if( holdsPoint(velInfo[i], x, y) ) return (int) i;
+      assert(false);
+      return (int) 0;
+    };
+
+    // function that is probably unnecessary, unless pos is at block edge
+    // then it makes the op stable without increasing complexity in the above
+    const auto safeIdInBlock = [&](const std::array<Real,2> pos,
+                                   const std::array<Real,2> org)
+    {
+      const int indx = (int) std::round((pos[0] - org[0])*invh);
+      const int indy = (int) std::round((pos[1] - org[1])*invh);
+      const int ix = std::min( std::max(0, indx), VectorBlock::sizeX-1);
+      const int iy = std::min( std::max(0, indy), VectorBlock::sizeY-1);
+      return std::array<int, 2>{{ix, iy}};
+    };
+
+    // return fish velocity at a point on the fish skin:
+    const auto skinVel = [&](const std::array<Real,2> pSkin)
+    {
+      const auto& skinBinfo = velInfo[holdingBlockID(pSkin[0], pSkin[1])];
+      const auto *const o = obstacleBlocks[skinBinfo.blockID];
+      if (o == nullptr) {
+        printf("ABORT: skin point is outside allocated obstacle blocks\n");
+        fflush(0); abort();
       }
-      return X >= MIN[0] && Y >= MIN[1] && X <= MAX[0] && Y <= MAX[1];
+      const std::array<Real,2> oSkin = skinBinfo.pos<Real>(0, 0);
+      const std::array<int,2> iSkin = safeIdInBlock(pSkin, oSkin);
+      printf("skin pos:[%f %f] -> block org:[%f %f] ind:[%d %d]\n",
+        pSkin[0], pSkin[1], oSkin[0], oSkin[1], iSkin[0], iSkin[1]);
+      const Real* const udef = o->udef[iSkin[1]][iSkin[0]];
+      const Real uSkin = u - omega * (pSkin[1]-centerOfMass[1]) + udef[0];
+      const Real vSkin = v + omega * (pSkin[0]-centerOfMass[0]) + udef[1];
+      return std::array<Real, 2>{{uSkin, vSkin}};
+    };
+
+    // return flow velocity at point of flow sensor:
+    const auto sensVel = [&](const std::array<Real,2> pSens)
+    {
+      const auto& sensBinfo = velInfo[holdingBlockID(pSens[0], pSens[1])];
+      const std::array<Real,2> oSens = sensBinfo.pos<Real>(0, 0);
+      const std::array<int,2> iSens = safeIdInBlock(pSens, oSens);
+      printf("sensor pos:[%f %f] -> block org:[%f %f] ind:[%d %d]\n",
+        pSens[0], pSens[1], oSens[0], oSens[1], iSens[0], iSens[1]);
+      const VectorBlock& b = * (const VectorBlock*) sensBinfo.ptrBlock;
+      return std::array<Real, 2>{{b(iSens[0], iSens[1]).u[0],
+                                  b(iSens[0], iSens[1]).u[1]}};
     };
 
     // side of the head defined by position sb from function _width above ^^^
@@ -429,77 +488,38 @@ std::vector<double> StefanFish::state(Shape*const p) const
     assert(iHeadSide>0);
 
     std::array<Real,2> tipShear, lowShear, topShear;
-    const std::vector<cubism::BlockInfo>& velInfo = sim.vel->getBlocksInfo();
-    #pragma omp parallel for schedule(dynamic)
-    for(size_t i=0; i<velInfo.size(); ++i)
+    { // surface and sensor (shifted by 2h) points of the fish tip
+      const auto &DU = myFish->upperSkin, &DL = myFish->lowerSkin;
+      // first point of the two skins is the same
+      // normal should be almost the same: take the mean
+      const std::array<Real,2> pSkin = {DU.xSurf[0], DU.ySurf[0]};
+      const Real normX = (DU.normXSurf[0] + DL.normXSurf[0]) / 2;
+      const Real normY = (DU.normYSurf[0] + DL.normYSurf[0]) / 2;
+      const std::array<Real,2> pSens = {pSkin[0] + h * normX,
+                                        pSkin[1] + h * normY};
+      const std::array<Real,2> vSens = sensVel(pSens), vSkin = skinVel(pSkin);
+      tipShear[0] = (vSens[0] - vSkin[0]) * invh;
+      tipShear[1] = (vSens[1] - vSkin[1]) * invh;
+    }
+
+    for(int a = 0; a<2; ++a)
     {
-      {
-        const auto &DU = myFish->upperSkin, &DL = myFish->lowerSkin;
-        // first point of the two skins is the same
-        // normal should be almost the same: take the mean
-        const Real skinX=DU.xSurf[0], normX=(DU.normXSurf[0]+DL.normXSurf[0])/2;
-        const Real skinY=DU.ySurf[0], normY=(DU.normYSurf[0]+DL.normYSurf[0])/2;
-        const Real sensX = skinX + 2*h * normX, sensY = skinY + 2*h * normY;
-        if( not holdsPoint(velInfo[i], sensX, sensY) ) continue;
-
-        const ObstacleBlock*const o = obstacleBlocks[velInfo[i].blockID];
-        if (o == nullptr) {
-          printf("ABORT: sensor point is outside allocated obstacle blocks\n");
-          fflush(0); abort();
-        }
-        Real org[2]; velInfo[i].pos(org, 0, 0);
-        const int indx = (int) std::round((sensX - org[0])*invh);
-        const int indy = (int) std::round((sensY - org[1])*invh);
-        const int ix = std::min( std::max(0, indx), VectorBlock::sizeX-1);
-        const int iy = std::min( std::max(0, indy), VectorBlock::sizeY-1);
-        const VectorBlock& b = * (const VectorBlock*) velInfo[i].ptrBlock;
-        const auto&__restrict__ udef = obstacleBlocks[velInfo[i].blockID]->udef;
-        const Real uSkin = u - omega*(skinY-centerOfMass[1]) + udef[iy][ix][0];
-        const Real vSkin = v + omega*(skinX-centerOfMass[0]) + udef[iy][ix][1];
-        tipShear[0] = (b(ix, iy).u[0] - uSkin) * invh/2;
-        tipShear[1] = (b(ix, iy).u[1] - vSkin) * invh/2;
-
-        printf("tip sensor:[%f %f]->[%f %f] ind:[%d %d] val:%f %f\n",
-        skinX, skinY, org[0], org[1], ix, iy, tipShear[0], tipShear[1]);
-      }
-      for(int a = 0; a<2; ++a)
-      {
-        const auto& D = a==0? myFish->upperSkin : myFish->lowerSkin;
-        const Real skinX = D.midX[iHeadSide], normX = D.normXSurf[iHeadSide];
-        const Real skinY = D.midY[iHeadSide], normY = D.normYSurf[iHeadSide];
-        const Real sensX = skinX + 2*h * normX, sensY = skinY + 2*h * normY;
-        if( not holdsPoint(velInfo[i], sensX, sensY) ) continue;
-
-        const ObstacleBlock*const o = obstacleBlocks[velInfo[i].blockID];
-        if (o == nullptr) {
-          printf("ABORT: sensor point is outside allocated obstacle blocks\n");
-          fflush(0); abort();
-        }
-        Real org[2]; velInfo[i].pos(org, 0, 0);
-        const int indx = (int) std::round((sensX - org[0])*invh);
-        const int indy = (int) std::round((sensY - org[1])*invh);
-        const int ix = std::min( std::max(0, indx), VectorBlock::sizeX-1);
-        const int iy = std::min( std::max(0, indy), VectorBlock::sizeY-1);
-        const VectorBlock& b = * (const VectorBlock*) velInfo[i].ptrBlock;
-        const auto&__restrict__ udef = obstacleBlocks[velInfo[i].blockID]->udef;
-        const Real uSkin = u - omega*(skinY-centerOfMass[1]) + udef[iy][ix][0];
-        const Real vSkin = v + omega*(skinX-centerOfMass[0]) + udef[iy][ix][1];
-        const Real shearX = (b(ix, iy).u[0] - uSkin) * invh/2;
-        const Real shearY = (b(ix, iy).u[1] - vSkin) * invh/2;
-        const Real dX = D.xSurf[iHeadSide+1] - D.xSurf[iHeadSide];
-        const Real dY = D.ySurf[iHeadSide+1] - D.ySurf[iHeadSide];
-        const Real proj = dX * normX - dY * normY;
-        const Real tangX = proj>0?  normX : -normX;
-        const Real tangY = proj>0? -normY :  normY;
-        (a==0? topShear[0] : lowShear[0]) = shearX * normX + shearY * normY;
-        (a==0? topShear[1] : lowShear[1]) = shearX * tangX + shearY * tangY;
-        if(a==0)
-          printf("top sensor:[%f %f]->[%f %f] ind:[%d %d] val:%f %f\n",
-          skinX, skinY, org[0], org[1], ix, iy, topShear[0], topShear[1]);
-        else
-          printf("bot sensor:[%f %f]->[%f %f] ind:[%d %d] val:%f %f\n",
-          skinX, skinY, org[0], org[1], ix, iy, lowShear[0], lowShear[1]);
-      }
+      const auto& D = a==0? myFish->upperSkin : myFish->lowerSkin;
+      const std::array<Real,2> pSkin = {D.midX[iHeadSide], D.midY[iHeadSide]};
+      const Real normX = D.normXSurf[iHeadSide], normY = D.normYSurf[iHeadSide];
+      const std::array<Real,2> pSens = {pSkin[0] + h * normX,
+                                        pSkin[1] + h * normY};
+      const std::array<Real,2> vSens = sensVel(pSens), vSkin = skinVel(pSkin);
+      const Real shearX = (vSens[0] - vSkin[0]) * invh;
+      const Real shearY = (vSens[1] - vSkin[1]) * invh;
+      // now figure out how to rotate it along the fish skin for consistency:
+      const Real dX = D.xSurf[iHeadSide+1] - D.xSurf[iHeadSide];
+      const Real dY = D.ySurf[iHeadSide+1] - D.ySurf[iHeadSide];
+      const Real proj = dX * normX - dY * normY;
+      const Real tangX = proj>0?  normX : -normX; // s.t. tang points from head
+      const Real tangY = proj>0? -normY :  normY; // to tail, normal outward
+      (a==0? topShear[0] : lowShear[0]) = shearX * normX + shearY * normY;
+      (a==0? topShear[1] : lowShear[1]) = shearX * tangX + shearY * tangY;
     }
 
     S[10] = tipShear[0] * Tperiod / length;
@@ -508,6 +528,8 @@ std::vector<double> StefanFish::state(Shape*const p) const
     S[13] = lowShear[1] * Tperiod / length;
     S[14] = topShear[0] * Tperiod / length;
     S[15] = topShear[1] * Tperiod / length;
+    printf("shear tip:[%f %f] lower side:[%f %f] upper side:[%f %f]\n",
+      S[10],S[11], S[12],S[13], S[14],S[15]);
 
     return S;
   #endif
