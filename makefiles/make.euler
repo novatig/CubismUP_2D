@@ -11,8 +11,13 @@ endif
 else
 
 ifneq "$(hdf5)" "false"
-CPPFLAGS+= -I/cluster/home/novatig/hdf5-1.10.1/gcc_6.3.0_openmpi_2.1/include/
-LIBS+= -L/cluster/home/novatig/hdf5-1.10.1/gcc_6.3.0_openmpi_2.1/lib/
+CPPFLAGS+= -I/cluster/home/novatig/hdf5-1.10.1/gnu630_mvapich22/include/
+LIBS+= -L/cluster/home/novatig/hdf5-1.10.1/gnu630_mvapich22/lib/
+endif
+
+ifneq "$(fftw)" "false"
+CPPFLAGS+= -I/cluster/home/novatig/fftw-3.3.5/gnu630_mvapich22/include/
+LIBS+= -L/cluster/home/novatig/fftw-3.3.5/gnu630_mvapich22/lib/
 endif
 
 ifneq "$(hypre)" "false"
