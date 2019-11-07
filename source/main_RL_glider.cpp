@@ -45,11 +45,11 @@ inline void app_main(
 {
   for(int i=0; i<argc; i++) {printf("arg: %s\n",argv[i]); fflush(0);}
   const int nActions = 1, nStates = 10;
-  comm->set_state_action_dims(nStates, nActions);
+  comm->setStateActionDims(nStates, nActions);
   std::vector<double> upper_action_bound{1}, lower_action_bound{-1};
-  comm->set_action_scales(upper_action_bound, lower_action_bound, true);
+  comm->setActionScales(upper_action_bound, lower_action_bound, true);
   std::vector<bool> b_observable = {1, 1, 1, 1, 1, 1, 1, 0, 0, 0};
-  comm->set_state_observable(b_observable);
+  comm->setStateObservable(b_observable);
   const unsigned maxLearnStepPerSim = 9000000;
 
   Simulation sim(argc, argv);

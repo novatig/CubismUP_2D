@@ -25,12 +25,12 @@ class Glider : public Shape
   const Real beta = minax/majax;
 
   // what Paoletti's paper says:
-  //const Real torquescale = M_PI/8*std::pow(majax*(1-beta*beta)*velscale,2)/beta;
+  const Real torquescale = M_PI/8*std::pow(majax*(1-beta*beta)*velscale,2)/beta;
   // eg:
   // pi/8*((0.125^2-0.025^2)*0.01566045976)^2 /0.125/0.025 = 0.000006934280382
 
   // what Paoletti's paper does:
-  const Real torquescale = M_PI*majax*majax*velscale*velscale;
+  //const Real torquescale = M_PI*majax*majax*velscale*velscale;
   // eg:
   // pi*0.125^2*0.01566045976^2 = 0.00001203868122
 

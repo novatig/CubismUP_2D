@@ -112,10 +112,10 @@ inline void app_main(
   const int nActions = 3, nStates = 5 + 8;
   #endif
   const unsigned maxLearnStepPerSim = 500; // random number... TODO
-  comm->set_state_action_dims(nStates, nActions);
+  comm->setStateActionDims(nStates, nActions);
 
   const std::vector<double> lower_act_bound{-2,-1,-1}, upper_act_bound{0,1,1};
-  comm->set_action_scales(upper_act_bound, lower_act_bound, false);
+  comm->setActionScales(upper_act_bound, lower_act_bound, false);
   // Tell smarties that action space should be bounded.
   // First action modifies curvature, only makes sense between -1 and 1
   // Second action affects Tp = (1+act[1])*Tperiod_0 (eg. halved if act[1]=-.5).
