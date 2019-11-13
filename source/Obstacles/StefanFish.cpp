@@ -459,7 +459,7 @@ std::vector<double> StefanFish::state(Shape*const p) const
         WENS[1] = x - MAX[0];
         WENS[2] = MIN[1] - y;
         WENS[3] = y - MAX[1];
-        const Real dist = *std::min_element(WENS.begin(),WENS.end());
+        const Real dist = *std::max_element(WENS.begin(),WENS.end());
         distsBlocks[i].first = dist;
         distsBlocks[i].second = i;
       }
