@@ -418,21 +418,62 @@ std::vector<double> StefanFish::state(Shape*const p) const
     // function that finds block id of block containing pos (x,y)
     const auto holdingBlockID = [&](const Real x, const Real y)
     {
-      const auto holdsPoint = [&](const BlockInfo&I, const Real X,const Real Y)
+      const auto getMin = [&]( const BlockInfo&I )
       {
         std::array<Real,2> MIN = I.pos<Real>(0, 0);
+        for(int i=0; i<2; ++i)
+          MIN[i] -= 0.5 * h; // pos returns cell centers
+        return MIN;
+      };
+
+      const auto getMax = [&]( const BlockInfo&I )
+      {
         std::array<Real,2> MAX = I.pos<Real>(VectorBlock::sizeX-1,
                                              VectorBlock::sizeY-1);
-        for(int i=0; i<2; ++i) {
-            MIN[i] -= 0.5 * h; // pos returns cell centers
-            MAX[i] += 0.5 * h; // we care about whole block
-        }
+        for(int i=0; i<2; ++i)
+          MAX[i] += 0.5 * h; // pos returns cell centers
+        return MAX;
+      };
+
+      const auto holdsPoint = [&](const std::array<Real,2> MIN, std::array<Real,2> MAX,
+                                  const Real X,const Real Y)
+      {
         // this may return true for 2 blocks if (X,Y) overlaps with edges
         return X >= MIN[0] && Y >= MIN[1] && X <= MAX[0] && Y <= MAX[1];
       };
+
+      std::vector<std::pair<double, int>> distsBlocks(velInfo.size());
       for(size_t i=0; i<velInfo.size(); ++i)
-        if( holdsPoint(velInfo[i], x, y) ) return (int) i;
-      assert(false);
+      {
+        std::array<Real,2> MIN = getMin(velInfo[i]);
+        std::array<Real,2> MAX = getMax(velInfo[i]);
+        if( holdsPoint(MIN, MAX, x, y) )
+        {
+        // handler to select obstacle block
+          const auto& skinBinfo = velInfo[i];
+          const auto *const o = obstacleBlocks[skinBinfo.blockID];
+          if(o != nullptr ) return (int) i;
+        }
+        std::array<Real, 4> WENS;
+        WENS[0] = MIN[0] - x;
+        WENS[1] = x - MAX[0];
+        WENS[2] = MIN[1] - y;
+        WENS[3] = y - MAX[1];
+        const Real dist = *std::min_element(WENS.begin(),WENS.end());
+        distsBlocks[i].first = dist;
+        distsBlocks[i].second = i;
+      }
+      std::sort(distsBlocks.begin(), distsBlocks.end());
+      std::reverse(distsBlocks.begin(), distsBlocks.end());
+      for( auto distBlock: distsBlocks )
+      {
+        // handler to select obstacle block
+          const auto& skinBinfo = velInfo[distBlock.second];
+          const auto *const o = obstacleBlocks[skinBinfo.blockID];
+          if(o != nullptr ) return (int) distBlock.second;
+      }
+      printf("ABORT: coordinate could not be associated to obstacle block\n");
+      fflush(0); abort();
       return (int) 0;
     };
 
