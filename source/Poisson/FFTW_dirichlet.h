@@ -25,12 +25,12 @@ class FFTW_dirichlet : public PoissonSolver
   const size_t MX = totNx, MY = totNy;
   float * const COScoefX = new float[MX];
   float * const COScoefY = new float[MY];
-  const Real norm_factor = 0.25/(MX*MY);
   myplan fwd, bwd;
 
-  inline void _solve() const
+  inline void _solveSpectral() const
   {
     const Real waveFactX = M_PI/MX, waveFactY = M_PI/MY;
+    const Real norm_factor = 0.25/(MX*MY);
     Real * __restrict__ const in_out = buffer;
     #pragma omp parallel for schedule(static)
     for(size_t j=0; j<MY; ++j)
@@ -41,35 +41,25 @@ class FFTW_dirichlet : public PoissonSolver
     in_out[0] = 0; //this is sparta! (part 2)
   }
 
-  inline void _solveSpectral() const
+  // BALANCE TWO PROBLEMS:
+  // - if only grid consistent odd DOF and even DOF do not 'talk' to each others
+  // - if only spectral then nont really div free
+  // COMPROMISE: define a tolerance that balances two effects
+  inline void _solve() const
   {
     const Real waveFactX = M_PI/MX, waveFactY = M_PI/MY;
     static constexpr tol = 0.1;
+    const Real norm_factor = 0.25/(MX*MY);
     Real * __restrict__ const in_out = buffer;
     #pragma omp parallel for schedule(static)
     for(size_t j=0; j<MY; ++j)
     for(size_t i=0; i<MX; ++i) {
-      const Real rkx = (i + (Real).5)*waveFactX, rky = (j + (Real).5)*waveFactY;
+      const Real rkx = (i+(Real).5)*waveFactX, rky = (j+(Real).5)*waveFactY;
       const Real denomFD = 1 - COScoefX[i]/2 - COScoefY[j]/2;
       const Real denomSP = rkx*rkx + rky*rky;
-      in_out[j * MX + i] *=  - norm_factor / ( (1-tol)*denomFD + tol*denomSP );
+      in_out[j * MX + i] *= - norm_factor/((1-tol) * denomFD + tol * denomSP);
     }
     in_out[0] = 0; //this is sparta! (part 2)
-    ///*
-    //in_out[    MX-1 ] = 0; // j=0, i=end
-    //in_out[MX*(MY-1)] = 0; // j=end, i=0
-    //in_out[MX*MY -1 ] = 0; // j=end, i=end
-    //*/
-    /*
-    #pragma omp parallel for schedule(static)
-    for(size_t j=0; j<MY; ++j) in_out[   j   * MX + (MX-1)] = 0;
-    #pragma omp parallel for schedule(static)
-    for(size_t j=0; j<MY; ++j) in_out[   j   * MX + (MX-2)] = 0;
-    #pragma omp parallel for schedule(static)
-    for(size_t i=0; i<MX; ++i) in_out[(MY-1) * MX +    i  ] = 0;
-    #pragma omp parallel for schedule(static)
-    for(size_t i=0; i<MX; ++i) in_out[(MY-2) * MX +    i  ] = 0;
-    */
   }
 
  public:

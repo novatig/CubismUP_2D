@@ -1,10 +1,13 @@
 HOST=`hostname`
 OS_D=`uname`
-if [ $# -lt 1 ] ; then
+echo $RUNNAME
+if [[ $# -lt 1 && -z "$RUNNAME" ]] ; then
 	echo "Usage: ./launch_*.sh RUNNAME"
 	exit 1
 fi
+if [ $# -gt 0 ] ; then
 RUNNAME=$1
+fi
 
 unset LSB_AFFINITY_HOSTFILE #euler cluster
 export MV2_ENABLE_AFFINITY=0 #MVAPICH

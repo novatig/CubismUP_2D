@@ -18,6 +18,7 @@ using CHI_MAT = Real[VectorBlock::sizeY][VectorBlock::sizeX];
 using UDEFMAT = Real[VectorBlock::sizeY][VectorBlock::sizeX][2];
 
 #define EXPL_INTEGRATE_MOM
+//#define UNIFORM_CORRECT
 
 void PressureSingle::integrateMomenta(Shape * const shape) const
 {
@@ -114,69 +115,60 @@ void PressureSingle::updatePressureRHS(const double dt) const
   {
     VectorLab velLab;  velLab.prepare( *(sim.vel),  stenBeg, stenEnd, 0);
     #pragma omp for schedule(static)
-    for (size_t i=0; i < Nblocks; i++)
-    {
+    for (size_t i=0; i < Nblocks; i++) {
       velLab.load(velInfo[i], 0); const auto & __restrict__ V   = velLab;
       ScalarBlock& __restrict__ TMP = *(ScalarBlock*) tmpInfo[i].ptrBlock;
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
         const Real divVx  = V(ix+1,iy).u[0] - V(ix-1,iy).u[0];
         const Real divVy  = V(ix,iy+1).u[1] - V(ix,iy-1).u[1];
-        TMP(ix, iy).s = facDiv*(divVx+divVy);
+        TMP(ix, iy).s = facDiv * (divVx + divVy);
       }
     }
   }
 
   const size_t nShapes = sim.shapes.size();
-  Real * sumRHS, * absRHS;
+  Real * sumRHS, * posRHS, * negRHS;
   sumRHS = (Real*) calloc(nShapes, sizeof(Real));
-  absRHS = (Real*) calloc(nShapes, sizeof(Real));
+  posRHS = (Real*) calloc(nShapes, sizeof(Real));
+  negRHS = (Real*) calloc(nShapes, sizeof(Real));
 
-  #pragma omp parallel reduction(+: sumRHS[:nShapes], absRHS[:nShapes])
+  #pragma omp parallel reduction(+: sumRHS[:nShapes], posRHS[:nShapes], negRHS[:nShapes])
   {
-    VectorLab velLab;   velLab.prepare(*(sim.vel ), stenBeg, stenEnd, 0);
     ScalarLab chiLab;   chiLab.prepare(*(sim.chi ), stenBeg, stenEnd, 0);
     #pragma omp for schedule(static)
     for (size_t i=0; i < Nblocks; i++)
-    for (size_t j=0; j < nShapes; j++)
-    {
+    for (size_t j=0; j < nShapes; j++) {
       const Shape * const shape = sim.shapes[j];
       const std::vector<ObstacleBlock*> & OBLOCK = shape->obstacleBlocks;
-      const ObstacleBlock * const o = OBLOCK[uDefInfo[i].blockID];
-      if (o == nullptr) continue;
+      if (OBLOCK[uDefInfo[i].blockID] == nullptr) continue;
 
-      const Real u_s = shape->u, v_s = shape->v, omega_s = shape->omega;
-      const Real Cx = shape->centerOfMass[0], Cy = shape->centerOfMass[1];
-
-      velLab.load(  velInfo[i], 0); const auto & __restrict__ V    = velLab;
-      chiLab.load(  chiInfo[i], 0); const auto & __restrict__ CHI  = chiLab;
-      const CHI_MAT & __restrict__ chi = o->chi;
-      const UDEFMAT & __restrict__ udef = o->udef;
+      chiLab. load( chiInfo[i], 0); const auto & __restrict__ CHI  = chiLab;
+      const CHI_MAT & __restrict__ chi = OBLOCK[uDefInfo[i].blockID]->chi;
       auto & __restrict__ TMP = *(ScalarBlock*) tmpInfo[i].ptrBlock;
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
-      for(int ix=0; ix<VectorBlock::sizeX; ++ix)
-      {
-        if (chi[iy][ix] <= 0 || CHI(ix,iy).s > chi[iy][ix]) continue;
-        Real p[2]; velInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;
-        const Real dU = u_s - omega_s * p[1] + udef[iy][ix][0] - V(ix,iy).u[0];
-        const Real dV = v_s + omega_s * p[0] + udef[iy][ix][1] - V(ix,iy).u[1];
-
-        const Real divVx  = V(ix+1,iy).u[0] - V(ix-1,iy).u[0];
-        const Real divVy  = V(ix,iy+1).u[1] - V(ix,iy-1).u[1];
+      for(int ix=0; ix<VectorBlock::sizeX; ++ix) {
+        if (CHI(ix,iy).s > chi[iy][ix]) continue;
         const Real gradXx = CHI(ix+1,iy).s - CHI(ix-1,iy).s;
         const Real gradXy = CHI(ix,iy+1).s - CHI(ix,iy-1).s;
-        const Real srcPerimeter = facDiv * ( gradXx*dU + gradXy*dV );
-        const Real srcBulk = - facDiv * CHI(ix,iy).s * ( divVx + divVy );
-        sumRHS[j] += srcPerimeter + srcBulk;
-        absRHS[j] += std::fabs(srcPerimeter);
-        TMP(ix, iy).s += srcPerimeter + srcBulk;
+        const Real srcBulk = - chi[iy][ix] * TMP(ix, iy).s;
+        sumRHS[j] += srcBulk;
+        TMP(ix, iy).s += srcBulk;
+
+        #ifdef UNIFORM_CORRECT
+          posRHS[j] += h*h * std::sqrt(gradXx*gradXx + gradXy*gradXy);
+        #else
+          const bool isPerim = gradXx*gradXx + gradXy*gradXy > 0;
+          posRHS[j] += isPerim * TMP(ix, iy).s * (TMP(ix, iy).s>0);
+          negRHS[j] -= isPerim * TMP(ix, iy).s * (TMP(ix, iy).s<0);
+        #endif
       }
     }
   }
 
-  //for (size_t j=0; j < nShapes; j++)
-  //printf("sum of udef src terms %e\n", sumRHS[j]/std::max(absRHS[j], EPS));
+  //for (size_t j=0; j < nShapes && sim.verbose; j++)
+  //printf("sum of udef src terms %e %e\n", sumRHS[j], absRHS[j]);
 
   #pragma omp parallel
   {
@@ -187,36 +179,38 @@ void PressureSingle::updatePressureRHS(const double dt) const
     for (size_t j=0; j < nShapes; j++)
     {
       const Shape * const shape = sim.shapes[j];
-      const Real corr = sumRHS[j] / std::max(absRHS[j], EPS);
+      #ifdef UNIFORM_CORRECT
+        const Real corr = sumRHS[j] / std::max(posRHS[j], EPS);
+      #else
+        const Real corrDenom = sumRHS[j]>0 ? posRHS[j] : negRHS[j];
+        const Real corr = sumRHS[j] / std::max(corrDenom, EPS);
+      #endif
       const std::vector<ObstacleBlock*>& OBLOCK = shape->obstacleBlocks;
-      const ObstacleBlock*const o = OBLOCK[uDefInfo[i].blockID];
-      if (o == nullptr) continue;
+      if (OBLOCK[uDefInfo[i].blockID] == nullptr) continue;
 
-      const Real u_s = shape->u, v_s = shape->v, omega_s = shape->omega;
-      const Real Cx = shape->centerOfMass[0], Cy = shape->centerOfMass[1];
-
-      const CHI_MAT & __restrict__ chi = o->chi;
-      const UDEFMAT & __restrict__ udef = o->udef;
+      const CHI_MAT & __restrict__ chi = OBLOCK[uDefInfo[i].blockID]->chi;
       ScalarBlock& __restrict__ TMP = *(ScalarBlock*) tmpInfo[i].ptrBlock;
-      chiLab.load(  chiInfo[i], 0); const auto & __restrict__ CHI  = chiLab;
-      const VectorBlock& __restrict__ V = *(VectorBlock*) velInfo[i].ptrBlock;
+      chiLab.load(chiInfo[i], 0); const auto & __restrict__ CHI  = chiLab;
 
       for(int iy=0; iy<VectorBlock::sizeY; ++iy)
       for(int ix=0; ix<VectorBlock::sizeX; ++ix)
       {
-        if (chi[iy][ix] <= 0 || CHI(ix,iy).s > chi[iy][ix]) continue;
-        Real p[2]; velInfo[i].pos(p, ix, iy); p[0] -= Cx; p[1] -= Cy;
-        const Real dU = u_s - omega_s * p[1] + udef[iy][ix][0] - V(ix,iy).u[0];
-        const Real dV = v_s + omega_s * p[0] + udef[iy][ix][1] - V(ix,iy).u[1];
+        if (CHI(ix,iy).s > chi[iy][ix]) continue;
         const Real gradXx = CHI(ix+1,iy).s - CHI(ix-1,iy).s;
         const Real gradXy = CHI(ix,iy+1).s - CHI(ix,iy-1).s;
-        const Real srcPerimeter = facDiv * ( gradXx*dU + gradXy*dV );
-        TMP(ix, iy).s -= corr * std::fabs(srcPerimeter);
+        #ifdef UNIFORM_CORRECT
+          TMP(ix, iy).s -= corr * h*h * std::sqrt(gradXx*gradXx+gradXy*gradXy);
+        #else
+          const bool isPerim = gradXx*gradXx + gradXy*gradXy > 0;
+          if      (isPerim and TMP(ix, iy).s > 0 and corr > 0)
+            TMP(ix, iy).s -= corr * TMP(ix, iy).s;
+          else if (isPerim and TMP(ix, iy).s < 0 and corr < 0)
+            TMP(ix, iy).s += corr * TMP(ix, iy).s;
+        #endif
       }
     }
   }
-
-  free (sumRHS); free (absRHS);
+  free (sumRHS); free (posRHS); free (negRHS);
 }
 
 void PressureSingle::pressureCorrection(const double dt) const
@@ -351,6 +345,20 @@ void PressureSingle::preventCollidingObstacles() const
 
 void PressureSingle::operator()(const double dt)
 {
+  sim.startProfiler("Prhs");
+  updatePressureRHS(dt);
+  //fadeoutBorder(dt);
+  sim.stopProfiler();
+
+  //if( sim.bDump() ) {
+  //  sim.dumpTmp("avemaria_");
+  //}
+  pressureSolver->solve(tmpInfo, presInfo);
+
+  sim.startProfiler("PCorrect");
+  pressureCorrection(dt);
+  sim.stopProfiler();
+
   sim.startProfiler("integrateMoms");
   for(Shape * const shape : sim.shapes) {
     integrateMomenta(shape);
@@ -359,19 +367,8 @@ void PressureSingle::operator()(const double dt)
   preventCollidingObstacles();
   sim.stopProfiler();
 
-  sim.startProfiler("Prhs");
-  updatePressureRHS(dt);
-  //fadeoutBorder(dt);
-  sim.stopProfiler();
-
-  pressureSolver->solve(tmpInfo, presInfo);
-
   sim.startProfiler("penalize");
   penalize(dt);
-  sim.stopProfiler();
-
-  sim.startProfiler("PCorrect");
-  pressureCorrection(dt);
   sim.stopProfiler();
 }
 

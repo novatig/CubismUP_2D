@@ -99,7 +99,7 @@ inline void app_main(
   const unsigned maxLearnStepPerSim = comm->isTraining()? 500
                                      : std::numeric_limits<int>::max();
 
-  comm->set_state_action_dims(nStates, nActions);
+  comm->setStateActionDims(nStates, nActions);
 
   Simulation sim(argc, argv);
   sim.init();

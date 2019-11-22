@@ -11,18 +11,8 @@ gpu ?= false
 hdf5 ?= true
 config ?= production
 precision ?= double
-smarties ?= false
 
-ifeq "$(compiler)" "intel"
-CXX ?= icpc
-include make.icc.flags
-else
-CXX ?= g++
-include make.gcc.flags
-endif
-
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Darwin)
+ifeq ($(shell uname -s), Darwin)
 include make.macos
 endif
 
@@ -46,6 +36,19 @@ endif
 
 CXX=$(MPICXX)
 LD=$(MPICXX)
+
+ifeq "$(shell $(CXX) --version | grep -ci 'icpc')" "0"
+ifeq "$(shell $(CXX) --version | grep -ci 'llvm')" "0"
+compiler=gnu
+include make.gcc.flags
+else
+compiler=llvm
+include make.llvm.flags
+endif
+else
+compiler=intel
+include make.icc.flags
+endif
 
 bs ?= 32
 nthreads ?= 24
@@ -119,7 +122,7 @@ ifneq "$(hdf)" "false"
 	ifneq ($(HDF5_ROOT),)
 		# do not overwrite HDF5_ROOT
   else ifneq ($(HDF5ROOT),)
-		HDF5_ROOT = HDF5ROOT
+		HDF5_ROOT = $(HDF5ROOT)
 	endif
 	ifneq ($(HDF5_ROOT),)
 		LIBS     += -L$(HDF5_ROOT)/lib
