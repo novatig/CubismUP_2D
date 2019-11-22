@@ -120,7 +120,7 @@ void Simulation::createShapes()
     // bar so that they can be parsed separately. Reason being that in many
     // situations \n will not be read as line escape but as backslash n.
     const std::vector<std::string> vlines = split(lines, ',');
-    for (const std::string line: vlines)
+    for (const auto& line: vlines)
     {
       std::istringstream line_stream(line);
       std::string objectName;
